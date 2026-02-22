@@ -16,7 +16,7 @@ To allow a job seeker to quickly get relevant practice questions based strictly 
 * **As a** job seeker,
 * **I want to** click a `Generate Questions` button and receive a list of 5 to 10 tailored interview questions,
 * **So that** I can start practicing immediately without having to guess what they might ask.
-* **Acceptance Criteria:** * The system returns a mix of technical and behavioral questions derived directly from the keywords in the pasted job description within 15 seconds.
+* **Acceptance Criteria:** * The system returns a mix of technical` and behavioral questions derived directly from the keywords in the pasted job description within 15 seconds.
 
 ### Scenario 3: Basic Content Management
 * **As a** job seeker,
