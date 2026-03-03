@@ -4,6 +4,9 @@ import ProtectedRoute from '@/components/ProtectedRoute'
 import AppShell from '@/components/AppShell'
 import LoginPage from '@/pages/LoginPage'
 import DashboardPage from '@/pages/DashboardPage'
+import InterviewPage from '@/pages/InterviewPage'
+import ResearchPage from '@/pages/ResearchPage'
+import ResumePage from '@/pages/ResumePage'
 
 export default function App() {
   return (
@@ -20,7 +23,9 @@ export default function App() {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
-          {/* TODO: Add routes as pages are built (issues #18, #29, #31) */}
+          <Route path="interview" element={<InterviewPage />} />
+          <Route path="research" element={<ResearchPage />} />
+          <Route path="resume" element={<ResumePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
