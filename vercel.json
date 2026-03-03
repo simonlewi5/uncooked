@@ -1,0 +1,7 @@
+{
+  "framework": "vite",
+  "buildCommand": "pnpm build --filter=@uncooked/web",
+  "outputDirectory": "apps/web/dist",
+  "installCommand": "pnpm install",
+  "ignoreCommand": "git diff HEAD^ HEAD --quiet -- apps/web packages"
+}

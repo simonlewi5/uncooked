@@ -1,0 +1,18 @@
+{
+  "name": "uncooked",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "type-check": "turbo type-check",
+    "test": "turbo test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\" --ignore-path .gitignore"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3"
+  }
+}
