@@ -10,12 +10,13 @@ import styles from './InterviewPage.module.css'
 
 export default function InterviewPage(): JSX.Element {
   const [jobDescription, setJobDescription] = useState('')
+  const [companyName, setCompanyName] = useState('')
   const [style, setStyle] = useState<InterviewStyle | null>(null)
   const [activeTab, setActiveTab] = useState<ActiveTab>('jobDesc')
 
   // companyName and companyContext wired up in #20/#21
   const { messages, isTyping, sendMessage } = useInterviewChat(
-    { jobDescription, companyName: '', companyContext: '' },
+    { jobDescription, companyName, companyContext: '' },
     style ?? 'mixed',
   )
 
@@ -66,6 +67,8 @@ export default function InterviewPage(): JSX.Element {
           {activeTab === 'jobDesc' ? (
             <div className={styles.tabContent}>
               <JobDescriptionForm
+                companyName={companyName}
+                onCompanyNameChange={setCompanyName}
                 jobDescription={jobDescription}
                 onJobDescriptionChange={setJobDescription}
               />
