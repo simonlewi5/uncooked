@@ -1,9 +1,13 @@
-import { Input } from '@/components/ui'
+import { CompanyAutocomplete } from './CompanyAutocomplete'
+import { usePastJobDescriptions } from '@/hooks/usePastJobDescriptions'
+import type { CompanyProfile } from '@/types'
 import styles from './JobDescriptionForm.module.css'
 
 interface JobDescriptionFormProps {
   companyName: string
   onCompanyNameChange: (value: string) => void
+  selectedCompanyId: string | null
+  onCompanyProfileSelect: (profile: CompanyProfile) => void
   jobDescription: string
   onJobDescriptionChange: (value: string) => void
 }
@@ -11,21 +15,38 @@ interface JobDescriptionFormProps {
 export function JobDescriptionForm({
   companyName,
   onCompanyNameChange,
+  selectedCompanyId,
+  onCompanyProfileSelect,
   jobDescription,
   onJobDescriptionChange,
 }: JobDescriptionFormProps): React.JSX.Element {
+  const { jobs } = usePastJobDescriptions(selectedCompanyId)
+
   return (
     <div className={styles.form}>
-      <Input
-        label="Company name"
-        placeholder="e.g. Acme Corp"
+      <CompanyAutocomplete
         value={companyName}
-        onChange={(e) => onCompanyNameChange(e.target.value)}
+        onChange={onCompanyNameChange}
+        onProfileSelect={onCompanyProfileSelect}
       />
 
+      {jobs.length > 0 && (
+        <div className={styles.pastJobs}>
+          {jobs.map((job) => (
+            <button
+              key={job.id}
+              className={styles.pastJobBtn}
+              onClick={() => onJobDescriptionChange(job.jobDescription)}
+            >
+              Use: {job.jobTitle}
+            </button>
+          ))}
+        </div>
+      )}
+
       <p className={styles.desc}>
-        Paste the job description here. The AI will generate tailored questions
-        based on these requirements.
+        Paste the job description here. The AI will generate tailored questions based on these
+        requirements.
       </p>
 
       <textarea

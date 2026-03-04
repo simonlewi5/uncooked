@@ -1,16 +1,18 @@
 import { useState } from 'react'
-import { Mic, Briefcase, FileText } from 'lucide-react'
+import { Mic, Briefcase, FileText, Building2 } from 'lucide-react'
 import { JobDescriptionForm } from '@/components/interview/JobDescriptionForm'
 import { InterviewStyleSelector } from '@/components/interview/InterviewStyleSelector'
 import { ChatBox } from '@/components/interview/ChatBox'
+import { CompanyHistory } from '@/components/interview/CompanyHistory'
 import { useInterviewChat } from '@/hooks/useInterviewChat'
 import { cn } from '@/utils/cn'
-import type { ActiveTab, InterviewStyle } from '@/types'
+import type { ActiveTab, CompanyProfile, InterviewStyle } from '@/types'
 import styles from './InterviewPage.module.css'
 
 export default function InterviewPage(): JSX.Element {
   const [jobDescription, setJobDescription] = useState('')
   const [companyName, setCompanyName] = useState('')
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null)
   const [style, setStyle] = useState<InterviewStyle | null>(null)
   const [activeTab, setActiveTab] = useState<ActiveTab>('jobDesc')
 
@@ -22,14 +24,24 @@ export default function InterviewPage(): JSX.Element {
 
   const isChatEnabled = jobDescription.trim().length > 0
 
+  function handleCompanyProfileSelect(profile: CompanyProfile): void {
+    setCompanyName(profile.companyName)
+    setSelectedCompanyId(profile.id)
+    setActiveTab('jobDesc')
+  }
+
+  function handleCompanyNameChange(value: string): void {
+    setCompanyName(value)
+    setSelectedCompanyId(null)
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.pageHeader}>
         <div>
           <h1 className={styles.title}>Interview Simulator</h1>
           <p className={styles.subtitle}>
-            Practice answering questions live with AI. Provide context to make
-            it realistic.
+            Practice answering questions live with AI. Provide context to make it realistic.
           </p>
         </div>
         <button
@@ -45,30 +57,32 @@ export default function InterviewPage(): JSX.Element {
         <div className={styles.leftPanel}>
           <div className={styles.tabs}>
             <button
-              className={cn(
-                styles.tab,
-                activeTab === 'jobDesc' && styles.tabActive,
-              )}
+              className={cn(styles.tab, activeTab === 'jobDesc' && styles.tabActive)}
               onClick={() => setActiveTab('jobDesc')}
             >
               <Briefcase size={14} /> Job Desc
             </button>
             <button
-              className={cn(
-                styles.tab,
-                activeTab === 'questions' && styles.tabActive,
-              )}
+              className={cn(styles.tab, activeTab === 'questions' && styles.tabActive)}
               onClick={() => setActiveTab('questions')}
             >
               <FileText size={14} /> Questions
             </button>
+            <button
+              className={cn(styles.tab, activeTab === 'companies' && styles.tabActive)}
+              onClick={() => setActiveTab('companies')}
+            >
+              <Building2 size={14} /> Companies
+            </button>
           </div>
 
-          {activeTab === 'jobDesc' ? (
+          {activeTab === 'jobDesc' && (
             <div className={styles.tabContent}>
               <JobDescriptionForm
                 companyName={companyName}
-                onCompanyNameChange={setCompanyName}
+                onCompanyNameChange={handleCompanyNameChange}
+                selectedCompanyId={selectedCompanyId}
+                onCompanyProfileSelect={handleCompanyProfileSelect}
                 jobDescription={jobDescription}
                 onJobDescriptionChange={setJobDescription}
               />
@@ -76,12 +90,20 @@ export default function InterviewPage(): JSX.Element {
                 <InterviewStyleSelector value={style} onChange={setStyle} />
               </div>
             </div>
-          ) : (
+          )}
+
+          {activeTab === 'questions' && (
             <div className={styles.emptyTab}>
               <FileText size={24} className={styles.emptyIcon} />
               <p className={styles.emptyText}>
                 Questions will appear here once AI generates them.
               </p>
+            </div>
+          )}
+
+          {activeTab === 'companies' && (
+            <div className={styles.tabContent}>
+              <CompanyHistory onSelect={handleCompanyProfileSelect} />
             </div>
           )}
         </div>
