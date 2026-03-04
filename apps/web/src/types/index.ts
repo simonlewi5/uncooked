@@ -1,4 +1,6 @@
-export type InterviewStyle = 'technical' | 'behavioral' | 'mixed'
+export type InterviewStyle = 'technical' | 'behavioral' | 'mixed' | 'friendly'
+
+export type ActiveTab = 'jobDesc' | 'questions'
 
 export interface Message {
   id: string
