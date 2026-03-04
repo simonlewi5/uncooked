@@ -63,32 +63,10 @@
   background-color: var(--color-bg-subtle);
 }
 
-.logo {
-  width: 24px;
-  height: 24px;
-  border-radius: var(--radius-sm);
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
-.logoFallback {
-  width: 24px;
-  height: 24px;
-  border-radius: var(--radius-sm);
-  background-color: var(--color-primary-subtle);
-  color: var(--color-primary);
-  font-size: 10px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
 .dropdownItemText {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -107,4 +85,10 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.dropdownLoading {
+  padding: var(--space-3);
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
 }

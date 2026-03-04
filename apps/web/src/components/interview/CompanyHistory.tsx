@@ -2,45 +2,11 @@ import { useState, useEffect } from 'react'
 import { Building2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { CompanyProfile } from '@/types'
+import { CompanyLogo } from './CompanyLogo'
 import styles from './CompanyHistory.module.css'
 
 interface CompanyHistoryProps {
   onSelect: (profile: CompanyProfile) => void
-}
-
-interface LogoProps {
-  company: CompanyProfile
-}
-
-function getLogoDomain(website: string | null): string | null {
-  if (!website) return null
-  try {
-    return new URL(website.startsWith('http') ? website : `https://${website}`).hostname.replace(
-      'www.',
-      '',
-    )
-  } catch {
-    return null
-  }
-}
-
-function CompanyLogo({ company }: LogoProps): React.JSX.Element {
-  const [imgFailed, setImgFailed] = useState(false)
-  const domain = getLogoDomain(company.companyWebsite)
-  const initials = company.companyName.slice(0, 2).toUpperCase()
-
-  if (domain && !imgFailed) {
-    return (
-      <img
-        className={styles.logo}
-        src={`https://logo.clearbit.com/${domain}`}
-        alt={company.companyName}
-        onError={() => setImgFailed(true)}
-      />
-    )
-  }
-
-  return <div className={styles.logoFallback}>{initials}</div>
 }
 
 export function CompanyHistory({ onSelect }: CompanyHistoryProps): React.JSX.Element {
@@ -72,7 +38,11 @@ export function CompanyHistory({ onSelect }: CompanyHistoryProps): React.JSX.Ele
   }, [])
 
   if (isLoading) {
-    return <div className={styles.empty} />
+    return (
+      <div className={styles.empty} aria-busy="true" aria-label="Loading companies">
+        <p className={styles.emptyText}>Loading…</p>
+      </div>
+    )
   }
 
   if (companies.length === 0) {
@@ -91,7 +61,7 @@ export function CompanyHistory({ onSelect }: CompanyHistoryProps): React.JSX.Ele
       {companies.map((company) => (
         <li key={company.id}>
           <button className={styles.card} onClick={() => onSelect(company)}>
-            <CompanyLogo company={company} />
+            <CompanyLogo company={company} size="md" />
             <div className={styles.cardText}>
               <span className={styles.cardName}>{company.companyName}</span>
               {(company.industry || company.companySize) && (

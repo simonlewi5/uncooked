@@ -1,47 +1,14 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useId } from 'react'
 import { useCompanySearch } from '@/hooks/useCompanySearch'
 import type { CompanyProfile } from '@/types'
+import { cn } from '@/utils/cn'
+import { CompanyLogo } from './CompanyLogo'
 import styles from './CompanyAutocomplete.module.css'
 
 interface CompanyAutocompleteProps {
   value: string
   onChange: (value: string) => void
   onProfileSelect: (profile: CompanyProfile) => void
-}
-
-function getLogoDomain(website: string | null): string | null {
-  if (!website) return null
-  try {
-    return new URL(website.startsWith('http') ? website : `https://${website}`).hostname.replace(
-      'www.',
-      '',
-    )
-  } catch {
-    return null
-  }
-}
-
-interface LogoProps {
-  company: CompanyProfile
-}
-
-function CompanyLogo({ company }: LogoProps): React.JSX.Element {
-  const [imgFailed, setImgFailed] = useState(false)
-  const domain = getLogoDomain(company.companyWebsite)
-  const initials = company.companyName.slice(0, 2).toUpperCase()
-
-  if (domain && !imgFailed) {
-    return (
-      <img
-        className={styles.logo}
-        src={`https://logo.clearbit.com/${domain}`}
-        alt={company.companyName}
-        onError={() => setImgFailed(true)}
-      />
-    )
-  }
-
-  return <div className={styles.logoFallback}>{initials}</div>
 }
 
 export function CompanyAutocomplete({
@@ -52,10 +19,10 @@ export function CompanyAutocomplete({
   const [isOpen, setIsOpen] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(0)
   const wrapperRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const { results } = useCompanySearch(value)
+  const inputId = useId()
+  const { results, isLoading } = useCompanySearch(value)
 
-  const shouldShowDropdown = isOpen && results.length > 0
+  const shouldShowDropdown = isOpen && (results.length > 0 || isLoading)
 
   useEffect(() => {
     setHighlightedIndex(0)
@@ -98,12 +65,11 @@ export function CompanyAutocomplete({
 
   return (
     <div className={styles.wrapper} ref={wrapperRef}>
-      <label className={styles.label} htmlFor="company-autocomplete">
+      <label className={styles.label} htmlFor={inputId}>
         Company name
       </label>
       <input
-        id="company-autocomplete"
-        ref={inputRef}
+        id={inputId}
         className={styles.input}
         placeholder="e.g. Acme Corp"
         value={value}
@@ -114,16 +80,22 @@ export function CompanyAutocomplete({
       />
       {shouldShowDropdown && (
         <ul className={styles.dropdown} role="listbox">
+          {isLoading && results.length === 0 && (
+            <li className={styles.dropdownLoading}>Searching…</li>
+          )}
           {results.map((profile, index) => (
             <li
               key={profile.id}
-              className={`${styles.dropdownItem} ${index === highlightedIndex ? styles.dropdownItemHighlighted : ''}`}
+              className={cn(
+                styles.dropdownItem,
+                index === highlightedIndex && styles.dropdownItemHighlighted,
+              )}
               role="option"
               aria-selected={index === highlightedIndex}
               onMouseDown={() => selectProfile(profile)}
               onMouseEnter={() => setHighlightedIndex(index)}
             >
-              <CompanyLogo company={profile} />
+              <CompanyLogo company={profile} size="sm" />
               <div className={styles.dropdownItemText}>
                 <span className={styles.dropdownItemName}>{profile.companyName}</span>
                 {profile.industry && (
