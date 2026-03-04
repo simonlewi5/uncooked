@@ -1,0 +1,7 @@
+# Environment variables for Supabase Edge Functions
+.env
+.env.local
+.env.*.local
+.env.*
+!.env.example
+
