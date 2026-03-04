@@ -87,7 +87,7 @@ export function ChatBox({ messages, isTyping, onSend, disabled }: ChatBoxProps) 
         <textarea
           ref={textareaRef}
           className={styles.inputField}
-          placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
+          placeholder="Type your answer here…"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
