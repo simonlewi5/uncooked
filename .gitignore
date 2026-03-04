@@ -42,3 +42,6 @@ supabase/.temp
 
 # Vercel
 .vercel
+
+# Claude
+CLAUDE.md
