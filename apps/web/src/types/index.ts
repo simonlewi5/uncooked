@@ -28,7 +28,7 @@ export interface CompanySummary {
 }
 
 export interface PipelineCounts {
-  applied: number
+  total: number
   interviews: number
   offers: number
 }

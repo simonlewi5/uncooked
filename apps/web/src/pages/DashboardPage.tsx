@@ -1,4 +1,4 @@
-import { TrendingUp, Building2, Calendar, Star, ChevronRight, Zap } from 'lucide-react'
+import { TrendingUp, Building2, Calendar, ChevronRight, Zap } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Badge, Spinner } from '@/components/ui'
 import { useDashboardData } from '@/hooks/useDashboardData'
@@ -7,7 +7,7 @@ import type { ResearchSessionSummary, CompanySummary, PipelineCounts } from '@/t
 import styles from './DashboardPage.module.css'
 
 const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const
-const EMPTY_WEEK_HOURS = [0, 0, 0, 0, 0, 0, 0] as const
+const EMPTY_WEEK_HOURS = [0, 0, 0, 0, 0, 0, 0]
 
 function formatTimeAgo(isoString: string): string {
   const diffMs = Date.now() - new Date(isoString).getTime()
@@ -44,7 +44,7 @@ function PracticeConsistencyCard(): JSX.Element {
             <TrendingUp size={16} className={styles.cardMetaIcon} />
             <span className={styles.cardTitle}>Practice Consistency</span>
           </div>
-          <div className={cn(styles.weekPill)}>
+          <div className={styles.weekPill}>
             <span>This Week</span>
           </div>
         </div>
@@ -54,7 +54,7 @@ function PracticeConsistencyCard(): JSX.Element {
           {DAY_LABELS.map((label, i) => {
             const heightPct = `${Math.max((EMPTY_WEEK_HOURS[i] / maxHours) * 100, 4)}%`
             return (
-              <div key={i} className={styles.barGroup}>
+              <div key={`day-${i}`} className={styles.barGroup}>
                 <div
                   className={cn(styles.bar, i === today && styles.barToday)}
                   style={{ height: heightPct }}
@@ -144,9 +144,6 @@ function TargetCompaniesCard({ companies }: TargetCompaniesCardProps): JSX.Eleme
                   <p className={styles.itemTitle}>{company.companyName}</p>
                   {company.industry && <p className={styles.itemSub}>{company.industry}</p>}
                 </div>
-                <button className={styles.starBtn} aria-label={`Star ${company.companyName}`}>
-                  <Star size={14} />
-                </button>
               </li>
             ))}
           </ul>
@@ -177,11 +174,11 @@ function ApplicationPipelineCard({ pipeline }: ApplicationPipelineCardProps): JS
       <div className={styles.cardInner}>
         <div className={styles.cardHeaderRow}>
           <span className={styles.cardTitle}>Application Pipeline</span>
-          <div className={cn(styles.weekPill)}>
+          <div className={styles.weekPill}>
             <span>This Month</span>
           </div>
         </div>
-        {pipeline.applied === 0 ? (
+        {pipeline.total === 0 ? (
           <div className={styles.emptyState}>
             <p className={styles.emptyText}>No applications tracked yet</p>
             <Link to="/research" className={styles.emptyAction}>
@@ -192,8 +189,8 @@ function ApplicationPipelineCard({ pipeline }: ApplicationPipelineCardProps): JS
           <>
             <div className={styles.pipelineStats}>
               <div className={styles.pipelineStat}>
-                <span className={styles.pipelineLabel}>Applied</span>
-                <span className={styles.pipelineValue}>{pipeline.applied}</span>
+                <span className={styles.pipelineLabel}>Total</span>
+                <span className={styles.pipelineValue}>{pipeline.total}</span>
               </div>
               <div className={styles.pipelineStat}>
                 <span className={styles.pipelineLabel}>Interviews</span>
@@ -206,25 +203,12 @@ function ApplicationPipelineCard({ pipeline }: ApplicationPipelineCardProps): JS
             </div>
             <div className={styles.progressTrack}>
               <div
-                className={styles.progressLayer}
-                style={{
-                  width: '100%',
-                  backgroundColor: 'var(--color-bg-muted)',
-                }}
+                className={cn(styles.progressLayer, styles.progressLayerMid)}
+                style={{ width: `${(pipeline.interviews / pipeline.total) * 100}%` }}
               />
               <div
-                className={styles.progressLayer}
-                style={{
-                  width: `${(pipeline.interviews / pipeline.applied) * 100}%`,
-                  backgroundColor: 'var(--color-border-strong)',
-                }}
-              />
-              <div
-                className={styles.progressLayer}
-                style={{
-                  width: `${(pipeline.offers / pipeline.applied) * 100}%`,
-                  backgroundColor: 'var(--color-text)',
-                }}
+                className={cn(styles.progressLayer, styles.progressLayerTop)}
+                style={{ width: `${(pipeline.offers / pipeline.total) * 100}%` }}
               />
             </div>
           </>
@@ -266,7 +250,7 @@ export default function DashboardPage(): JSX.Element {
         <div className={styles.rightCol}>
           <RecentResearchCard sessions={data?.recentSessions ?? []} />
           <ApplicationPipelineCard
-            pipeline={data?.pipeline ?? { applied: 0, interviews: 0, offers: 0 }}
+            pipeline={data?.pipeline ?? { total: 0, interviews: 0, offers: 0 }}
           />
         </div>
       </div>

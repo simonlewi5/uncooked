@@ -24,15 +24,28 @@ type ApplicationStatus =
   | 'rejected'
   | 'withdrawn'
 
-const INTERVIEW_STATUSES: ApplicationStatus[] = ['phone_screen', 'interviewing']
+const KNOWN_STATUSES: readonly ApplicationStatus[] = [
+  'applied',
+  'phone_screen',
+  'interviewing',
+  'offer',
+  'rejected',
+  'withdrawn',
+]
+const INTERVIEW_STATUSES: readonly ApplicationStatus[] = ['phone_screen', 'interviewing']
+
+function isApplicationStatus(value: unknown): value is ApplicationStatus {
+  return KNOWN_STATUSES.includes(value as ApplicationStatus)
+}
 
 export function useDashboardData(): UseDashboardDataReturn {
-  const { user } = useAuth()
+  const { user, loading: isAuthLoading } = useAuth()
   const [data, setData] = useState<DashboardData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (isAuthLoading) return
     if (!user) {
       setIsLoading(false)
       return
@@ -80,9 +93,11 @@ export function useDashboardData(): UseDashboardDataReturn {
           industry: row.industry,
         }))
 
-        const statuses = (applicationsResult.data ?? []).map((row) => row.status as ApplicationStatus)
+        const statuses = (applicationsResult.data ?? [])
+          .map((row) => row.status)
+          .filter(isApplicationStatus)
         const pipeline: PipelineCounts = {
-          applied: statuses.length,
+          total: statuses.length,
           interviews: statuses.filter((s) => INTERVIEW_STATUSES.includes(s)).length,
           offers: statuses.filter((s) => s === 'offer').length,
         }
@@ -103,7 +118,7 @@ export function useDashboardData(): UseDashboardDataReturn {
     fetchDashboardData()
 
     return () => controller.abort()
-  }, [user])
+  }, [user, isAuthLoading])
 
   return { data, isLoading, fetchError }
 }
