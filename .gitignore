@@ -1,6 +1,7 @@
 # Dependencies
 node_modules
 .pnpm-store
+package-lock.json
 
 # Build outputs
 dist
@@ -11,6 +12,7 @@ build
 .env
 .env.local
 .env.*.local
+.env.*
 !.env.example
 
 # Logs
