@@ -79,57 +79,53 @@ export function useInterviewChat(
       content,
       timestamp: new Date(),
     }
+    
+    // Capture the current messages
+    const currentHistory = messages.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    }));
 
     const previousMessages = messagesRef.current
     setMessages([...previousMessages, userMsg])
     setIsTyping(true)
 
     try {
-      const conversationHistory = previousMessages.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      }))
-
-      const { data, error } = await supabase.functions.invoke<{
-        message?: string
-        error?: string
-      }>('gemini-interview', {
-        body: {
+      // Replace this URL with your actual Supabase Edge Function URL once deployed
+      const response = await fetch('https://uncooked-web.vercel.app/interview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           jobDescription: jobData.jobDescription,
           companyName: jobData.companyName,
-          companyContext: jobData.companyContext || undefined,
+          companyContext: jobData.companyContext,
           interviewStyle: style,
           userMessage: content,
-          conversationHistory,
-        },
-      })
+          conversationHistory: currentHistory, // Send the history!
+        }),
+      });
 
-      const text =
-        error?.message ||
-        data?.message ||
-        'Sorry, I could not generate a response. Please try again.'
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error || 'Failed to fetch response');
 
       const assistantMsg: Message = {
         id: `a-${Date.now()}`,
         role: 'assistant',
-        content: text,
+        content: data.message,
         timestamp: new Date(),
       }
 
       setMessages((prev) => [...prev, assistantMsg])
-    } catch (e) {
-      const assistantMsg: Message = {
-        id: `a-${Date.now()}`,
-        role: 'assistant',
-        content:
-          "I ran into a problem generating a response. Please check your connection and try again.",
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, assistantMsg])
+    } catch (error) {
+      console.error("Chat error:", error);
+      // Optional: Add a UI error message here
     } finally {
       setIsTyping(false)
     }
-  }, [jobData, style])
+  }, [messages, jobData, style])
 
   return { messages, isTyping, sendMessage }
 }
