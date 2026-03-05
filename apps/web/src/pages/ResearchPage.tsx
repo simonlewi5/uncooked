@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
-import { Plus, Search, Send, GripVertical, X, Paperclip, User } from 'lucide-react'
+import { Plus, Search, Send, GripVertical, X, Paperclip } from 'lucide-react'
 import { Button } from '@/components/ui'
+import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/utils/cn'
 import styles from './ResearchPage.module.css'
 
@@ -35,6 +36,8 @@ export default function ResearchPage() {
   const [input, setInput] = useState('')
   const [isDragOver, setIsDragOver] = useState(false)
   const draggingCompany = useRef<CompanyProfile | null>(null)
+  const { user } = useAuth()
+  const userInitial = user?.email?.[0].toUpperCase() ?? '?'
 
   const filteredCompanies = MOCK_COMPANIES.filter((c) =>
     c.name.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -210,7 +213,7 @@ export default function ResearchPage() {
                     {msg.content}
                   </div>
                   {msg.role === 'user' && (
-                    <span className={styles.avatar}><User size={14} /></span>
+                    <span className={styles.avatar}>{userInitial}</span>
                   )}
                 </div>
               ))
