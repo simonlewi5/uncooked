@@ -1,5 +1,6 @@
 {
   "framework": "vite",
   "buildCommand": "pnpm build --filter=@uncooked/web",
-  "outputDirectory": "apps/web/dist"
+  "outputDirectory": "apps/web/dist",
+  "installCommand": "pnpm install"
 }
