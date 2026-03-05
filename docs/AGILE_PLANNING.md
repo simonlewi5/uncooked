@@ -81,4 +81,4 @@ The critical path for Sprint 2 (must be done in this order):
 | Mar 9  | **Demo #2** — Software quality metrics review |
 | Apr 13 | **MVP Demo #1** |
 | Apr 20 | **MVP Demo #2** |
-| Apr 27 | **MVP Demo #3** |
+| Apr 27 | **MVP Demo #3** |.  
