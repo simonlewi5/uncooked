@@ -15,6 +15,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.47.2",
     "@uncooked/shared": "workspace:*",
+    "@google/generative-ai": "^0.21.0",
     "lucide-react": "^0.576.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
