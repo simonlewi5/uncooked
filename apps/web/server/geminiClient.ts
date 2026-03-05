@@ -14,5 +14,5 @@ function getClient(): GoogleGenerativeAI {
   return client
 }
 
-export const getGeminiModel = (model = 'gemini-2.0-pro-exp') =>
+export const getGeminiModel = (model = 'gemini-2.5-flash') =>
   getClient().getGenerativeModel({ model })
