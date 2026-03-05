@@ -79,53 +79,59 @@ export function useInterviewChat(
       content,
       timestamp: new Date(),
     }
-    
-    // Capture the current messages
-    const currentHistory = messages.map(msg => ({
-      role: msg.role,
-      content: msg.content
-    }));
 
     const previousMessages = messagesRef.current
-    setMessages([...previousMessages, userMsg])
+    const conversationHistory = previousMessages.map((msg) => ({
+      role: msg.role,
+      content: msg.content,
+    }))
+
+    setMessages((prev) => [...prev, userMsg])
     setIsTyping(true)
 
     try {
-      // Replace this URL with your actual Supabase Edge Function URL once deployed
-      const response = await fetch('https://uncooked-web.vercel.app/interview', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke<{
+        message?: string
+        error?: string
+      }>('gemini-interview', {
+        body: {
           jobDescription: jobData.jobDescription,
           companyName: jobData.companyName,
-          companyContext: jobData.companyContext,
+          companyContext: jobData.companyContext || undefined,
           interviewStyle: style,
           userMessage: content,
-          conversationHistory: currentHistory, // Send the history!
-        }),
-      });
+          conversationHistory,
+        },
+      })
 
-      const data = await response.json();
-
-      if (!response.ok) throw new Error(data.error || 'Failed to fetch response');
+      const text =
+        data?.error ??
+        error?.message ??
+        data?.message ??
+        'Sorry, I could not generate a response. Please try again.'
 
       const assistantMsg: Message = {
         id: `a-${Date.now()}`,
         role: 'assistant',
-        content: data.message,
+        content: text,
         timestamp: new Date(),
       }
 
       setMessages((prev) => [...prev, assistantMsg])
-    } catch (error) {
-      console.error("Chat error:", error);
-      // Optional: Add a UI error message here
+    } catch (e) {
+      const errMsg =
+        e instanceof Error ? e.message : 'Something went wrong. Please try again.'
+      const assistantMsg: Message = {
+        id: `a-${Date.now()}`,
+        role: 'assistant',
+        content: errMsg,
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, assistantMsg])
     } finally {
       setIsTyping(false)
     }
-  }, [messages, jobData, style])
+  }, [jobData, style])
 
   return { messages, isTyping, sendMessage }
 }
