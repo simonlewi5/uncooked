@@ -9,7 +9,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # This workflow auto-deploys Supabase migrations and edge functions to production.
+    # This workflow auto-deploys Supabase migrations and edge functions to production. 
     #
     # When it runs:
     # - Triggers after the CI workflow completes on the main branch
