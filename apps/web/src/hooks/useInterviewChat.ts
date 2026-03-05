@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type { Message, JobDescriptionFormValue, InterviewStyle } from '@/types'
+import { supabase } from '@/lib/supabase'
 
 interface UseInterviewChatReturn {
   messages: Message[]
@@ -7,32 +8,69 @@ interface UseInterviewChatReturn {
   sendMessage: (content: string) => Promise<void>
 }
 
-// Placeholder responses until the AI backend lands (#20/#21)
-const STUB_RESPONSES = [
-  "That's a great answer. Can you walk me through a specific example from your experience?",
-  'Interesting. How did you measure the impact of that work?',
-  "What were the biggest challenges you faced, and how did you overcome them?",
-  'If you could do it differently, what would you change?',
-  "How does that experience relate to what you'd be doing in this role?",
-]
-
-let responseIndex = 0
-
 export function useInterviewChat(
-  // jobData and style will be forwarded to the AI endpoint in #20/#21
-  _jobData: JobDescriptionFormValue, // eslint-disable-line @typescript-eslint/no-unused-vars
-  _style: InterviewStyle, // eslint-disable-line @typescript-eslint/no-unused-vars
+  jobData: JobDescriptionFormValue,
+  style: InterviewStyle,
 ): UseInterviewChatReturn {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'init',
-      role: 'assistant',
-      content:
-        "Hi! I'm your AI interviewer. I've reviewed the job description and I'm ready to begin. Tell me a bit about yourself and why you're interested in this role.",
-      timestamp: new Date(),
-    },
-  ])
+  const [messages, setMessages] = useState<Message[]>([])
   const [isTyping, setIsTyping] = useState(false)
+  const [hasStarted, setHasStarted] = useState(false)
+  const messagesRef = useRef<Message[]>([])
+
+  useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
+
+  // Kick off the first AI message as soon as the interview session starts
+  useEffect(() => {
+    if (hasStarted) return
+    setHasStarted(true)
+
+    ;(async () => {
+      setIsTyping(true)
+      try {
+        const { data, error } = await supabase.functions.invoke<{
+          message?: string
+          error?: string
+        }>('gemini-interview', {
+          body: {
+            jobDescription: jobData.jobDescription,
+            companyName: jobData.companyName,
+            companyContext: jobData.companyContext || undefined,
+            interviewStyle: style,
+            userMessage:
+              "Please start the interview with an opening question based on the job description above. Don't repeat the full description back, just greet the candidate and ask your first question.",
+            conversationHistory: [],
+          },
+        })
+
+        const text =
+          error?.message ||
+          data?.message ||
+          'Sorry, I could not generate a response. Please try again.'
+
+        const assistantMsg: Message = {
+          id: `a-${Date.now()}`,
+          role: 'assistant',
+          content: text,
+          timestamp: new Date(),
+        }
+
+        setMessages([assistantMsg])
+      } catch (e) {
+        const assistantMsg: Message = {
+          id: `a-${Date.now()}`,
+          role: 'assistant',
+          content:
+            "I'm having trouble starting the interview right now. Please try sending a message again in a moment.",
+          timestamp: new Date(),
+        }
+        setMessages([assistantMsg])
+      } finally {
+        setIsTyping(false)
+      }
+    })()
+  }, [hasStarted, jobData, style])
 
   const sendMessage = useCallback(async (content: string) => {
     const userMsg: Message = {
@@ -42,23 +80,56 @@ export function useInterviewChat(
       timestamp: new Date(),
     }
 
-    setMessages((prev) => [...prev, userMsg])
+    const previousMessages = messagesRef.current
+    setMessages([...previousMessages, userMsg])
     setIsTyping(true)
 
-    // Simulate network + thinking delay (replace with real API call in #21)
-    await new Promise((resolve) => setTimeout(resolve, 1200 + Math.random() * 600))
+    try {
+      const conversationHistory = previousMessages.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      }))
 
-    const assistantMsg: Message = {
-      id: `a-${Date.now()}`,
-      role: 'assistant',
-      content: STUB_RESPONSES[responseIndex % STUB_RESPONSES.length],
-      timestamp: new Date(),
+      const { data, error } = await supabase.functions.invoke<{
+        message?: string
+        error?: string
+      }>('gemini-interview', {
+        body: {
+          jobDescription: jobData.jobDescription,
+          companyName: jobData.companyName,
+          companyContext: jobData.companyContext || undefined,
+          interviewStyle: style,
+          userMessage: content,
+          conversationHistory,
+        },
+      })
+
+      const text =
+        error?.message ||
+        data?.message ||
+        'Sorry, I could not generate a response. Please try again.'
+
+      const assistantMsg: Message = {
+        id: `a-${Date.now()}`,
+        role: 'assistant',
+        content: text,
+        timestamp: new Date(),
+      }
+
+      setMessages((prev) => [...prev, assistantMsg])
+    } catch (e) {
+      const assistantMsg: Message = {
+        id: `a-${Date.now()}`,
+        role: 'assistant',
+        content:
+          "I ran into a problem generating a response. Please check your connection and try again.",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, assistantMsg])
+    } finally {
+      setIsTyping(false)
     }
-
-    responseIndex++
-    setMessages((prev) => [...prev, assistantMsg])
-    setIsTyping(false)
-  }, [])
+  }, [jobData, style])
 
   return { messages, isTyping, sendMessage }
 }
