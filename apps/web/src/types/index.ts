@@ -1,5 +1,11 @@
 export type InterviewStyle = 'technical' | 'behavioral' | 'mixed'
 
+export type {
+  ResumeTailorInputObject,
+  ResumeTailorRequest,
+  ResumeTailorResponse,
+} from '@uncooked/shared'
+
 export interface Message {
   id: string
   role: 'user' | 'assistant'
