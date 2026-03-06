@@ -1,4 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
 
 interface InterviewRequest {
   jobDescription: string
@@ -10,18 +12,42 @@ interface InterviewRequest {
 }
 
 Deno.serve(async (req) => {
+  // Handle CORS Preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', {
-      status: 405,
-      headers: corsHeaders,
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
   try {
+    // SECURE THE ENDPOINT: Verify the user's Supabase Token
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing Authorization header. Are you logged in?' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    )
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired session. Please log in again.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const {
       jobDescription,
       companyName,
@@ -48,7 +74,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'GEMINI_API_KEY not configured' }),
         {
-          status: 500,
+          status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       )
@@ -102,7 +128,7 @@ You are having a conversation with the candidate. Respond naturally and ask your
     // Build message history for context
     const messages = [
       ...conversationHistory.map((msg) => ({
-        role: msg.role,
+        role: msg.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: msg.content }],
       })),
       {
@@ -111,8 +137,9 @@ You are having a conversation with the candidate. Respond naturally and ask your
       },
     ]
 
-    const response = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+
+    const response = await fetch( url,
       {
         method: 'POST',
         headers: {

@@ -45,6 +45,7 @@ export function useInterviewChat(
         })
 
         const text =
+          data?.error ||
           error?.message ||
           data?.message ||
           'Sorry, I could not generate a response. Please try again.'
