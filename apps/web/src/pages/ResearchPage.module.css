@@ -173,6 +173,42 @@
   color: #6d28d9;
 }
 
+.starBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  padding: 0;
+  margin-left: auto;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background-color 0.15s;
+}
+
+.companyCard:hover .starBtn {
+  opacity: 1;
+}
+
+.starBtnActive {
+  opacity: 1 !important;
+  color: #f59e0b;
+}
+
+.starBtnActive svg {
+  fill: #f59e0b;
+}
+
+.starBtn:hover {
+  background: var(--color-bg-muted);
+  color: #f59e0b;
+}
+
 .noResults {
   font-size: var(--font-sm);
   color: var(--color-text-tertiary);

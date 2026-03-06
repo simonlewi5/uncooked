@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Plus, Search, Send, GripVertical, X, Paperclip } from 'lucide-react'
+import { Plus, Search, Send, GripVertical, X, Paperclip, Star } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/utils/cn'
@@ -9,6 +9,7 @@ interface CompanyProfile {
   id: string
   name: string
   category: string
+  isFavorite: boolean
 }
 
 interface ChatMessage {
@@ -18,9 +19,9 @@ interface ChatMessage {
 }
 
 const MOCK_COMPANIES: CompanyProfile[] = [
-  { id: '1', name: 'Stripe', category: 'Fintech' },
-  { id: '2', name: 'Vercel', category: 'DevTools' },
-  { id: '3', name: 'OpenAI', category: 'AI/ML' },
+  { id: '1', name: 'Stripe', category: 'Fintech', isFavorite: false },
+  { id: '2', name: 'Vercel', category: 'DevTools', isFavorite: false },
+  { id: '3', name: 'OpenAI', category: 'AI/ML', isFavorite: false },
 ]
 
 const CATEGORY_STYLE: Record<string, string> = {
@@ -34,14 +35,21 @@ export default function ResearchPage() {
   const [activeContext, setActiveContext] = useState<CompanyProfile[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
+  const [companies, setCompanies] = useState<CompanyProfile[]>(MOCK_COMPANIES)
   const [isDragOver, setIsDragOver] = useState(false)
   const draggingCompany = useRef<CompanyProfile | null>(null)
   const { user } = useAuth()
   const userInitial = user?.email?.[0].toUpperCase() ?? '?'
 
-  const filteredCompanies = MOCK_COMPANIES.filter((c) =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  const filteredCompanies = companies
+    .filter((c) => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite))
+
+  function toggleFavorite(id: string) {
+    setCompanies((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, isFavorite: !c.isFavorite } : c)),
+    )
+  }
 
   function handleDragStart(company: CompanyProfile) {
     draggingCompany.current = company
@@ -147,6 +155,13 @@ export default function ResearchPage() {
                     {company.category}
                   </span>
                 </div>
+                <button
+                  className={cn(styles.starBtn, company.isFavorite && styles.starBtnActive)}
+                  onClick={(e) => { e.stopPropagation(); toggleFavorite(company.id) }}
+                  aria-label={company.isFavorite ? 'Unfavorite' : 'Favorite'}
+                >
+                  <Star size={13} />
+                </button>
               </div>
             ))}
             {filteredCompanies.length === 0 && (
