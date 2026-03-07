@@ -75,3 +75,6 @@ enabled = true
 policy = "oneshot"
 
 [functions]
+
+[functions.resume-tailor]
+verify_jwt = false
