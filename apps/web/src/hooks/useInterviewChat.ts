@@ -12,7 +12,16 @@ export function useInterviewChat(
   jobData: JobDescriptionFormValue,
   style: InterviewStyle,
 ): UseInterviewChatReturn {
-  const [messages, setMessages] = useState<Message[]>([])
+  const responseIndexRef = useRef(0)
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: 'init',
+      role: 'assistant',
+      content:
+        "Hi! I'm your AI interviewer. I've reviewed the job description and I'm ready to begin. Tell me a bit about yourself and why you're interested in this role.",
+      timestamp: new Date(),
+    },
+  ])
   const [isTyping, setIsTyping] = useState(false)
   const [hasStarted, setHasStarted] = useState(false)
   const messagesRef = useRef<Message[]>([])
