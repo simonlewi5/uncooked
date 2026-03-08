@@ -81,24 +81,25 @@ Extends Supabase Auth with additional profile fields. Auto-created on signup via
 
 ### `company_profiles`
 
-Saved companies in user's Research Board.
+Saved companies in user's Research Board. Users can star/favorite companies to highlight top targets on the Dashboard.
 
-| Column            | Type        | Constraints                   | Description                     |
-| ----------------- | ----------- | ----------------------------- | ------------------------------- |
-| `id`              | UUID        | PK, DEFAULT gen_random_uuid() | Unique identifier               |
-| `user_id`         | UUID        | NOT NULL, FK → users          | Owner of the profile            |
-| `company_name`    | TEXT        | NOT NULL                      | Company name                    |
-| `company_website` | TEXT        |                               | Company website URL             |
-| `industry`        | TEXT        |                               | Industry sector                 |
-| `company_size`    | TEXT        |                               | Size (startup, mid, enterprise) |
-| `location`        | TEXT        |                               | HQ or office location           |
-| `notes`           | TEXT        |                               | User's notes about company      |
-| `created_at`      | TIMESTAMPTZ | NOT NULL, DEFAULT now()       | Created timestamp               |
-| `updated_at`      | TIMESTAMPTZ | NOT NULL, DEFAULT now()       | Last update timestamp           |
+| Column            | Type        | Constraints                            | Description                              |
+| ----------------- | ----------- | -------------------------------------- | ---------------------------------------- |
+| `id`              | UUID        | PK, DEFAULT gen_random_uuid()          | Unique identifier                        |
+| `user_id`         | UUID        | NOT NULL, FK → users                   | Owner of the profile                     |
+| `company_name`    | TEXT        | NOT NULL                               | Company name                             |
+| `company_website` | TEXT        |                                        | Company website URL                      |
+| `industry`        | TEXT        |                                        | Industry sector                          |
+| `company_size`    | TEXT        |                                        | Size (startup, mid, enterprise)          |
+| `location`        | TEXT        |                                        | HQ or office location                    |
+| `notes`           | TEXT        |                                        | User's notes about company               |
+| `is_favorite`     | BOOLEAN     | NOT NULL, DEFAULT false                | Whether the company is starred/favorited |
+| `created_at`      | TIMESTAMPTZ | NOT NULL, DEFAULT now()                | Created timestamp                        |
+| `updated_at`      | TIMESTAMPTZ | NOT NULL, DEFAULT now()                | Last update timestamp                    |
 
 **RLS Policies:**
 
-- Users can SELECT, INSERT, UPDATE, DELETE their own rows only
+- Users can SELECT, INSERT, UPDATE, DELETE their own rows only (including toggling `is_favorite` on their own companies)
 
 ---
 
@@ -196,6 +197,24 @@ Tracks Applied/Interviewing/Offer status per job.
 
 ---
 
+### `practice_sessions`
+
+Tracks individual interview/practice sessions so the Dashboard Practice Consistency card can show real activity instead of an empty state.
+
+| Column             | Type        | Constraints                            | Description                                |
+| ------------------ | ----------- | -------------------------------------- | ------------------------------------------ |
+| `id`               | UUID        | PK, DEFAULT gen_random_uuid()          | Unique identifier                          |
+| `user_id`          | UUID        | NOT NULL, FK → users                   | Owner of the session                       |
+| `duration_minutes` | INTEGER     | NOT NULL, CHECK (duration_minutes > 0) | Duration of the practice session in minutes |
+| `created_at`       | TIMESTAMPTZ | NOT NULL, DEFAULT now()                | When the practice session was recorded     |
+| `updated_at`       | TIMESTAMPTZ | NOT NULL, DEFAULT now()                | Last update timestamp                      |
+
+**RLS Policies:**
+
+- Users can SELECT, INSERT, UPDATE, DELETE their own rows only
+
+---
+
 ## Foreign Key Relationships
 
 | From Table        | Column             | To Table         | Column | On Delete |
@@ -208,6 +227,7 @@ Tracks Applied/Interviewing/Offer status per job.
 | job_applications  | user_id            | users            | id     | CASCADE   |
 | job_applications  | company_profile_id | company_profiles | id     | SET NULL  |
 | job_applications  | resume_id          | resumes          | id     | SET NULL  |
+| practice_sessions | user_id            | users            | id     | CASCADE   |
 
 ---
 
@@ -222,6 +242,7 @@ Tracks Applied/Interviewing/Offer status per job.
 | job_applications  | job_applications_user_id_idx             | user_id            |
 | job_applications  | job_applications_company_profile_id_idx  | company_profile_id |
 | job_applications  | job_applications_status_idx              | status             |
+| practice_sessions | practice_sessions_user_id_created_at_idx | user_id, created_at |
 
 ---
 
