@@ -74,5 +74,8 @@ enabled = true
 # Use `oneshot` for hot reload.
 policy = "oneshot"
 
+[functions]
 [functions.gemini-interview]
+verify_jwt = false
+[functions.research-chat]
 verify_jwt = false
