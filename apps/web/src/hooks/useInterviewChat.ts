@@ -12,7 +12,6 @@ export function useInterviewChat(
   jobData: JobDescriptionFormValue,
   style: InterviewStyle,
 ): UseInterviewChatReturn {
-  const responseIndexRef = useRef(0)
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'init',
