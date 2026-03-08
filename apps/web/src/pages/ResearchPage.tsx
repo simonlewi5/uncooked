@@ -1,7 +1,8 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { Plus, Search, Send, GripVertical, X, Paperclip, Star } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { useAuth } from '@/contexts/AuthContext'
+import { useResearchChat, type ResearchChatMessage } from '@/hooks/useResearchChat'
 import { cn } from '@/utils/cn'
 import styles from './ResearchPage.module.css'
 
@@ -12,11 +13,6 @@ interface CompanyProfile {
   isFavorite: boolean
 }
 
-interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-}
 
 const MOCK_COMPANIES: CompanyProfile[] = [
   { id: '1', name: 'Stripe', category: 'Fintech', isFavorite: false },
@@ -33,13 +29,47 @@ const CATEGORY_STYLE: Record<string, string> = {
 export default function ResearchPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeContext, setActiveContext] = useState<CompanyProfile[]>([])
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<ResearchChatMessage[]>([])
   const [input, setInput] = useState('')
   const [companies, setCompanies] = useState<CompanyProfile[]>(MOCK_COMPANIES)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [isStreaming, setIsStreaming] = useState(false)
+  const streamingMsgId = useRef<string | null>(null)
   const draggingCompany = useRef<CompanyProfile | null>(null)
   const { user } = useAuth()
   const userInitial = user?.email?.[0].toUpperCase() ?? '?'
+
+  const companyNames = activeContext.map((c) => c.name)
+  const { sendMessage } = useResearchChat({
+    companies: companyNames,
+    jobDescription: undefined,
+    onStreamStart: useCallback(() => {
+      const id = crypto.randomUUID()
+      streamingMsgId.current = id
+      setMessages((prev) => [...prev, { id, role: 'assistant', content: '' }])
+      setIsStreaming(true)
+    }, []),
+    onStreamChunk: useCallback((text: string) => {
+      setMessages((prev) => {
+        const id = streamingMsgId.current
+        if (!id) return prev
+        return prev.map((m) =>
+          m.id === id ? { ...m, content: m.content + text } : m
+        )
+      })
+    }, []),
+    onStreamEnd: useCallback(() => {
+      streamingMsgId.current = null
+      setIsStreaming(false)
+    }, []),
+    onError: useCallback((message: string) => {
+      setMessages((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), role: 'assistant', content: `Error: ${message}` },
+      ])
+      setIsStreaming(false)
+    }, []),
+  })
 
   const filteredCompanies = companies
     .filter((c) => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -89,13 +119,15 @@ export default function ResearchPage() {
 
   function handleSend() {
     const trimmed = input.trim()
-    if (!trimmed) return
-    setMessages((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), role: 'user', content: trimmed },
-    ])
+    if (!trimmed || isStreaming) return
+    const userMsg: ResearchChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: trimmed,
+    }
+    setMessages((prev) => [...prev, userMsg])
     setInput('')
-    // AI response will be wired up when the edge function is ready
+    sendMessage(trimmed, [...messages, userMsg])
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -248,8 +280,12 @@ export default function ResearchPage() {
               onKeyDown={handleKeyDown}
             />
             <button
-              className={cn(styles.sendBtn, input.trim() && styles.sendBtnActive)}
+              className={cn(
+                styles.sendBtn,
+                input.trim() && activeContext.length > 0 && !isStreaming && styles.sendBtnActive,
+              )}
               onClick={handleSend}
+              disabled={!input.trim() || activeContext.length === 0 || isStreaming}
               aria-label="Send message"
             >
               <Send size={16} />
