@@ -1,75 +1,95 @@
-import { useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import type { Message } from '@/types'
 
-export interface ResearchChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
+const INITIAL_MESSAGE: Message = {
+  id: 'init',
+  role: 'assistant',
+  content: 'Hi! I\'m your AI researcher. Drag a company into the context bar above, then ask anything.',
+  timestamp: new Date(),
 }
 
-interface UseResearchChatOptions {
-  companies: string[]
-  jobDescription?: string
-  onStreamStart: () => void
-  onStreamChunk: (text: string) => void
-  onStreamEnd: () => void
-  onError: (message: string) => void
+function msg(role: Message['role'], content: string, id = `${role}-${Date.now()}`): Message {
+  return { id, role, content, timestamp: new Date() }
 }
 
 export function useResearchChat({
   companies,
   jobDescription,
-  onStreamStart,
-  onStreamChunk,
-  onStreamEnd,
-  onError,
-}: UseResearchChatOptions) {
+}: {
+  companies: string[]
+  jobDescription?: string
+}) {
   const { session } = useAuth()
+  const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE])
+  const [isStreaming, setIsStreaming] = useState(false)
+
+  const resetMessages = useCallback(() => {
+    setMessages([{ ...INITIAL_MESSAGE, timestamp: new Date() }])
+  }, [])
 
   const sendMessage = useCallback(
-    async (message: string, history: ResearchChatMessage[]) => {
-      if (!session?.access_token) {
-        onError('You must be signed in to use the research chat.')
-        return
-      }
+    async (content: string) => {
+      const pushError = (text: string) =>
+        setMessages((prev) => [...prev, msg('assistant', text, `err-${Date.now()}`)])
+
       if (!companies.length) {
-        onError('Add at least one company to the context bar.')
+        pushError('Add at least one company to the context bar.')
         return
       }
 
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/research-chat`
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
+      const userMsg = msg('user', content.trim())
+      const placeholder = msg('assistant', '')
+      setMessages((prev) => [...prev, userMsg, placeholder])
+      setIsStreaming(true)
+
+      const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }))
+      const companyNames = companies.map((c) =>
+        typeof c === 'string' ? c : (c as { name: string }).name,
+      )
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/research-chat`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            companies: companyNames,
+            message: content.trim(),
+            jobDescription: jobDescription?.trim() || undefined,
+            history,
+          }),
         },
-        body: JSON.stringify({
-          companies: companies.map((c) => (typeof c === 'string' ? c : (c as { name: string }).name)),
-          message: message.trim(),
-          jobDescription: jobDescription?.trim() || undefined,
-          history: history.map((m) => ({ role: m.role, content: m.content })),
-        }),
-      })
+      )
+
+      const setPlaceholderContent = (text: string) =>
+        setMessages((prev) =>
+          prev.map((m) => (m.id === placeholder.id ? { ...m, content: text } : m)),
+        )
+      const appendPlaceholder = (chunk: string) =>
+        setMessages((prev) =>
+          prev.map((m) => (m.id === placeholder.id ? { ...m, content: m.content + chunk } : m)),
+        )
 
       if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}))
-        onError((errBody as { error?: string }).error || res.statusText || 'Request failed')
-        onStreamEnd()
+        const err = (await res.json().catch(() => ({})) as { error?: string }).error ?? res.statusText ?? 'Request failed'
+        setPlaceholderContent(`Error: ${err}`)
+        setIsStreaming(false)
         return
       }
 
       const reader = res.body?.getReader()
       if (!reader) {
-        onError('No response stream')
-        onStreamEnd()
+        setPlaceholderContent('Error: No response stream')
+        setIsStreaming(false)
         return
       }
 
-      onStreamStart()
       const decoder = new TextDecoder()
       let buffer = ''
-
       try {
         while (true) {
           const { done, value } = await reader.read()
@@ -78,33 +98,24 @@ export function useResearchChat({
           const lines = buffer.split('\n')
           buffer = lines.pop() ?? ''
           for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6)
-              if (data === '[DONE]') continue
-              try {
-                const obj = JSON.parse(data) as { text?: string }
-                if (obj.text) onStreamChunk(obj.text)
-              } catch {
-                // skip malformed
-              }
+            if (!line.startsWith('data: ')) continue
+            const data = line.slice(6)
+            if (data === '[DONE]') continue
+            try {
+              const text = (JSON.parse(data) as { text?: string }).text
+              if (text) appendPlaceholder(text)
+            } catch {
+              /* skip malformed */
             }
           }
         }
       } finally {
         reader.releaseLock()
-        onStreamEnd()
+        setIsStreaming(false)
       }
     },
-    [
-      session?.access_token,
-      companies,
-      jobDescription,
-      onStreamStart,
-      onStreamChunk,
-      onStreamEnd,
-      onError,
-    ]
+    [session?.access_token, companies, jobDescription, messages],
   )
 
-  return { sendMessage }
+  return { messages, isStreaming, sendMessage, resetMessages }
 }
