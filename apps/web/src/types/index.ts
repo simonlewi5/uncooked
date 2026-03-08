@@ -16,6 +16,12 @@ export interface PastJobDescription {
   jobDescription: string
 }
 
+export type {
+  ResumeTailorInputObject,
+  ResumeTailorRequest,
+  ResumeTailorResponse,
+} from '@uncooked/shared'
+
 export interface Message {
   id: string
   role: 'user' | 'assistant'
@@ -27,4 +33,30 @@ export interface JobDescriptionFormValue {
   jobDescription: string
   companyName: string
   companyContext: string
+}
+
+export interface ResearchSessionSummary {
+  id: string
+  title: string | null
+  createdAt: string
+  companyName: string | null
+  industry: string | null
+}
+
+export interface CompanySummary {
+  id: string
+  companyName: string
+  industry: string | null
+}
+
+export interface PipelineCounts {
+  total: number
+  interviews: number
+  offers: number
+}
+
+export interface DashboardData {
+  recentSessions: ResearchSessionSummary[]
+  companies: CompanySummary[]
+  pipeline: PipelineCounts
 }
