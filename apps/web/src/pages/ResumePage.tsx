@@ -1,8 +1,16 @@
-import { useState, useEffect, KeyboardEvent } from 'react'
+import { useState, useEffect, KeyboardEvent, FocusEvent } from 'react'
 import { Download, Sparkles, Search, X, Plus } from 'lucide-react'
 import { Button, Badge } from '@/components/ui'
+import { useResumeTailor } from '@/hooks/useResumeTailor'
+import type { ResumeTailorRequest } from '@/types'
 import { cn } from '@/utils/cn'
 import styles from './ResumePage.module.css'
+
+interface ResumeHeader {
+  name: string
+  contact: string
+  summary: string
+}
 
 interface ExperienceEntry {
   id: string
@@ -39,9 +47,55 @@ export default function ResumePage() {
   const [skills, setSkills] = useState<string[]>(['React', 'TypeScript', 'Node.js', 'GraphQL', 'Tailwind CSS'])
   const [skillInput, setSkillInput] = useState('')
   const [isTailored, setIsTailored] = useState(false)
+  const [resumeHeader, setResumeHeader] = useState<ResumeHeader>(MOCK_RESUME)
   const [experience, setExperience] = useState<ExperienceEntry[]>(MOCK_EXPERIENCE)
   const [education, setEducation] = useState<EducationEntry[]>(MOCK_EDUCATION)
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
+  const { runTailor, isLoading, error: tailorError, clearError } = useResumeTailor()
+
+  const getEditableText = (event: FocusEvent<HTMLElement>) =>
+    event.currentTarget.textContent?.trim() ?? ''
+
+  function updateHeaderField(field: keyof ResumeHeader, value: string) {
+    setResumeHeader((prev) => ({ ...prev, [field]: value }))
+  }
+
+  function updateExperienceField(
+    id: string,
+    field: 'title' | 'company' | 'period',
+    value: string,
+  ) {
+    setExperience((prev) =>
+      prev.map((entry) => (entry.id === id ? { ...entry, [field]: value } : entry)),
+    )
+  }
+
+  function updateBullet(expId: string, index: number, value: string) {
+    setExperience((prev) =>
+      prev.map((entry) =>
+        entry.id === expId
+          ? {
+              ...entry,
+              bullets: entry.bullets.map((bullet, bulletIndex) =>
+                bulletIndex === index ? value : bullet,
+              ),
+            }
+          : entry,
+      ),
+    )
+  }
+
+  function updateEducationField(
+    id: string,
+    field: 'degree' | 'school' | 'period',
+    value: string,
+  ) {
+    setEducation((prev) =>
+      prev.map((entry) => (entry.id === id ? { ...entry, [field]: value } : entry)),
+    )
+  }
 
   function addExperience() {
     setExperience((prev) => [...prev, { id: crypto.randomUUID(), title: 'Job Title', company: 'Company Name', period: 'Year – Year', bullets: ['Describe your responsibilities here.'] }])
@@ -80,9 +134,36 @@ export default function ResumePage() {
     return () => clearTimeout(t)
   }, [isTailored])
 
-  function handleAutoTailor() {
-    // AI endpoint will be wired up separately
-    setIsTailored(true)
+  function buildResumeContent(): ResumeTailorRequest['resumeContent'] {
+    return {
+      ...resumeHeader,
+      experience: experience.map(({ id, ...entry }) => entry),
+      education: education.map(({ id, ...entry }) => entry),
+    }
+  }
+
+  async function handleAutoTailor() {
+    clearError()
+    setSubmitError(null)
+
+    if (jobDescription.trim().length < 200) {
+      setSubmitError('Please paste a longer job description (minimum 200 characters).')
+      return
+    }
+
+    const payload: ResumeTailorRequest = {
+      jobDescription,
+      skills,
+      resumeContent: buildResumeContent(),
+    }
+
+    try {
+      const result = await runTailor(payload)
+      setSuggestions(result.suggestions)
+      setIsTailored(true)
+    } catch {
+      setIsTailored(false)
+    }
   }
 
   const editable = !isPreviewMode
@@ -100,7 +181,9 @@ export default function ResumePage() {
             <button className={cn(styles.modeBtn, isPreviewMode && styles.modeBtnActive)} onClick={() => setIsPreviewMode(true)}>Preview</button>
           </div>
           <Button variant='secondary' size='sm'><Download size={14} />Export PDF</Button>
-          <Button variant='primary' size='sm' onClick={handleAutoTailor}><Sparkles size={14} />Auto-Tailor</Button>
+          <Button variant='primary' size='sm' onClick={handleAutoTailor} loading={isLoading}>
+            <Sparkles size={14} />Auto-Tailor
+          </Button>
         </div>
       </div>
 
@@ -131,19 +214,57 @@ export default function ResumePage() {
         </aside>
 
         <div className={styles.resumePanel}>
+          {(submitError || tailorError) && (
+            <div className={styles.errorBanner} role='alert'>
+              {submitError ?? tailorError}
+            </div>
+          )}
+
           {isTailored && (
             <div className={styles.suggestionsBadge}><Badge variant='success'>AI Suggestions Applied</Badge></div>
           )}
 
+          {suggestions.length > 0 && (
+            <div className={styles.suggestionsCard}>
+              <p className={styles.suggestionsTitle}>AI Suggestions</p>
+              <ul className={styles.suggestionsList}>
+                {suggestions.map((suggestion, index) => (
+                  <li key={`${suggestion}-${index}`}>{suggestion}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className={styles.resumeDocument}>
             <div className={styles.resumeHeader}>
-              <h2 className={styles.resumeName} contentEditable={editable} suppressContentEditableWarning>{MOCK_RESUME.name}</h2>
-              <p className={styles.resumeContact} contentEditable={editable} suppressContentEditableWarning>{MOCK_RESUME.contact}</p>
+              <h2
+                className={styles.resumeName}
+                contentEditable={editable}
+                suppressContentEditableWarning
+                onBlur={(event) => updateHeaderField('name', getEditableText(event))}
+              >
+                {resumeHeader.name}
+              </h2>
+              <p
+                className={styles.resumeContact}
+                contentEditable={editable}
+                suppressContentEditableWarning
+                onBlur={(event) => updateHeaderField('contact', getEditableText(event))}
+              >
+                {resumeHeader.contact}
+              </p>
             </div>
 
             <div className={styles.resumeSection}>
               <h3 className={styles.sectionHeading}>Summary</h3>
-              <p className={styles.resumeText} contentEditable={editable} suppressContentEditableWarning>{MOCK_RESUME.summary}</p>
+              <p
+                className={styles.resumeText}
+                contentEditable={editable}
+                suppressContentEditableWarning
+                onBlur={(event) => updateHeaderField('summary', getEditableText(event))}
+              >
+                {resumeHeader.summary}
+              </p>
             </div>
 
             <div className={styles.resumeSection}>
@@ -152,16 +273,49 @@ export default function ResumePage() {
                 <div key={job.id} className={styles.resumeEntry}>
                   <div className={styles.entryHeader}>
                     <div className={styles.entryTitleWrapper}>
-                      <span className={styles.entryTitle} contentEditable={editable} suppressContentEditableWarning>{job.title}</span>
+                      <span
+                        className={styles.entryTitle}
+                        contentEditable={editable}
+                        suppressContentEditableWarning
+                        onBlur={(event) =>
+                          updateExperienceField(job.id, 'title', getEditableText(event))
+                        }
+                      >
+                        {job.title}
+                      </span>
                       <button className={cn(styles.entryRemoveBtn, !editable && styles.btnHidden)} onClick={() => removeExperience(job.id)} aria-label="Remove entry"><X size={12} /></button>
                     </div>
-                    <span className={styles.entryPeriod} contentEditable={editable} suppressContentEditableWarning>{job.period}</span>
+                    <span
+                      className={styles.entryPeriod}
+                      contentEditable={editable}
+                      suppressContentEditableWarning
+                      onBlur={(event) =>
+                        updateExperienceField(job.id, 'period', getEditableText(event))
+                      }
+                    >
+                      {job.period}
+                    </span>
                   </div>
-                  <span className={styles.entryCompany} contentEditable={editable} suppressContentEditableWarning>{job.company}</span>
+                  <span
+                    className={styles.entryCompany}
+                    contentEditable={editable}
+                    suppressContentEditableWarning
+                    onBlur={(event) =>
+                      updateExperienceField(job.id, 'company', getEditableText(event))
+                    }
+                  >
+                    {job.company}
+                  </span>
                   <ul className={styles.entryBullets}>
                     {job.bullets.map((bullet, i) => (
                       <li key={i} className={styles.bulletItem}>
-                        <span contentEditable={editable} suppressContentEditableWarning>{bullet}</span>
+                        <span
+                          contentEditable={editable}
+                          suppressContentEditableWarning
+                          onBlur={(event) => updateBullet(job.id, i, getEditableText(event))}
+                        >
+                          {bullet}
+                        </span>
                         <button className={cn(styles.bulletRemoveBtn, !editable && styles.btnHidden)} onClick={() => removeBullet(job.id, i)} aria-label="Remove bullet"><X size={10} /></button>
                       </li>
                     ))}
@@ -182,12 +336,39 @@ export default function ResumePage() {
                 <div key={edu.id} className={styles.resumeEntry}>
                   <div className={styles.entryHeader}>
                     <div className={styles.entryTitleWrapper}>
-                      <span className={styles.entryTitle} contentEditable={editable} suppressContentEditableWarning>{edu.degree}</span>
+                      <span
+                        className={styles.entryTitle}
+                        contentEditable={editable}
+                        suppressContentEditableWarning
+                        onBlur={(event) =>
+                          updateEducationField(edu.id, 'degree', getEditableText(event))
+                        }
+                      >
+                        {edu.degree}
+                      </span>
                       <button className={cn(styles.entryRemoveBtn, !editable && styles.btnHidden)} onClick={() => removeEducation(edu.id)} aria-label="Remove entry"><X size={12} /></button>
                     </div>
-                    <span className={styles.entryPeriod} contentEditable={editable} suppressContentEditableWarning>{edu.period}</span>
+                    <span
+                      className={styles.entryPeriod}
+                      contentEditable={editable}
+                      suppressContentEditableWarning
+                      onBlur={(event) =>
+                        updateEducationField(edu.id, 'period', getEditableText(event))
+                      }
+                    >
+                      {edu.period}
+                    </span>
                   </div>
-                  <span className={styles.entryCompany} contentEditable={editable} suppressContentEditableWarning>{edu.school}</span>
+                  <span
+                    className={styles.entryCompany}
+                    contentEditable={editable}
+                    suppressContentEditableWarning
+                    onBlur={(event) =>
+                      updateEducationField(edu.id, 'school', getEditableText(event))
+                    }
+                  >
+                    {edu.school}
+                  </span>
                 </div>
               ))}
               {editable && (
