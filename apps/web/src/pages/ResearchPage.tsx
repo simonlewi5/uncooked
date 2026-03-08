@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { Plus, Search, Send, GripVertical, X, Paperclip, Star } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { useAuth } from '@/contexts/AuthContext'
+import { useResearchChat } from '@/hooks/useResearchChat'
 import { cn } from '@/utils/cn'
 import styles from './ResearchPage.module.css'
 
@@ -12,11 +13,6 @@ interface CompanyProfile {
   isFavorite: boolean
 }
 
-interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-}
 
 const MOCK_COMPANIES: CompanyProfile[] = [
   { id: '1', name: 'Stripe', category: 'Fintech', isFavorite: false },
@@ -33,13 +29,18 @@ const CATEGORY_STYLE: Record<string, string> = {
 export default function ResearchPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeContext, setActiveContext] = useState<CompanyProfile[]>([])
-  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [companies, setCompanies] = useState<CompanyProfile[]>(MOCK_COMPANIES)
   const [isDragOver, setIsDragOver] = useState(false)
   const draggingCompany = useRef<CompanyProfile | null>(null)
   const { user } = useAuth()
   const userInitial = user?.email?.[0].toUpperCase() ?? '?'
+
+  const companyNames = activeContext.map((c) => c.name)
+  const { messages, isStreaming, sendMessage, resetMessages } = useResearchChat({
+    companies: companyNames,
+    jobDescription: undefined,
+  })
 
   const filteredCompanies = companies
     .filter((c) => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -83,19 +84,15 @@ export default function ResearchPage() {
 
   function handleNewBoard() {
     setActiveContext([])
-    setMessages([])
+    resetMessages()
     setInput('')
   }
 
   function handleSend() {
     const trimmed = input.trim()
-    if (!trimmed) return
-    setMessages((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), role: 'user', content: trimmed },
-    ])
+    if (!trimmed || isStreaming) return
     setInput('')
-    // AI response will be wired up when the edge function is ready
+    sendMessage(trimmed)
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -206,12 +203,7 @@ export default function ResearchPage() {
 
           {/* Messages area */}
           <div className={styles.messages}>
-            {messages.length === 0 ? (
-              <div className={styles.emptyChat}>
-                <p>Drag a company into the context bar above, then ask anything.</p>
-              </div>
-            ) : (
-              messages.map((msg) => (
+            {messages.map((msg) => (
                 <div
                   key={msg.id}
                   className={cn(
@@ -231,8 +223,7 @@ export default function ResearchPage() {
                     <span className={styles.avatar}>{userInitial}</span>
                   )}
                 </div>
-              ))
-            )}
+              ))}
           </div>
 
           {/* Input bar */}
@@ -248,8 +239,12 @@ export default function ResearchPage() {
               onKeyDown={handleKeyDown}
             />
             <button
-              className={cn(styles.sendBtn, input.trim() && styles.sendBtnActive)}
+              className={cn(
+                styles.sendBtn,
+                input.trim() && activeContext.length > 0 && !isStreaming && styles.sendBtnActive,
+              )}
               onClick={handleSend}
+              disabled={!input.trim() || activeContext.length === 0 || isStreaming}
               aria-label="Send message"
             >
               <Send size={16} />
