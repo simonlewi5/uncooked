@@ -1,76 +1,60 @@
-import { useState, FormEvent } from 'react'
-import { Input, Textarea, Button } from '@/components/ui'
-import type { JobDescriptionFormValue } from '@/types'
+import { CompanyAutocomplete } from './CompanyAutocomplete'
+import { usePastJobDescriptions } from '@/hooks/usePastJobDescriptions'
+import type { CompanyProfile } from '@/types'
 import styles from './JobDescriptionForm.module.css'
 
 interface JobDescriptionFormProps {
-  onSubmit: (value: JobDescriptionFormValue) => void
+  companyName: string
+  onCompanyNameChange: (value: string) => void
+  selectedCompanyId: string | null
+  onCompanyProfileSelect: (profile: CompanyProfile) => void
+  jobDescription: string
+  onJobDescriptionChange: (value: string) => void
 }
 
-export function JobDescriptionForm({ onSubmit }: JobDescriptionFormProps) {
-  const [jobDescription, setJobDescription] = useState('')
-  const [companyName, setCompanyName] = useState('')
-  const [companyContext, setCompanyContext] = useState('')
-  const [errors, setErrors] = useState<Partial<Record<keyof JobDescriptionFormValue, string>>>({})
-
-  const validate = (): boolean => {
-    const next: typeof errors = {}
-    if (!jobDescription.trim()) next.jobDescription = 'Job description is required'
-    if (!companyName.trim()) next.companyName = 'Company name is required'
-    setErrors(next)
-    return Object.keys(next).length === 0
-  }
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault()
-    if (!validate()) return
-    onSubmit({ jobDescription, companyName, companyContext })
-  }
+export function JobDescriptionForm({
+  companyName,
+  onCompanyNameChange,
+  selectedCompanyId,
+  onCompanyProfileSelect,
+  jobDescription,
+  onJobDescriptionChange,
+}: JobDescriptionFormProps): React.JSX.Element {
+  const { jobs } = usePastJobDescriptions(selectedCompanyId)
 
   return (
-    <form className={styles.form} onSubmit={handleSubmit} noValidate>
-      <div>
-        <p className={styles.title}>Tell us about the role</p>
-        <p className={styles.subtitle}>
-          We&apos;ll use this to tailor your interview questions.
-        </p>
-      </div>
-
-      <Input
-        label="Company name"
-        placeholder="e.g. Acme Corp"
+    <div className={styles.form}>
+      <CompanyAutocomplete
         value={companyName}
-        onChange={(e) => setCompanyName(e.target.value)}
-        error={errors.companyName}
-        required
+        onChange={onCompanyNameChange}
+        onProfileSelect={onCompanyProfileSelect}
       />
 
-      <Textarea
-        label="Job description"
-        placeholder="Paste the full job description here…"
+      {jobs.length > 0 && (
+        <div className={styles.pastJobs}>
+          {jobs.map((job) => (
+            <button
+              key={job.id}
+              className={styles.pastJobBtn}
+              onClick={() => onJobDescriptionChange(job.jobDescription)}
+            >
+              Use: {job.jobTitle}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <p className={styles.desc}>
+        Paste the job description here. The AI will generate tailored questions based on these
+        requirements.
+      </p>
+
+      <textarea
+        className={styles.textarea}
+        placeholder="e.g. We are looking for a highly skilled engineer…"
         value={jobDescription}
-        onChange={(e) => setJobDescription(e.target.value)}
-        error={errors.jobDescription}
-        maxLength={5000}
-        rows={8}
-        required
+        onChange={(e) => onJobDescriptionChange(e.target.value)}
       />
-
-      <Textarea
-        label="Company context (optional)"
-        placeholder="Any extra context about the company, team, or role…"
-        value={companyContext}
-        onChange={(e) => setCompanyContext(e.target.value)}
-        maxLength={5000}
-        rows={4}
-        hint="What does the company do? What's the team culture like?"
-      />
-
-      <div className={styles.actions}>
-        <Button type="submit" size="md">
-          Next: Choose interview style
-        </Button>
-      </div>
-    </form>
+    </div>
   )
 }
