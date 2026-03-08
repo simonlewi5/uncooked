@@ -97,3 +97,61 @@
   font-size: inherit;
   text-decoration: underline;
 }
+
+.forgotLink {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  padding: 0;
+  text-align: right;
+  align-self: flex-end;
+  margin-top: -0.25rem;
+}
+
+.forgotLink:hover {
+  color: #111;
+}
+
+.emailIcon {
+  font-size: 2.5rem;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.emailAddress {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #111;
+  text-align: center;
+  margin-bottom: 0.75rem;
+  word-break: break-all;
+}
+
+.confirmHint {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  text-align: center;
+  line-height: 1.5;
+  margin-bottom: 1.75rem;
+}
+
+.ghostButton {
+  display: block;
+  width: 100%;
+  padding: 0.625rem;
+  background: transparent;
+  color: #111;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.ghostButton:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
