@@ -8,17 +8,17 @@
 .messages {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
   scroll-behavior: smooth;
 }
 
 .message {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
   max-width: 75%;
 }
 
@@ -54,9 +54,9 @@
 }
 
 .timestamp {
-  font-size: 0.6875rem;
+  font-size: var(--font-xs);
   color: var(--color-text-tertiary);
-  padding: 0 0.25rem;
+  padding: 0 var(--space-1);
 }
 
 .typing {
@@ -67,7 +67,7 @@
   border-bottom-left-radius: var(--radius-sm);
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 
 .typingDot {
@@ -94,15 +94,15 @@
 .inputRow {
   display: flex;
   align-items: flex-end;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--color-border);
   background-color: var(--color-bg);
 }
 
 .inputField {
   flex: 1;
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
   font-size: var(--font-sm);
   font-family: inherit;
   color: var(--color-text);

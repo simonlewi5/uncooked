@@ -1,116 +1,120 @@
 import { useState } from 'react'
-import { Button, Badge } from '@/components/ui'
+import { Mic, Briefcase, FileText, Building2 } from 'lucide-react'
 import { JobDescriptionForm } from '@/components/interview/JobDescriptionForm'
 import { InterviewStyleSelector } from '@/components/interview/InterviewStyleSelector'
 import { ChatBox } from '@/components/interview/ChatBox'
+import { CompanyHistory } from '@/components/interview/CompanyHistory'
 import { useInterviewChat } from '@/hooks/useInterviewChat'
-import type { JobDescriptionFormValue, InterviewStyle } from '@/types'
+import { cn } from '@/utils/cn'
+import type { ActiveTab, CompanyProfile, InterviewStyle } from '@/types'
 import styles from './InterviewPage.module.css'
 
-type Step = 'setup' | 'interview'
-
-const STYLE_LABEL: Record<InterviewStyle, string> = {
-  technical: 'Technical',
-  behavioral: 'Behavioral',
-  mixed: 'Mixed',
-}
-
-function InterviewSession({
-  jobData,
-  style,
-  onEnd,
-}: {
-  jobData: JobDescriptionFormValue
-  style: InterviewStyle
-  onEnd: () => void
-}) {
-  const { messages, isTyping, sendMessage } = useInterviewChat(jobData, style)
-
-  return (
-    <div className={styles.interviewLayout}>
-      <div className={styles.chatCard}>
-        <div className={styles.chatHeader}>
-          <p className={styles.chatMeta}>
-            Practicing for{' '}
-            <span className={styles.chatMetaBold}>{jobData.companyName}</span>
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Badge variant="info">{STYLE_LABEL[style]}</Badge>
-            <Button variant="ghost" size="sm" onClick={onEnd} className={styles.endButton}>
-              End session
-            </Button>
-          </div>
-        </div>
-        <ChatBox messages={messages} isTyping={isTyping} onSend={sendMessage} />
-      </div>
-    </div>
-  )
-}
-
-export default function InterviewPage() {
-  const [step, setStep] = useState<Step>('setup')
-  const [jobData, setJobData] = useState<JobDescriptionFormValue | null>(null)
+export default function InterviewPage(): JSX.Element {
+  const [jobDescription, setJobDescription] = useState('')
+  const [companyName, setCompanyName] = useState('')
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null)
   const [style, setStyle] = useState<InterviewStyle | null>(null)
-  const [styleError, setStyleError] = useState(false)
+  const [activeTab, setActiveTab] = useState<ActiveTab>('jobDesc')
 
-  const handleJobSubmit = (value: JobDescriptionFormValue) => {
-    setJobData(value)
+  const { messages, isTyping, sendMessage } = useInterviewChat(
+    { jobDescription, companyName, companyContext: '' },
+    style ?? 'mixed',
+  )
+
+  const isChatEnabled = jobDescription.trim().length > 0
+
+  function handleCompanyProfileSelect(profile: CompanyProfile): void {
+    setCompanyName(profile.companyName)
+    setSelectedCompanyId(profile.id)
+    setActiveTab('jobDesc')
   }
 
-  const handleStartInterview = () => {
-    if (!style) {
-      setStyleError(true)
-      return
-    }
-    setStyleError(false)
-    setStep('interview')
-  }
-
-  const handleEnd = () => {
-    setStep('setup')
-    setJobData(null)
-    setStyle(null)
-  }
-
-  if (step === 'interview' && jobData && style) {
-    return (
-      <div className={styles.page}>
-        <InterviewSession jobData={jobData} style={style} onEnd={handleEnd} />
-      </div>
-    )
+  function handleCompanyNameChange(value: string): void {
+    setCompanyName(value)
+    setSelectedCompanyId(null)
   }
 
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Interview simulator</h1>
-        <p className={styles.subtitle}>
-          Set up your session and practice with an AI interviewer.
-        </p>
+      <div className={styles.pageHeader}>
+        <div>
+          <h1 className={styles.title}>Interview Simulator</h1>
+          <p className={styles.subtitle}>
+            Practice answering questions live with AI. Provide context to make it realistic.
+          </p>
+        </div>
+        <button
+          className={styles.voiceBtn}
+          disabled
+          aria-label="Voice mode (coming soon)"
+        >
+          <Mic size={16} /> Voice Mode
+        </button>
       </div>
 
-      <div className={styles.setupCard}>
-        <JobDescriptionForm onSubmit={handleJobSubmit} />
+      <div className={styles.layout}>
+        <div className={styles.leftPanel}>
+          <div className={styles.tabs}>
+            <button
+              className={cn(styles.tab, activeTab === 'jobDesc' && styles.tabActive)}
+              onClick={() => setActiveTab('jobDesc')}
+            >
+              <Briefcase size={14} /> Job Desc
+            </button>
+            <button
+              className={cn(styles.tab, activeTab === 'questions' && styles.tabActive)}
+              onClick={() => setActiveTab('questions')}
+            >
+              <FileText size={14} /> Questions
+            </button>
+            <button
+              className={cn(styles.tab, activeTab === 'companies' && styles.tabActive)}
+              onClick={() => setActiveTab('companies')}
+            >
+              <Building2 size={14} /> Companies
+            </button>
+          </div>
 
-        {jobData && (
-          <>
-            <div className={styles.divider} />
-
-            <InterviewStyleSelector value={style} onChange={(v) => { setStyle(v); setStyleError(false) }} />
-
-            {styleError && (
-              <p style={{ fontSize: '0.8125rem', color: 'var(--color-error-text)' }}>
-                Please select an interview style to continue.
-              </p>
-            )}
-
-            <div className={styles.styleActions}>
-              <Button onClick={handleStartInterview} size="md">
-                Start interview
-              </Button>
+          {activeTab === 'jobDesc' && (
+            <div className={styles.tabContent}>
+              <JobDescriptionForm
+                companyName={companyName}
+                onCompanyNameChange={handleCompanyNameChange}
+                selectedCompanyId={selectedCompanyId}
+                onCompanyProfileSelect={handleCompanyProfileSelect}
+                jobDescription={jobDescription}
+                onJobDescriptionChange={setJobDescription}
+              />
+              <div className={styles.styleRow}>
+                <InterviewStyleSelector value={style} onChange={setStyle} />
+              </div>
             </div>
-          </>
-        )}
+          )}
+
+          {activeTab === 'questions' && (
+            <div className={styles.emptyTab}>
+              <FileText size={24} className={styles.emptyIcon} />
+              <p className={styles.emptyText}>
+                Questions will appear here once AI generates them.
+              </p>
+            </div>
+          )}
+
+          {activeTab === 'companies' && (
+            <div className={styles.tabContent}>
+              <CompanyHistory onSelect={handleCompanyProfileSelect} />
+            </div>
+          )}
+        </div>
+
+        <div className={styles.rightPanel}>
+          <ChatBox
+            messages={messages}
+            isTyping={isTyping}
+            onSend={sendMessage}
+            disabled={!isChatEnabled}
+          />
+        </div>
       </div>
     </div>
   )
