@@ -11,20 +11,55 @@ export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [confirmationSent, setConfirmationSent] = useState(false)
 
   if (session) return <Navigate to="/dashboard" replace />
+
+  if (confirmationSent) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.card}>
+          <div className={styles.emailIcon} aria-hidden="true">✉️</div>
+          <h1 className={styles.title}>Check your email</h1>
+          <p className={styles.subtitle}>We sent a confirmation link to</p>
+          <p className={styles.emailAddress}>{email}</p>
+          <p className={styles.confirmHint}>Click the link to activate your account, then come back to sign in.</p>
+          <button
+            type="button"
+            className={styles.ghostButton}
+            onClick={() => {
+              setConfirmationSent(false)
+              setMode('login')
+              setPassword('')
+            }}
+          >
+            ← Back to sign in
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
 
-    const { error } =
-      mode === 'login'
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password })
+    if (mode === 'login') {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) setError(error.message)
+    } else {
+      const { data, error } = await supabase.auth.signUp({ email, password })
+      if (error) {
+        setError(error.message)
+      } else if (data.session) {
+        // confirmations disabled — session created immediately (local dev)
+      } else {
+        // confirmations enabled — user must verify email before signing in
+        setConfirmationSent(true)
+      }
+    }
 
-    if (error) setError(error.message)
     setLoading(false)
   }
 
