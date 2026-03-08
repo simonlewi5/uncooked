@@ -134,7 +134,8 @@ ${jobDescription?.trim() ? `## Job description context (use to tailor answers ab
           status: 502,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
-      }
+      )
+    }
 
     const encoder = new TextEncoder()
     const reader = stream.getReader()

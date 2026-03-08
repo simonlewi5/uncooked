@@ -1,6 +1,5 @@
 import { useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import type { Session } from '@supabase/supabase-js'
 
 export interface ResearchChatMessage {
   id: string
