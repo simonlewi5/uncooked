@@ -98,6 +98,22 @@
   text-decoration: underline;
 }
 
+.forgotLink {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  padding: 0;
+  text-align: right;
+  align-self: flex-end;
+  margin-top: -0.25rem;
+}
+
+.forgotLink:hover {
+  color: #111;
+}
+
 .emailIcon {
   font-size: 2.5rem;
   text-align: center;
