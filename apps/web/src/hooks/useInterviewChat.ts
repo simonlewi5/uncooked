@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import type { Message, JobDescriptionFormValue, InterviewStyle } from '@/types'
 
 interface UseInterviewChatReturn {
@@ -16,13 +16,12 @@ const STUB_RESPONSES = [
   "How does that experience relate to what you'd be doing in this role?",
 ]
 
-let responseIndex = 0
-
 export function useInterviewChat(
   // jobData and style will be forwarded to the AI endpoint in #20/#21
   _jobData: JobDescriptionFormValue, // eslint-disable-line @typescript-eslint/no-unused-vars
   _style: InterviewStyle, // eslint-disable-line @typescript-eslint/no-unused-vars
 ): UseInterviewChatReturn {
+  const responseIndexRef = useRef(0)
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'init',
@@ -51,11 +50,11 @@ export function useInterviewChat(
     const assistantMsg: Message = {
       id: `a-${Date.now()}`,
       role: 'assistant',
-      content: STUB_RESPONSES[responseIndex % STUB_RESPONSES.length],
+      content: STUB_RESPONSES[responseIndexRef.current % STUB_RESPONSES.length],
       timestamp: new Date(),
     }
 
-    responseIndex++
+    responseIndexRef.current++
     setMessages((prev) => [...prev, assistantMsg])
     setIsTyping(false)
   }, [])

@@ -54,6 +54,7 @@
   --space-12: 3rem;
 
   /* Typography */
+  --font-xs: 0.75rem;
   --font-sm: 0.875rem;
   --font-base: 1rem;
   --font-lg: 1.125rem;
