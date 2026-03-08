@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, KeyboardEvent } from 'react'
+import React, { useRef, useEffect, useState, KeyboardEvent } from 'react'
 import { Send } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { cn } from '@/utils/cn'
@@ -16,7 +16,7 @@ function formatTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-export function ChatBox({ messages, isTyping, onSend, disabled }: ChatBoxProps) {
+export function ChatBox({ messages, isTyping, onSend, disabled }: ChatBoxProps): React.JSX.Element {
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -25,14 +25,17 @@ export function ChatBox({ messages, isTyping, onSend, disabled }: ChatBoxProps) 
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isTyping])
 
+  useEffect(() => {
+    if (input === '' && textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+    }
+  }, [input])
+
   const handleSend = () => {
     const content = input.trim()
     if (!content || disabled || isTyping) return
     onSend(content)
     setInput('')
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-    }
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -87,7 +90,7 @@ export function ChatBox({ messages, isTyping, onSend, disabled }: ChatBoxProps) 
         <textarea
           ref={textareaRef}
           className={styles.inputField}
-          placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
+          placeholder="Type your answer here…"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}

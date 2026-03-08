@@ -1,10 +1,18 @@
+/* ── Page shell ─────────────────────────────────────────────────────────── */
+
 .page {
-  max-width: 1200px;
-  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px - 4rem);
+  min-height: 480px;
 }
 
 .header {
-  margin-bottom: 2rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+  flex-shrink: 0;
 }
 
 .title {
@@ -20,47 +28,460 @@
   margin-top: 0.375rem;
 }
 
-.splitPanel {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  height: calc(100vh - 200px);
-  min-height: 400px;
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
-@media (max-width: 768px) {
-  .splitPanel {
-    grid-template-columns: 1fr;
-    height: auto;
-  }
+/* ── Two-column layout ───────────────────────────────────────────────────── */
+
+.layout {
+  display: flex;
+  gap: var(--space-4);
+  flex: 1;
+  min-height: 0;
 }
 
-.panel {
-  border: 2px dashed var(--color-border);
-  border-radius: var(--radius-xl);
+/* ── Left panel ──────────────────────────────────────────────────────────── */
+
+.leftPanel {
+  width: 260px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  text-align: center;
-  gap: 0.75rem;
+  gap: var(--space-4);
+  overflow-y: auto;
 }
 
-.panelIcon {
-  font-size: 2.5rem;
-  line-height: 1;
+.card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
-.panelTitle {
-  font-size: var(--font-lg);
+.cardTitle {
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--color-text);
 }
 
-.panelDesc {
+.cardSubtitle {
   font-size: var(--font-sm);
   color: var(--color-text-secondary);
   line-height: 1.5;
-  max-width: 280px;
+  margin-top: calc(-1 * var(--space-1));
+}
+
+.jobTextarea {
+  width: 100%;
+  min-height: 140px;
+  padding: var(--space-3);
+  font-size: var(--font-sm);
+  font-family: inherit;
+  color: var(--color-text);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  resize: vertical;
+  outline: none;
+  line-height: 1.5;
+  transition: border-color 0.15s;
+}
+
+.jobTextarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.jobTextarea:focus {
+  border-color: var(--color-primary);
+  background: var(--color-bg);
+}
+
+/* Skills */
+
+.skillSearchWrapper {
+  position: relative;
+}
+
+.skillSearchIcon {
+  position: absolute;
+  left: 0.625rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+}
+
+.skillInput {
+  width: 100%;
+  padding: 0.4375rem 0.75rem 0.4375rem 2rem;
+  font-size: var(--font-sm);
+  font-family: inherit;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.skillInput::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.skillInput:focus {
+  border-color: var(--color-primary);
+}
+
+.skillChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.skillChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0.1875rem 0.375rem 0.1875rem 0.625rem;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.skillChipRemove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  padding: 0;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.skillChipRemove:hover {
+  background: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+/* ── Right panel — resume ────────────────────────────────────────────────── */
+
+.resumePanel {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  overflow-y: auto;
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+}
+
+.suggestionsBadge {
+  position: sticky;
+  top: var(--space-4);
+  float: right;
+  margin: var(--space-4) var(--space-4) 0 0;
+  z-index: 1;
+}
+
+.resumeDocument {
+  padding: var(--space-10) var(--space-12);
+  max-width: 680px;
+  margin: var(--space-8) auto;
+  background: var(--color-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+/* Resume content */
+
+.resumeHeader {
+  text-align: center;
+  margin-bottom: var(--space-8);
+}
+
+.resumeName {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+  outline: none;
+  border-radius: var(--radius-sm);
+}
+
+.resumeContact {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  margin-top: var(--space-2);
+  outline: none;
+  border-radius: var(--radius-sm);
+}
+
+.resumeSection {
+  margin-bottom: var(--space-8);
+}
+
+.sectionHeading {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.resumeText {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.65;
+  outline: none;
+  border-radius: var(--radius-sm);
+}
+
+
+.resumeEntry {
+  position: relative;
+  margin-bottom: var(--space-4);
+}
+
+.entryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+.entryTitle {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  outline: none;
+  border-radius: var(--radius-sm);
+}
+
+.entryPeriod {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+  outline: none;
+  border-radius: var(--radius-sm);
+}
+
+.entryCompany {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  outline: none;
+  border-radius: var(--radius-sm);
+}
+
+.entryBullets {
+  margin-top: var(--space-2);
+  padding-left: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.entryBullets li {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.55;
+  outline: none;
+  border-radius: var(--radius-sm);
+}
+
+/* Highlight editable fields on hover/focus */
+
+[contenteditable]:hover {
+  background: var(--color-bg-subtle);
+}
+
+[contenteditable]:focus {
+  background: var(--color-primary-subtle);
+  outline: 1px solid var(--color-primary);
+}
+
+/* Entry add/remove controls */
+
+
+
+.entryTitleWrapper {
+  position: relative;
+  min-width: 0;
+}
+
+.entryRemoveBtn {
+  position: absolute;
+  left: calc(100% + 4px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s, background-color 0.15s, color 0.15s;
+}
+
+.resumeEntry:hover .entryRemoveBtn {
+  opacity: 1;
+}
+
+.entryRemoveBtn:hover {
+  background: var(--color-error-subtle);
+  color: var(--color-error);
+}
+
+.addEntryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0.375rem var(--space-3);
+  font-size: var(--font-sm);
+  font-family: inherit;
+  color: var(--color-text-tertiary);
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  margin-top: var(--space-1);
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.addEntryBtn:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
+}
+
+/* Bullet controls */
+
+.btnHidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.bulletItem {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.bulletItem::before {
+  content: '•';
+  color: var(--color-text-secondary);
+  font-size: var(--font-sm);
+  flex-shrink: 0;
+}
+
+.bulletItem span {
+  flex: 1;
+}
+
+.bulletRemoveBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  padding: 0;
+  opacity: 0;
+  flex-shrink: 0;
+  transition: opacity 0.15s, background-color 0.15s, color 0.15s;
+}
+
+.bulletItem:hover .bulletRemoveBtn {
+  opacity: 1;
+}
+
+.bulletRemoveBtn:hover {
+  background: var(--color-error-subtle);
+  color: var(--color-error);
+}
+
+.addBulletBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0.25rem var(--space-2);
+  font-size: 0.75rem;
+  font-family: inherit;
+  color: var(--color-text-tertiary);
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  margin-top: var(--space-1);
+  list-style: none;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.addBulletBtn:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
+}
+
+/* Edit / Preview mode toggle */
+
+.modeToggle {
+  display: flex;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  gap: 2px;
+}
+
+.modeBtn {
+  padding: 0.25rem 0.75rem;
+  font-size: var(--font-sm);
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.modeBtn:hover {
+  color: var(--color-text);
+}
+
+.modeBtnActive {
+  background: var(--color-bg);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
 }
