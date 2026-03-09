@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, KeyboardEvent } from 'react'
 import html2pdf from 'html2pdf.js'
 import { Download, Sparkles, Search, X, Plus } from 'lucide-react'
 import { Button, Badge } from '@/components/ui'
+import { useAuth } from '@/contexts/AuthContext'
 import { useResumeTailor } from '@/hooks/useResumeTailor'
 import type { ResumeTailorRequest } from '@/types'
 import { cn } from '@/utils/cn'
@@ -73,6 +74,7 @@ export default function ResumePage() {
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
+  const { session } = useAuth()
   const { runTailor, isLoading, error: tailorError, clearError } = useResumeTailor()
 
   function addExperience() {
@@ -168,8 +170,14 @@ export default function ResumePage() {
       resumeContent: buildResumeContent(),
     }
 
+    if (!session?.access_token) {
+      setSubmitError('Your session is not ready. Please refresh or sign in again.')
+      setIsTailored(false)
+      return
+    }
+
     try {
-      const result = await runTailor(payload)
+      const result = await runTailor(payload, { accessToken: session.access_token })
       setSuggestions(result.suggestions)
       setIsTailored(true)
     } catch {

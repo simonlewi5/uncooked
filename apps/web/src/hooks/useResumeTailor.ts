@@ -3,7 +3,10 @@ import { supabase } from '@/lib/supabase'
 import type { ResumeTailorRequest, ResumeTailorResponse } from '@/types'
 
 type UseResumeTailorReturn = {
-  runTailor: (payload: ResumeTailorRequest) => Promise<ResumeTailorResponse>
+  runTailor: (
+    payload: ResumeTailorRequest,
+    options?: { accessToken?: string }
+  ) => Promise<ResumeTailorResponse>
   isLoading: boolean
   error: string | null
   clearError: () => void
@@ -43,6 +46,10 @@ async function mapErrorMessage(error: unknown): Promise<string> {
     return details || 'Validation failed. Check the job description and resume content.'
   }
 
+  if (response.status === 429) {
+    return details || 'AI service is rate limited. Please wait a bit and try again.'
+  }
+
   if (response.status === 401) {
     return 'You must be signed in to tailor your resume.'
   }
@@ -74,16 +81,54 @@ export function useResumeTailor(): UseResumeTailorReturn {
     setError(null)
   }, [])
 
-  const runTailor = useCallback(async (payload: ResumeTailorRequest) => {
+  const runTailor = useCallback(async (
+    payload: ResumeTailorRequest,
+    options?: { accessToken?: string }
+  ) => {
     setIsLoading(true)
     setError(null)
 
     try {
+      let accessToken = options?.accessToken ?? null
+
+      if (!accessToken) {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError) {
+        throw new Error('Unable to verify auth session')
+      }
+
+        accessToken = session?.access_token ?? null
+
+        if (!accessToken) {
+          const {
+            data: refreshData,
+            error: refreshError,
+          } = await supabase.auth.refreshSession()
+
+          if (refreshError) {
+            throw new Error('Your session expired. Please sign in again.')
+          }
+
+          accessToken = refreshData.session?.access_token ?? null
+        }
+      }
+
+      if (!accessToken) {
+        throw new Error('You must be signed in to tailor your resume.')
+      }
+
       const { data, error } = await supabase.functions.invoke<ResumeTailorResponse>(
         'resume-tailor',
         {
           body: payload,
           method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
         },
       )
 

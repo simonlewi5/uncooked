@@ -192,6 +192,13 @@ Deno.serve(async (req: Request) => {
     }
 
     if (errorMessage.includes('Gemini API error')) {
+      if (errorMessage.includes('(429)') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
+        return json(429, {
+          error: 'AI Rate Limited',
+          details: 'Gemini quota exceeded. Please wait and retry, or use an API key with higher quota.',
+        })
+      }
+
       return json(502, {
         error: 'AI Service Error',
         details: 'Failed to process resume with AI service',

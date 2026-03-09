@@ -79,3 +79,6 @@ policy = "oneshot"
 verify_jwt = false
 [functions.research-chat]
 verify_jwt = false
+[functions.resume-tailor]
+verify_jwt = false
+
