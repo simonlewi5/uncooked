@@ -67,7 +67,7 @@ export interface Badge {
   id: string
   label: string
   description: string
-  icon: string   // emoji
+  icon: string // emoji
   earned: boolean
 }
 

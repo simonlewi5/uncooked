@@ -6,8 +6,8 @@ import type { Badge, GamificationData } from '@/types'
 // ── XP constants ──────────────────────────────────────────────────────────────
 
 const XP_PER_LEVEL = 200
-const XP_PER_PRACTICE = 50   // completing a mock interview session
-const XP_PER_RESEARCH = 25   // researching a company
+const XP_PER_PRACTICE = 50 // completing a mock interview session
+const XP_PER_RESEARCH = 25 // researching a company
 const XP_PER_APPLICATION = 20 // tracking a job application
 
 // ── Tier labels by level ──────────────────────────────────────────────────────

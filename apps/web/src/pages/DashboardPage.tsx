@@ -138,9 +138,7 @@ function TargetCompaniesCard({ companies }: TargetCompaniesCardProps): JSX.Eleme
           <ul className={styles.itemList}>
             {companies.map((company) => (
               <li key={company.id} className={styles.itemRow}>
-                <div className={styles.iconBox}>
-                  {company.companyName.charAt(0).toUpperCase()}
-                </div>
+                <div className={styles.iconBox}>{company.companyName.charAt(0).toUpperCase()}</div>
                 <div className={styles.itemInfo}>
                   <p className={styles.itemTitle}>{company.companyName}</p>
                   {company.industry && <p className={styles.itemSub}>{company.industry}</p>}

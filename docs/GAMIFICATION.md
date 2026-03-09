@@ -12,11 +12,11 @@ Everything is derived from existing activity data. No separate write path is req
 
 XP is computed by counting rows the user already owns across three tables and applying a fixed multiplier to each:
 
-| Activity | Table | XP per action |
-|---|---|---|
-| Complete a mock interview session | `practice_sessions` | 50 XP |
-| Research a company | `research_sessions` | 25 XP |
-| Track a job application | `job_applications` | 20 XP |
+| Activity                          | Table               | XP per action |
+| --------------------------------- | ------------------- | ------------- |
+| Complete a mock interview session | `practice_sessions` | 50 XP         |
+| Research a company                | `research_sessions` | 25 XP         |
+| Track a job application           | `job_applications`  | 20 XP         |
 
 **Formula:**
 
@@ -45,13 +45,13 @@ There is no level cap.
 
 Tiers are cosmetic title labels that change at level milestones:
 
-| Minimum Level | Tier Title |
-|---|---|
-| 1 | Job Seeker |
-| 3 | Candidate |
-| 6 | Contender |
-| 10 | Interview Ace |
-| 15 | Top Talent |
+| Minimum Level | Tier Title    |
+| ------------- | ------------- |
+| 1             | Job Seeker    |
+| 3             | Candidate     |
+| 6             | Contender     |
+| 10            | Interview Ace |
+| 15            | Top Talent    |
 
 ---
 
@@ -59,13 +59,13 @@ Tiers are cosmetic title labels that change at level milestones:
 
 Badges are evaluated each time the hook loads. There is no separate badge state stored in the database — the `earned` flag is re-derived from live counts on every fetch.
 
-| Badge | Icon | Unlock Condition |
-|---|---|---|
-| First Move | 🎯 | Complete 1 mock interview session |
-| Researcher | 🔬 | Research 3 companies |
-| Pipeline Builder | 💼 | Track 1 job application |
-| Interview Pro | 🏆 | Complete 5 mock interview sessions |
-| Champion | ⭐ | Earn 500 XP total |
+| Badge            | Icon | Unlock Condition                   |
+| ---------------- | ---- | ---------------------------------- |
+| First Move       | 🎯   | Complete 1 mock interview session  |
+| Researcher       | 🔬   | Research 3 companies               |
+| Pipeline Builder | 💼   | Track 1 job application            |
+| Interview Pro    | 🏆   | Complete 5 mock interview sessions |
+| Champion         | ⭐   | Earn 500 XP total                  |
 
 Locked badges are displayed greyed out with a tooltip showing the unlock requirement.
 
@@ -85,13 +85,13 @@ All three count queries are fired in parallel via `Promise.all` — the same pat
 
 ### Files
 
-| File | Role |
-|---|---|
-| `apps/web/src/hooks/useGamificationData.ts` | Fetches counts, computes XP/level/badges, returns `GamificationData` |
-| `apps/web/src/components/dashboard/GamificationCard.tsx` | Renders the Dashboard card |
-| `apps/web/src/components/dashboard/GamificationCard.module.css` | Card styles |
-| `apps/web/src/types/index.ts` | `Badge` and `GamificationData` interfaces |
-| `supabase/migrations/20260308000009_create_gamification_tables.sql` | `user_xp_events` ledger table |
+| File                                                                | Role                                                                 |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `apps/web/src/hooks/useGamificationData.ts`                         | Fetches counts, computes XP/level/badges, returns `GamificationData` |
+| `apps/web/src/components/dashboard/GamificationCard.tsx`            | Renders the Dashboard card                                           |
+| `apps/web/src/components/dashboard/GamificationCard.module.css`     | Card styles                                                          |
+| `apps/web/src/types/index.ts`                                       | `Badge` and `GamificationData` interfaces                            |
+| `supabase/migrations/20260308000009_create_gamification_tables.sql` | `user_xp_events` ledger table                                        |
 
 ### Separation of concerns
 
