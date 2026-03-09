@@ -125,7 +125,7 @@ export function useInterviewChat(
         setIsTyping(false)
       }
     },
-    [jobData, style]
+    [jobData, style, user]
   )
 
   return { messages, isTyping, sendMessage }
