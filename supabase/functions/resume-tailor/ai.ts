@@ -58,27 +58,29 @@ const buildPrompt = (payload: ResumeTailorPayload): string => {
     ? `\n\nUser-specified skills to emphasize:\n${payload.skills.join(', ')}`
     : ''
 
-  const outputFormat =
-    mode === 'suggestions_only'
-      ? `{
-  "tailoredResume": "",
-  "suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"]
-}`
-      : `{
-  "tailoredResume": "full rewritten resume text with STAR bullets and job-relevant keywords",
-  "suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"]
-}`
+  if (mode === 'suggestions_only') {
+    return `You are an ATS resume optimizer.
 
-  const modeInstruction =
-    mode === 'suggestions_only'
-      ? `MODE: suggestions_only
-- Return concise, high-impact suggestions only.
-- Keep "tailoredResume" as an empty string.
-- Suggestion count: 5 to 8.
-- Prioritize fastest useful feedback over exhaustive rewrite.`
-      : `MODE: full_rewrite
-- Return a complete tailored resume in "tailoredResume".
-- Suggestion count: 3 to 6.`
+TASK:
+Return 5-7 quick, high-impact suggestions that improve this resume for the job.
+
+RULES:
+- Do not invent facts, dates, metrics, or credentials.
+- Use only information already present in the resume.
+- Each suggestion must be one sentence and at most 18 words.
+- Prioritize missing job keywords, weak bullets, and measurable-impact opportunities.
+- No markdown, numbering, or extra commentary.
+
+JOB DESCRIPTION:
+${payload.jobDescription}
+${skillsSection}
+
+CURRENT RESUME:
+${resumeText}
+
+OUTPUT (strict JSON only):
+{"tailoredResume":"","suggestions":["suggestion 1","suggestion 2","suggestion 3"]}`
+  }
 
   return `You are an expert resume writer specializing in STAR-format bullet points and ATS optimization.
 
@@ -91,7 +93,9 @@ CRITICAL INSTRUCTIONS:
 - Keep section structure intact
 - Be concise and professional
 
-${modeInstruction}
+MODE: full_rewrite
+- Return a complete tailored resume in "tailoredResume".
+- Suggestion count: 3 to 6.
 
 JOB DESCRIPTION:
 ${payload.jobDescription}
@@ -101,7 +105,10 @@ CURRENT RESUME:
 ${resumeText}
 
 OUTPUT FORMAT (strict JSON):
-${outputFormat}
+{
+  "tailoredResume": "full rewritten resume text with STAR bullets and job-relevant keywords",
+  "suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"]
+}
 
 Return ONLY valid JSON. No markdown, no code blocks, no explanations.`
 }
