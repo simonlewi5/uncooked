@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, KeyboardEvent } from 'react'
 import html2pdf from 'html2pdf.js'
-import { Download, Sparkles, Search, X, Plus } from 'lucide-react'
+import { Download, Sparkles, Search, X, Plus, FileUp } from 'lucide-react'
 import { Button, Badge } from '@/components/ui'
 import { useResumeTailor } from '@/hooks/useResumeTailor'
 import type { ResumeTailorRequest } from '@/types'
@@ -75,6 +75,13 @@ export default function ResumePage() {
   const [isPreviewMode, setIsPreviewMode] = useState(false)
   const { runTailor, isLoading, error: tailorError, clearError } = useResumeTailor()
 
+  const pdfInputRef = useRef<HTMLInputElement>(null)
+
+  function handlePdfImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    console.log('PDF selected:', file.name)
+  }
   function addExperience() {
     setExperience((prev) => [
       ...prev,
@@ -227,6 +234,10 @@ export default function ResumePage() {
               Preview
             </button>
           </div>
+          <input ref={pdfInputRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={handlePdfImport} />
+          <Button variant='secondary' size='sm' onClick={() => pdfInputRef.current?.click()}>
+            <FileUp size={14} /> Import PDF
+          </Button>
           <Button variant="secondary" size="sm" onClick={handleExportPDF}>
             <Download size={14} />
             Export PDF
