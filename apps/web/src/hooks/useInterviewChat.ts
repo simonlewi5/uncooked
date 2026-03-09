@@ -3,6 +3,97 @@ import type { Message, JobDescriptionFormValue, InterviewStyle } from '@/types'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 
+type ErrorWithContext = {
+  message?: string
+  context?: Response
+}
+
+type ErrorBody = {
+  error?: string
+  details?: string
+}
+
+const RATE_LIMIT_FRIENDLY_MESSAGE =
+  'You are sending messages too quickly right now. Please wait a minute and try again.'
+
+function normalizeInterviewServiceMessage(message: string): string {
+  const normalized = message.toLowerCase()
+
+  if (
+    normalized.includes('quota exceeded') ||
+    normalized.includes('resource_exhausted') ||
+    normalized.includes('rate limit') ||
+    normalized.includes('exceeded your current quota')
+  ) {
+    return RATE_LIMIT_FRIENDLY_MESSAGE
+  }
+
+  return message
+}
+
+async function mapInterviewErrorMessage(error: unknown): Promise<string> {
+  const fallback = "I couldn't generate a response just now. Please try again."
+
+  if (!error || typeof error !== 'object') return fallback
+
+  const maybeError = error as ErrorWithContext
+  const response = maybeError.context
+
+  if (!response) {
+    return maybeError.message ? normalizeInterviewServiceMessage(maybeError.message) : fallback
+  }
+
+  let details = ''
+  try {
+    const body = (await response.clone().json()) as ErrorBody
+    details = body.details ?? body.error ?? ''
+  } catch {
+    details = ''
+  }
+
+  if (response.status === 429) {
+    return details ? normalizeInterviewServiceMessage(details) : RATE_LIMIT_FRIENDLY_MESSAGE
+  }
+
+  if (response.status === 401) {
+    return 'Your session expired. Please sign in again to continue your interview.'
+  }
+
+  if (response.status === 400) {
+    return details
+      ? normalizeInterviewServiceMessage(details)
+      : 'Something in this request was invalid. Please shorten or rephrase your message and try again.'
+  }
+
+  if (response.status === 413) {
+    return details
+      ? normalizeInterviewServiceMessage(details)
+      : 'That message is too long. Please send a shorter response.'
+  }
+
+  if (response.status === 405) {
+    return details
+      ? normalizeInterviewServiceMessage(details)
+      : 'The interview service received an unsupported request. Please try sending your message again.'
+  }
+
+  if (response.status === 502) {
+    return details
+      ? normalizeInterviewServiceMessage(details)
+      : 'The AI interview service is temporarily unavailable. Please try again in a moment.'
+  }
+
+  if (response.status >= 500) {
+    return details
+      ? normalizeInterviewServiceMessage(details)
+      : 'We hit a server issue while generating your reply. Please try again shortly.'
+  }
+
+  if (details) return normalizeInterviewServiceMessage(details)
+  if (maybeError.message) return normalizeInterviewServiceMessage(maybeError.message)
+  return fallback
+}
+
 interface UseInterviewChatReturn {
   messages: Message[]
   isTyping: boolean
@@ -98,11 +189,12 @@ export function useInterviewChat(
           },
         })
 
-        const text =
-          data?.error ??
-          error?.message ??
-          data?.message ??
-          'Sorry, I could not generate a response. Please try again.'
+        const fallback = "I couldn't generate a response just now. Please try again."
+        const text = error
+          ? await mapInterviewErrorMessage(error)
+          : data?.error
+            ? normalizeInterviewServiceMessage(data.error)
+            : data?.message ?? fallback
 
         const assistantMsg: Message = {
           id: `a-${Date.now()}`,
@@ -113,7 +205,7 @@ export function useInterviewChat(
 
         setMessages((prev) => [...prev, assistantMsg])
       } catch (e) {
-        const errMsg = e instanceof Error ? e.message : 'Something went wrong. Please try again.'
+        const errMsg = await mapInterviewErrorMessage(e)
         const assistantMsg: Message = {
           id: `a-${Date.now()}`,
           role: 'assistant',

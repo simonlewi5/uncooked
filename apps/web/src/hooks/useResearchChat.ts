@@ -2,6 +2,47 @@ import { useState, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Message } from '@/types'
 
+const RATE_LIMIT_FRIENDLY_MESSAGE =
+  'You are sending requests too quickly right now. Please wait a minute and try again.'
+
+function normalizeResearchServiceMessage(message: string): string {
+  const normalized = message.toLowerCase()
+  if (
+    normalized.includes('quota exceeded') ||
+    normalized.includes('resource_exhausted') ||
+    normalized.includes('rate limit') ||
+    normalized.includes('exceeded your current quota')
+  ) {
+    return RATE_LIMIT_FRIENDLY_MESSAGE
+  }
+  return message
+}
+
+function mapResearchHttpError(status: number, details?: string): string {
+  const normalizedDetails = details ? normalizeResearchServiceMessage(details) : ''
+
+  if (status === 400) {
+    return normalizedDetails || 'Something in this request was invalid. Please rephrase and try again.'
+  }
+  if (status === 401) {
+    return 'Your session expired. Please sign in again to continue.'
+  }
+  if (status === 413) {
+    return normalizedDetails || 'That request is too large. Please shorten your message.'
+  }
+  if (status === 429) {
+    return normalizedDetails || RATE_LIMIT_FRIENDLY_MESSAGE
+  }
+  if (status === 502) {
+    return normalizedDetails || 'The research service is temporarily unavailable. Please try again in a moment.'
+  }
+  if (status >= 500) {
+    return normalizedDetails || 'We hit a server issue while generating your research response. Please try again shortly.'
+  }
+
+  return normalizedDetails || "I couldn't complete that request just now. Please try again."
+}
+
 const INITIAL_MESSAGE: Message = {
   id: 'init',
   role: 'assistant',
@@ -48,23 +89,6 @@ export function useResearchChat({
         typeof c === 'string' ? c : (c as { name: string }).name,
       )
 
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/research-chat`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-          },
-          body: JSON.stringify({
-            companies: companyNames,
-            message: content.trim(),
-            jobDescription: jobDescription?.trim() || undefined,
-            history,
-          }),
-        },
-      )
-
       const setPlaceholderContent = (text: string) =>
         setMessages((prev) =>
           prev.map((m) => (m.id === placeholder.id ? { ...m, content: text } : m)),
@@ -74,23 +98,43 @@ export function useResearchChat({
           prev.map((m) => (m.id === placeholder.id ? { ...m, content: m.content + chunk } : m)),
         )
 
-      if (!res.ok) {
-        const err = (await res.json().catch(() => ({})) as { error?: string }).error ?? res.statusText ?? 'Request failed'
-        setPlaceholderContent(`Error: ${err}`)
-        setIsStreaming(false)
-        return
-      }
-
-      const reader = res.body?.getReader()
-      if (!reader) {
-        setPlaceholderContent('Error: No response stream')
-        setIsStreaming(false)
-        return
-      }
-
-      const decoder = new TextDecoder()
-      let buffer = ''
       try {
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/research-chat`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(session?.access_token
+                ? { Authorization: `Bearer ${session.access_token}` }
+                : {}),
+            },
+            body: JSON.stringify({
+              companies: companyNames,
+              message: content.trim(),
+              jobDescription: jobDescription?.trim() || undefined,
+              history,
+            }),
+          },
+        )
+
+        if (!res.ok) {
+          const err =
+            ((await res.json().catch(() => ({})) as { error?: string }).error ??
+              res.statusText ??
+              'Request failed')
+          setPlaceholderContent(mapResearchHttpError(res.status, err))
+          return
+        }
+
+        const reader = res.body?.getReader()
+        if (!reader) {
+          setPlaceholderContent('The research service returned an empty response. Please try again.')
+          return
+        }
+
+        const decoder = new TextDecoder()
+        let buffer = ''
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
@@ -109,8 +153,12 @@ export function useResearchChat({
             }
           }
         }
-      } finally {
         reader.releaseLock()
+      } catch {
+        setPlaceholderContent(
+          "Couldn't reach the research service right now. Please check your connection and try again.",
+        )
+      } finally {
         setIsStreaming(false)
       }
     },
