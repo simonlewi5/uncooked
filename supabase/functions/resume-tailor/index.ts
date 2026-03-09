@@ -182,6 +182,10 @@ Deno.serve(async (req: Request) => {
     tailorResult = await tailorResumeWithAI(payload)
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
+    console.error('[resume-tailor] AI tailoring failed', {
+      errorMessage,
+      userId,
+    })
 
     // Distinguish between client errors and server errors
     if (errorMessage.includes('Missing GEMINI_API_KEY')) {
@@ -215,5 +219,8 @@ Deno.serve(async (req: Request) => {
   return json(200, {
     tailoredResume: tailorResult.tailoredResume,
     suggestions: tailorResult.suggestions,
+    structuredResume: tailorResult.structuredResume,
+    parseConfidence: tailorResult.parseConfidence,
+    warnings: tailorResult.warnings,
   })
 })

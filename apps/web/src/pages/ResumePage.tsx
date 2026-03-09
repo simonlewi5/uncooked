@@ -2,9 +2,14 @@ import { useState, useEffect, KeyboardEvent, FocusEvent } from 'react'
 import { Download, Sparkles, Search, X, Plus } from 'lucide-react'
 import { Button, Badge } from '@/components/ui'
 import { useResumeTailor } from '@/hooks/useResumeTailor'
-import type { ResumeTailorRequest } from '@/types'
 import { cn } from '@/utils/cn'
 import styles from './ResumePage.module.css'
+import type {
+  ResumeTailorRequest,
+  ResumeTailorStructuredEducation,
+  ResumeTailorStructuredExperience,
+  ResumeTailorStructuredResume,
+} from '@/types'
 
 interface ResumeHeader {
   name: string
@@ -51,6 +56,8 @@ export default function ResumePage() {
   const [experience, setExperience] = useState<ExperienceEntry[]>(MOCK_EXPERIENCE)
   const [education, setEducation] = useState<EducationEntry[]>(MOCK_EDUCATION)
   const [suggestions, setSuggestions] = useState<string[]>([])
+  const [parseWarnings, setParseWarnings] = useState<string[]>([])
+  const [parseConfidence, setParseConfidence] = useState<number | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
   const { runTailor, isLoading, error: tailorError, clearError } = useResumeTailor()
@@ -139,12 +146,52 @@ export default function ResumePage() {
       ...resumeHeader,
       experience: experience.map(({ id, ...entry }) => entry),
       education: education.map(({ id, ...entry }) => entry),
+      skills,
+    }
+  }
+
+  function mapExperience(entries: ResumeTailorStructuredExperience[]): ExperienceEntry[] {
+    return entries.map((entry) => ({
+      id: crypto.randomUUID(),
+      title: entry.title,
+      company: entry.company,
+      period: entry.period,
+      bullets: entry.bullets,
+    }))
+  }
+
+  function mapEducation(entries: ResumeTailorStructuredEducation[]): EducationEntry[] {
+    return entries.map((entry) => ({
+      id: crypto.randomUUID(),
+      degree: entry.degree,
+      school: entry.school,
+      period: entry.period,
+    }))
+  }
+
+  function applyStructuredResumeToEditor(structuredResume: ResumeTailorStructuredResume) {
+    setResumeHeader((prev) => ({
+      name: structuredResume.name ?? prev.name,
+      contact: structuredResume.contact ?? prev.contact,
+      summary: structuredResume.summary ?? prev.summary,
+    }))
+
+    if (structuredResume.experience.length > 0) {
+      setExperience(mapExperience(structuredResume.experience))
+    }
+    if (structuredResume.education.length > 0) {
+      setEducation(mapEducation(structuredResume.education))
+    }
+    if (structuredResume.skills.length > 0) {
+      setSkills(structuredResume.skills)
     }
   }
 
   async function handleAutoTailor() {
     clearError()
     setSubmitError(null)
+    setParseWarnings([])
+    setParseConfidence(null)
 
     if (jobDescription.trim().length < 200) {
       setSubmitError('Please paste a longer job description (minimum 200 characters).')
@@ -159,7 +206,10 @@ export default function ResumePage() {
 
     try {
       const result = await runTailor(payload)
+      applyStructuredResumeToEditor(result.structuredResume)
       setSuggestions(result.suggestions)
+      setParseWarnings(result.warnings)
+      setParseConfidence(result.parseConfidence)
       setIsTailored(true)
     } catch {
       setIsTailored(false)
@@ -214,6 +264,13 @@ export default function ResumePage() {
         </aside>
 
         <div className={styles.resumePanel}>
+          {parseConfidence !== null && parseConfidence < 0.6 && (
+            <div className={styles.warningBanner} role='status'>
+              Resume parsing confidence is low ({Math.round(parseConfidence * 100)}%).
+              Review and adjust AI edits before exporting.
+            </div>
+          )}
+
           {(submitError || tailorError) && (
             <div className={styles.errorBanner} role='alert'>
               {submitError ?? tailorError}
@@ -230,6 +287,17 @@ export default function ResumePage() {
               <ul className={styles.suggestionsList}>
                 {suggestions.map((suggestion, index) => (
                   <li key={`${suggestion}-${index}`}>{suggestion}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {parseWarnings.length > 0 && (
+            <div className={styles.suggestionsCard}>
+              <p className={styles.suggestionsTitle}>Parsing Notes</p>
+              <ul className={styles.suggestionsList}>
+                {parseWarnings.map((warning, index) => (
+                  <li key={`${warning}-${index}`}>{warning}</li>
                 ))}
               </ul>
             </div>

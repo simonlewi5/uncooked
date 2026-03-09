@@ -20,6 +20,9 @@ export type {
   ResumeTailorInputObject,
   ResumeTailorRequest,
   ResumeTailorResponse,
+  ResumeTailorStructuredEducation,
+  ResumeTailorStructuredExperience,
+  ResumeTailorStructuredResume,
 } from '@uncooked/shared'
 
 export interface Message {

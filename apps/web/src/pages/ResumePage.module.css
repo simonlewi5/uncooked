@@ -199,6 +199,16 @@
   font-size: var(--font-sm);
 }
 
+.warningBanner {
+  margin: var(--space-4) var(--space-4) 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-warning, #b7791f);
+  background: var(--color-warning-subtle, #fff8e6);
+  color: var(--color-warning, #8a5a15);
+  font-size: var(--font-sm);
+}
+
 .suggestionsBadge {
   position: sticky;
   top: var(--space-4);
