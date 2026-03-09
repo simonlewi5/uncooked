@@ -1,5 +1,5 @@
-import { useState, useEffect, KeyboardEvent } from 'react'
-import { Download, Sparkles, Search, X, Plus } from 'lucide-react'
+import { useState, useEffect, useRef, KeyboardEvent } from 'react'
+import { Download, Sparkles, Search, X, Plus, FileUp} from 'lucide-react'
 import { Button, Badge } from '@/components/ui'
 import { cn } from '@/utils/cn'
 import styles from './ResumePage.module.css'
@@ -43,6 +43,13 @@ export default function ResumePage() {
   const [education, setEducation] = useState<EducationEntry[]>(MOCK_EDUCATION)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
 
+  const pdfInputRef = useRef<HTMLInputElement>(null)
+
+  function handlePdfImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    console.log('PDF selected:', file.name)
+  }
   function addExperience() {
     setExperience((prev) => [...prev, { id: crypto.randomUUID(), title: 'Job Title', company: 'Company Name', period: 'Year – Year', bullets: ['Describe your responsibilities here.'] }])
   }
@@ -99,6 +106,10 @@ export default function ResumePage() {
             <button className={cn(styles.modeBtn, !isPreviewMode && styles.modeBtnActive)} onClick={() => setIsPreviewMode(false)}>Edit</button>
             <button className={cn(styles.modeBtn, isPreviewMode && styles.modeBtnActive)} onClick={() => setIsPreviewMode(true)}>Preview</button>
           </div>
+          <input ref={pdfInputRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={handlePdfImport} />
+          <Button variant='secondary' size='sm' onClick={() => pdfInputRef.current?.click()}>
+            <FileUp size={14} /> Import PDF
+          </Button>
           <Button variant='secondary' size='sm'><Download size={14} />Export PDF</Button>
           <Button variant='primary' size='sm' onClick={handleAutoTailor}><Sparkles size={14} />Auto-Tailor</Button>
         </div>
