@@ -81,4 +81,3 @@ verify_jwt = false
 verify_jwt = false
 [functions.resume-tailor]
 verify_jwt = false
-

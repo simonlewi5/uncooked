@@ -3,10 +3,7 @@ import { supabase } from '@/lib/supabase'
 import type { ResumeTailorRequest, ResumeTailorResponse } from '@/types'
 
 type UseResumeTailorReturn = {
-  runTailor: (
-    payload: ResumeTailorRequest,
-    options?: { accessToken?: string }
-  ) => Promise<ResumeTailorResponse>
+  runTailor: (payload: ResumeTailorRequest) => Promise<ResumeTailorResponse>
   isLoading: boolean
   error: string | null
   clearError: () => void
@@ -81,56 +78,26 @@ export function useResumeTailor(): UseResumeTailorReturn {
     setError(null)
   }, [])
 
-  const runTailor = useCallback(async (
-    payload: ResumeTailorRequest,
-    options?: { accessToken?: string }
-  ) => {
+  const runTailor = useCallback(async (payload: ResumeTailorRequest) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      let accessToken = options?.accessToken ?? null
-
-      if (!accessToken) {
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession()
-
-      if (sessionError) {
-        throw new Error('Unable to verify auth session')
-      }
-
-        accessToken = session?.access_token ?? null
-
-        if (!accessToken) {
-          const {
-            data: refreshData,
-            error: refreshError,
-          } = await supabase.auth.refreshSession()
-
-          if (refreshError) {
-            throw new Error('Your session expired. Please sign in again.')
-          }
-
-          accessToken = refreshData.session?.access_token ?? null
-        }
-      }
-
-      if (!accessToken) {
-        throw new Error('You must be signed in to tailor your resume.')
-      }
-
-      const { data, error } = await supabase.functions.invoke<ResumeTailorResponse>(
-        'resume-tailor',
-        {
+      const invokeTailor = async () =>
+        supabase.functions.invoke<ResumeTailorResponse>('resume-tailor', {
           body: payload,
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
-      )
+        })
+
+      let { data, error } = await invokeTailor()
+
+      const message = error?.message ?? ''
+      if (error && /invalid jwt/i.test(message)) {
+        const { error: refreshError } = await supabase.auth.refreshSession()
+        if (refreshError) throw refreshError
+        const retry = await invokeTailor()
+        data = retry.data
+        error = retry.error
+      }
 
       if (error) throw error
       if (!data) {
