@@ -1,6 +1,7 @@
 import { TrendingUp, Building2, Calendar, ChevronRight, Zap } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Badge, Spinner } from '@/components/ui'
+import { GamificationCard } from '@/components/dashboard/GamificationCard'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { cn } from '@/utils/cn'
 import type { ResearchSessionSummary, CompanySummary, PipelineCounts } from '@/types'
@@ -241,6 +242,7 @@ export default function DashboardPage(): JSX.Element {
     <div className={styles.page}>
       <div className={styles.grid}>
         <div className={styles.leftCol}>
+          <GamificationCard />
           <PracticeConsistencyCard />
           <div className={styles.bottomRow}>
             <TargetCompaniesCard companies={data?.companies ?? []} />
