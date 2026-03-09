@@ -1,4 +1,5 @@
-import { useState, useEffect, KeyboardEvent } from 'react'
+import { useState, useEffect, useRef, KeyboardEvent } from 'react'
+import html2pdf from 'html2pdf.js'
 import { Download, Sparkles, Search, X, Plus } from 'lucide-react'
 import { Button, Badge } from '@/components/ui'
 import { cn } from '@/utils/cn'
@@ -22,12 +23,31 @@ interface EducationEntry {
 const MOCK_RESUME = {
   name: 'Jane Doe',
   contact: 'San Francisco, CA • jane@example.com • linkedin.com/in/janedoe',
-  summary: 'Senior Frontend Engineer with 5+ years of experience building scalable web applications. Passionate about performance, accessibility, and creating pixel-perfect user interfaces using modern React and TypeScript.',
+  summary:
+    'Senior Frontend Engineer with 5+ years of experience building scalable web applications. Passionate about performance, accessibility, and creating pixel-perfect user interfaces using modern React and TypeScript.',
 }
 
 const MOCK_EXPERIENCE: ExperienceEntry[] = [
-  { id: 'e1', title: 'Senior Frontend Engineer', company: 'TechNova Solutions', period: '2021 – Present', bullets: ['Architected and migrated legacy dashboard to React/Next.js, improving page load speeds by 40%.', 'Mentored 3 junior developers and established frontend testing standards using Jest and Cypress.'] },
-  { id: 'e2', title: 'UI Engineer', company: 'Brightwave Inc.', period: '2018 – 2021', bullets: ['Built reusable component library used across 6 product teams.', 'Led accessibility audit — brought WCAG compliance from 60% to 98%.'] },
+  {
+    id: 'e1',
+    title: 'Senior Frontend Engineer',
+    company: 'TechNova Solutions',
+    period: '2021 – Present',
+    bullets: [
+      'Architected and migrated legacy dashboard to React/Next.js, improving page load speeds by 40%.',
+      'Mentored 3 junior developers and established frontend testing standards using Jest and Cypress.',
+    ],
+  },
+  {
+    id: 'e2',
+    title: 'UI Engineer',
+    company: 'Brightwave Inc.',
+    period: '2018 – 2021',
+    bullets: [
+      'Built reusable component library used across 6 product teams.',
+      'Led accessibility audit — brought WCAG compliance from 60% to 98%.',
+    ],
+  },
 ]
 
 const MOCK_EDUCATION: EducationEntry[] = [
@@ -35,8 +55,15 @@ const MOCK_EDUCATION: EducationEntry[] = [
 ]
 
 export default function ResumePage() {
+  const resumeRef = useRef<HTMLDivElement>(null)
   const [jobDescription, setJobDescription] = useState('')
-  const [skills, setSkills] = useState<string[]>(['React', 'TypeScript', 'Node.js', 'GraphQL', 'Tailwind CSS'])
+  const [skills, setSkills] = useState<string[]>([
+    'React',
+    'TypeScript',
+    'Node.js',
+    'GraphQL',
+    'Tailwind CSS',
+  ])
   const [skillInput, setSkillInput] = useState('')
   const [isTailored, setIsTailored] = useState(false)
   const [experience, setExperience] = useState<ExperienceEntry[]>(MOCK_EXPERIENCE)
@@ -44,24 +71,51 @@ export default function ResumePage() {
   const [isPreviewMode, setIsPreviewMode] = useState(false)
 
   function addExperience() {
-    setExperience((prev) => [...prev, { id: crypto.randomUUID(), title: 'Job Title', company: 'Company Name', period: 'Year – Year', bullets: ['Describe your responsibilities here.'] }])
+    setExperience((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        title: 'Job Title',
+        company: 'Company Name',
+        period: 'Year – Year',
+        bullets: ['Describe your responsibilities here.'],
+      },
+    ])
   }
 
-  function removeExperience(id: string) { setExperience((prev) => prev.filter((e) => e.id !== id)) }
+  function removeExperience(id: string) {
+    setExperience((prev) => prev.filter((e) => e.id !== id))
+  }
 
   function addBullet(expId: string) {
-    setExperience((prev) => prev.map((e) => e.id === expId ? { ...e, bullets: [...e.bullets, 'New bullet point.'] } : e))
+    setExperience((prev) =>
+      prev.map((e) => (e.id === expId ? { ...e, bullets: [...e.bullets, 'New bullet point.'] } : e))
+    )
   }
 
   function removeBullet(expId: string, index: number) {
-    setExperience((prev) => prev.map((e) => e.id === expId ? { ...e, bullets: e.bullets.filter((_, i) => i !== index) } : e))
+    setExperience((prev) =>
+      prev.map((e) =>
+        e.id === expId ? { ...e, bullets: e.bullets.filter((_, i) => i !== index) } : e
+      )
+    )
   }
 
   function addEducation() {
-    setEducation((prev) => [...prev, { id: crypto.randomUUID(), degree: 'Degree / Certification', school: 'Institution Name', period: 'Year – Year' }])
+    setEducation((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        degree: 'Degree / Certification',
+        school: 'Institution Name',
+        period: 'Year – Year',
+      },
+    ])
   }
 
-  function removeEducation(id: string) { setEducation((prev) => prev.filter((e) => e.id !== id)) }
+  function removeEducation(id: string) {
+    setEducation((prev) => prev.filter((e) => e.id !== id))
+  }
 
   function handleSkillKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
@@ -72,7 +126,9 @@ export default function ResumePage() {
     }
   }
 
-  function removeSkill(skill: string) { setSkills((prev) => prev.filter((s) => s !== skill)) }
+  function removeSkill(skill: string) {
+    setSkills((prev) => prev.filter((s) => s !== skill))
+  }
 
   useEffect(() => {
     if (!isTailored) return
@@ -85,6 +141,20 @@ export default function ResumePage() {
     setIsTailored(true)
   }
 
+  async function handleExportPDF() {
+    if (!resumeRef.current) return
+    await html2pdf()
+      .set({
+        margin: [10, 10, 10, 10],
+        filename: 'resume_export.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      })
+      .from(resumeRef.current)
+      .save()
+  }
+
   const editable = !isPreviewMode
 
   return (
@@ -92,15 +162,33 @@ export default function ResumePage() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Resume Editor</h1>
-          <p className={styles.subtitle}>Edit your resume inline and match your skills to the job description</p>
+          <p className={styles.subtitle}>
+            Edit your resume inline and match your skills to the job description
+          </p>
         </div>
         <div className={styles.headerActions}>
           <div className={styles.modeToggle}>
-            <button className={cn(styles.modeBtn, !isPreviewMode && styles.modeBtnActive)} onClick={() => setIsPreviewMode(false)}>Edit</button>
-            <button className={cn(styles.modeBtn, isPreviewMode && styles.modeBtnActive)} onClick={() => setIsPreviewMode(true)}>Preview</button>
+            <button
+              className={cn(styles.modeBtn, !isPreviewMode && styles.modeBtnActive)}
+              onClick={() => setIsPreviewMode(false)}
+            >
+              Edit
+            </button>
+            <button
+              className={cn(styles.modeBtn, isPreviewMode && styles.modeBtnActive)}
+              onClick={() => setIsPreviewMode(true)}
+            >
+              Preview
+            </button>
           </div>
-          <Button variant='secondary' size='sm'><Download size={14} />Export PDF</Button>
-          <Button variant='primary' size='sm' onClick={handleAutoTailor}><Sparkles size={14} />Auto-Tailor</Button>
+          <Button variant="secondary" size="sm" onClick={handleExportPDF}>
+            <Download size={14} />
+            Export PDF
+          </Button>
+          <Button variant="primary" size="sm" onClick={handleAutoTailor}>
+            <Sparkles size={14} />
+            Auto-Tailor
+          </Button>
         </div>
       </div>
 
@@ -108,8 +196,15 @@ export default function ResumePage() {
         <aside className={styles.leftPanel}>
           <div className={styles.card}>
             <p className={styles.cardTitle}>Target Job Description</p>
-            <p className={styles.cardSubtitle}>Paste the job description to get tailored suggestions.</p>
-            <textarea className={styles.jobTextarea} placeholder='e.g. We are looking for a Senior Frontend Engineer with deep React expertise...' value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} />
+            <p className={styles.cardSubtitle}>
+              Paste the job description to get tailored suggestions.
+            </p>
+            <textarea
+              className={styles.jobTextarea}
+              placeholder="e.g. We are looking for a Senior Frontend Engineer with deep React expertise..."
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+            />
           </div>
 
           <div className={styles.card}>
@@ -117,13 +212,25 @@ export default function ResumePage() {
             <p className={styles.cardSubtitle}>Manage the skills highlighted on your resume.</p>
             <div className={styles.skillSearchWrapper}>
               <Search size={13} className={styles.skillSearchIcon} />
-              <input className={styles.skillInput} placeholder='Add a skill (press Enter)...' value={skillInput} onChange={(e) => setSkillInput(e.target.value)} onKeyDown={handleSkillKeyDown} />
+              <input
+                className={styles.skillInput}
+                placeholder="Add a skill (press Enter)..."
+                value={skillInput}
+                onChange={(e) => setSkillInput(e.target.value)}
+                onKeyDown={handleSkillKeyDown}
+              />
             </div>
             <div className={styles.skillChips}>
               {skills.map((skill) => (
                 <span key={skill} className={styles.skillChip}>
                   {skill}
-                  <button className={styles.skillChipRemove} onClick={() => removeSkill(skill)} aria-label={`Remove ${skill}`}><X size={10} /></button>
+                  <button
+                    className={styles.skillChipRemove}
+                    onClick={() => removeSkill(skill)}
+                    aria-label={`Remove ${skill}`}
+                  >
+                    <X size={10} />
+                  </button>
                 </span>
               ))}
             </div>
@@ -132,18 +239,38 @@ export default function ResumePage() {
 
         <div className={styles.resumePanel}>
           {isTailored && (
-            <div className={styles.suggestionsBadge}><Badge variant='success'>AI Suggestions Applied</Badge></div>
+            <div className={styles.suggestionsBadge}>
+              <Badge variant="success">AI Suggestions Applied</Badge>
+            </div>
           )}
 
-          <div className={styles.resumeDocument}>
+          <div ref={resumeRef} className={styles.resumeDocument}>
             <div className={styles.resumeHeader}>
-              <h2 className={styles.resumeName} contentEditable={editable} suppressContentEditableWarning>{MOCK_RESUME.name}</h2>
-              <p className={styles.resumeContact} contentEditable={editable} suppressContentEditableWarning>{MOCK_RESUME.contact}</p>
+              <h2
+                className={styles.resumeName}
+                contentEditable={editable}
+                suppressContentEditableWarning
+              >
+                {MOCK_RESUME.name}
+              </h2>
+              <p
+                className={styles.resumeContact}
+                contentEditable={editable}
+                suppressContentEditableWarning
+              >
+                {MOCK_RESUME.contact}
+              </p>
             </div>
 
             <div className={styles.resumeSection}>
               <h3 className={styles.sectionHeading}>Summary</h3>
-              <p className={styles.resumeText} contentEditable={editable} suppressContentEditableWarning>{MOCK_RESUME.summary}</p>
+              <p
+                className={styles.resumeText}
+                contentEditable={editable}
+                suppressContentEditableWarning
+              >
+                {MOCK_RESUME.summary}
+              </p>
             </div>
 
             <div className={styles.resumeSection}>
@@ -152,20 +279,56 @@ export default function ResumePage() {
                 <div key={job.id} className={styles.resumeEntry}>
                   <div className={styles.entryHeader}>
                     <div className={styles.entryTitleWrapper}>
-                      <span className={styles.entryTitle} contentEditable={editable} suppressContentEditableWarning>{job.title}</span>
-                      <button className={cn(styles.entryRemoveBtn, !editable && styles.btnHidden)} onClick={() => removeExperience(job.id)} aria-label="Remove entry"><X size={12} /></button>
+                      <span
+                        className={styles.entryTitle}
+                        contentEditable={editable}
+                        suppressContentEditableWarning
+                      >
+                        {job.title}
+                      </span>
+                      <button
+                        className={cn(styles.entryRemoveBtn, !editable && styles.btnHidden)}
+                        onClick={() => removeExperience(job.id)}
+                        aria-label="Remove entry"
+                      >
+                        <X size={12} />
+                      </button>
                     </div>
-                    <span className={styles.entryPeriod} contentEditable={editable} suppressContentEditableWarning>{job.period}</span>
+                    <span
+                      className={styles.entryPeriod}
+                      contentEditable={editable}
+                      suppressContentEditableWarning
+                    >
+                      {job.period}
+                    </span>
                   </div>
-                  <span className={styles.entryCompany} contentEditable={editable} suppressContentEditableWarning>{job.company}</span>
+                  <span
+                    className={styles.entryCompany}
+                    contentEditable={editable}
+                    suppressContentEditableWarning
+                  >
+                    {job.company}
+                  </span>
                   <ul className={styles.entryBullets}>
                     {job.bullets.map((bullet, i) => (
                       <li key={i} className={styles.bulletItem}>
-                        <span contentEditable={editable} suppressContentEditableWarning>{bullet}</span>
-                        <button className={cn(styles.bulletRemoveBtn, !editable && styles.btnHidden)} onClick={() => removeBullet(job.id, i)} aria-label="Remove bullet"><X size={10} /></button>
+                        <span contentEditable={editable} suppressContentEditableWarning>
+                          {bullet}
+                        </span>
+                        <button
+                          className={cn(styles.bulletRemoveBtn, !editable && styles.btnHidden)}
+                          onClick={() => removeBullet(job.id, i)}
+                          aria-label="Remove bullet"
+                        >
+                          <X size={10} />
+                        </button>
                       </li>
                     ))}
-                    {editable && <button className={styles.addBulletBtn} onClick={() => addBullet(job.id)}><Plus size={11} /> Add bullet</button>}
+                    {editable && (
+                      <button className={styles.addBulletBtn} onClick={() => addBullet(job.id)}>
+                        <Plus size={11} /> Add bullet
+                      </button>
+                    )}
                   </ul>
                 </div>
               ))}
@@ -182,12 +345,36 @@ export default function ResumePage() {
                 <div key={edu.id} className={styles.resumeEntry}>
                   <div className={styles.entryHeader}>
                     <div className={styles.entryTitleWrapper}>
-                      <span className={styles.entryTitle} contentEditable={editable} suppressContentEditableWarning>{edu.degree}</span>
-                      <button className={cn(styles.entryRemoveBtn, !editable && styles.btnHidden)} onClick={() => removeEducation(edu.id)} aria-label="Remove entry"><X size={12} /></button>
+                      <span
+                        className={styles.entryTitle}
+                        contentEditable={editable}
+                        suppressContentEditableWarning
+                      >
+                        {edu.degree}
+                      </span>
+                      <button
+                        className={cn(styles.entryRemoveBtn, !editable && styles.btnHidden)}
+                        onClick={() => removeEducation(edu.id)}
+                        aria-label="Remove entry"
+                      >
+                        <X size={12} />
+                      </button>
                     </div>
-                    <span className={styles.entryPeriod} contentEditable={editable} suppressContentEditableWarning>{edu.period}</span>
+                    <span
+                      className={styles.entryPeriod}
+                      contentEditable={editable}
+                      suppressContentEditableWarning
+                    >
+                      {edu.period}
+                    </span>
                   </div>
-                  <span className={styles.entryCompany} contentEditable={editable} suppressContentEditableWarning>{edu.school}</span>
+                  <span
+                    className={styles.entryCompany}
+                    contentEditable={editable}
+                    suppressContentEditableWarning
+                  >
+                    {edu.school}
+                  </span>
                 </div>
               ))}
               {editable && (
