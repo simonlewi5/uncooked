@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, KeyboardEvent } from 'react'
 import html2pdf from 'html2pdf.js'
 import { Download, Sparkles, Search, X, Plus } from 'lucide-react'
 import { Button, Badge } from '@/components/ui'
+import { useResumeTailor } from '@/hooks/useResumeTailor'
+import type { ResumeTailorRequest } from '@/types'
 import { cn } from '@/utils/cn'
 import styles from './ResumePage.module.css'
 
@@ -68,7 +70,10 @@ export default function ResumePage() {
   const [isTailored, setIsTailored] = useState(false)
   const [experience, setExperience] = useState<ExperienceEntry[]>(MOCK_EXPERIENCE)
   const [education, setEducation] = useState<EducationEntry[]>(MOCK_EDUCATION)
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
+  const { runTailor, isLoading, error: tailorError, clearError } = useResumeTailor()
 
   function addExperience() {
     setExperience((prev) => [
@@ -136,9 +141,40 @@ export default function ResumePage() {
     return () => clearTimeout(t)
   }, [isTailored])
 
-  function handleAutoTailor() {
-    // AI endpoint will be wired up separately
-    setIsTailored(true)
+  function buildResumeContent(): ResumeTailorRequest['resumeContent'] {
+    return {
+      name: MOCK_RESUME.name,
+      contact: MOCK_RESUME.contact,
+      summary: MOCK_RESUME.summary,
+      experience: experience.map(({ id, ...entry }) => entry),
+      education: education.map(({ id, ...entry }) => entry),
+      skills,
+    }
+  }
+
+  async function handleAutoTailor() {
+    clearError()
+    setSubmitError(null)
+
+    if (jobDescription.trim().length < 200) {
+      setSubmitError('Please paste a longer job description (minimum 200 characters).')
+      setIsTailored(false)
+      return
+    }
+
+    const payload: ResumeTailorRequest = {
+      jobDescription,
+      skills,
+      resumeContent: buildResumeContent(),
+    }
+
+    try {
+      const result = await runTailor(payload)
+      setSuggestions(result.suggestions)
+      setIsTailored(true)
+    } catch {
+      setIsTailored(false)
+    }
   }
 
   async function handleExportPDF() {
@@ -185,7 +221,7 @@ export default function ResumePage() {
             <Download size={14} />
             Export PDF
           </Button>
-          <Button variant="primary" size="sm" onClick={handleAutoTailor}>
+          <Button variant="primary" size="sm" onClick={handleAutoTailor} loading={isLoading}>
             <Sparkles size={14} />
             Auto-Tailor
           </Button>
@@ -238,9 +274,26 @@ export default function ResumePage() {
         </aside>
 
         <div className={styles.resumePanel}>
+          {(submitError || tailorError) && (
+            <div className={styles.errorBanner} role="alert">
+              {submitError ?? tailorError}
+            </div>
+          )}
+
           {isTailored && (
             <div className={styles.suggestionsBadge}>
               <Badge variant="success">AI Suggestions Applied</Badge>
+            </div>
+          )}
+
+          {suggestions.length > 0 && (
+            <div className={styles.suggestionsCard}>
+              <p className={styles.suggestionsTitle}>AI Suggestions</p>
+              <ul className={styles.suggestionsList}>
+                {suggestions.map((suggestion, index) => (
+                  <li key={`${suggestion}-${index}`}>{suggestion}</li>
+                ))}
+              </ul>
             </div>
           )}
 
