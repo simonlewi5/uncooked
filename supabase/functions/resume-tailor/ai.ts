@@ -10,6 +10,7 @@ export type ResumeTailorPayload = {
   jobDescription: string
   resumeContent: string | Record<string, unknown>
   skills?: string[]
+  mode?: 'suggestions_only' | 'full_rewrite'
 }
 
 export type ResumeTailorResult = {
@@ -17,20 +18,67 @@ export type ResumeTailorResult = {
   suggestions: string[]
 }
 
+type ParseFailureReason =
+  | 'no_candidates'
+  | 'safety_filtered'
+  | 'truncated'
+  | 'missing_content'
+  | 'missing_text'
+  | 'invalid_json'
+  | 'invalid_shape'
+
+type ParseGeminiResult =
+  | { ok: true; value: ResumeTailorResult }
+  | { ok: false; reason: ParseFailureReason; details?: string }
+
 const GEMINI_MODEL = 'gemini-2.5-flash'
 const GEMINI_API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
 const MAX_RETRIES = 2
 const TIMEOUT_MS = 60_000
+const SUGGESTIONS_ONLY_BASE_OUTPUT_TOKENS = 2200
+const SUGGESTIONS_ONLY_MAX_OUTPUT_TOKENS = 3400
+
+const getMode = (mode: ResumeTailorPayload['mode']) =>
+  mode === 'suggestions_only' ? 'suggestions_only' : 'full_rewrite'
 
 const buildPrompt = (payload: ResumeTailorPayload): string => {
-  const resumeText =
-    typeof payload.resumeContent === 'string'
-      ? payload.resumeContent
-      : JSON.stringify(payload.resumeContent, null, 2)
+  const mode = getMode(payload.mode)
+  let resumeText = ''
+  if (typeof payload.resumeContent === 'string') {
+    resumeText = payload.resumeContent
+  } else {
+    try {
+      resumeText = JSON.stringify(payload.resumeContent, null, 2)
+    } catch {
+      resumeText = String(payload.resumeContent)
+    }
+  }
 
   const skillsSection = payload.skills?.length
     ? `\n\nUser-specified skills to emphasize:\n${payload.skills.join(', ')}`
     : ''
+
+  const outputFormat =
+    mode === 'suggestions_only'
+      ? `{
+  "tailoredResume": "",
+  "suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"]
+}`
+      : `{
+  "tailoredResume": "full rewritten resume text with STAR bullets and job-relevant keywords",
+  "suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"]
+}`
+
+  const modeInstruction =
+    mode === 'suggestions_only'
+      ? `MODE: suggestions_only
+- Return concise, high-impact suggestions only.
+- Keep "tailoredResume" as an empty string.
+- Suggestion count: 5 to 8.
+- Prioritize fastest useful feedback over exhaustive rewrite.`
+      : `MODE: full_rewrite
+- Return a complete tailored resume in "tailoredResume".
+- Suggestion count: 3 to 6.`
 
   return `You are an expert resume writer specializing in STAR-format bullet points and ATS optimization.
 
@@ -43,6 +91,8 @@ CRITICAL INSTRUCTIONS:
 - Keep section structure intact
 - Be concise and professional
 
+${modeInstruction}
+
 JOB DESCRIPTION:
 ${payload.jobDescription}
 ${skillsSection}
@@ -51,57 +101,162 @@ CURRENT RESUME:
 ${resumeText}
 
 OUTPUT FORMAT (strict JSON):
-{
-  "tailoredResume": "full rewritten resume text with STAR bullets and job-relevant keywords",
-  "suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"]
-}
+${outputFormat}
 
 Return ONLY valid JSON. No markdown, no code blocks, no explanations.`
 }
 
-const parseGeminiResponse = (response: unknown): ResumeTailorResult | null => {
-  if (!response || typeof response !== 'object') return null
-
-  const candidates = (response as { candidates?: unknown[] }).candidates
-  if (!Array.isArray(candidates) || candidates.length === 0) return null
-
-  const firstCandidate = candidates[0]
-  if (!firstCandidate || typeof firstCandidate !== 'object') return null
-
-  const content = (firstCandidate as { content?: unknown }).content
-  if (!content || typeof content !== 'object') return null
-
-  const parts = (content as { parts?: unknown[] }).parts
-  if (!Array.isArray(parts) || parts.length === 0) return null
-
-  const text = (parts[0] as { text?: unknown }).text
-  if (typeof text !== 'string') return null
-
-  // Strip markdown code blocks if present
-  const cleanedText = text
+const cleanModelText = (text: string): string =>
+  text
     .replace(/^```json\s*/i, '')
     .replace(/^```\s*/i, '')
     .replace(/\s*```$/i, '')
     .trim()
 
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(cleanedText)
-  } catch {
-    return null
+const extractFirstJsonObject = (text: string): string | null => {
+  const start = text.indexOf('{')
+  if (start === -1) return null
+
+  let depth = 0
+  let inString = false
+  let isEscaped = false
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i]
+
+    if (isEscaped) {
+      isEscaped = false
+      continue
+    }
+
+    if (ch === '\\') {
+      isEscaped = true
+      continue
+    }
+
+    if (ch === '"') {
+      inString = !inString
+      continue
+    }
+
+    if (inString) continue
+
+    if (ch === '{') depth++
+    if (ch === '}') depth--
+
+    if (depth === 0) {
+      return text.slice(start, i + 1)
+    }
   }
 
-  if (!parsed || typeof parsed !== 'object') return null
+  return null
+}
 
-  const result = parsed as { tailoredResume?: unknown; suggestions?: unknown }
+const parseJsonObject = (text: string): unknown | null => {
+  const cleaned = cleanModelText(text)
 
-  if (typeof result.tailoredResume !== 'string') return null
-  if (!Array.isArray(result.suggestions)) return null
-  if (!result.suggestions.every((s) => typeof s === 'string')) return null
+  try {
+    return JSON.parse(cleaned)
+  } catch {
+    const extracted = extractFirstJsonObject(cleaned)
+    if (!extracted) return null
+
+    try {
+      return JSON.parse(extracted)
+    } catch {
+      return null
+    }
+  }
+}
+
+const parseSuggestions = (value: unknown): string[] | null => {
+  if (Array.isArray(value) && value.every((v) => typeof v === 'string')) {
+    const normalized = value.map((item) => item.trim()).filter(Boolean)
+    return normalized.length > 0 ? normalized : null
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value
+      .split(/\r?\n/)
+      .map((line) => line.replace(/^[-*\d.)\s]+/, '').trim())
+      .filter(Boolean)
+    return normalized.length > 0 ? normalized : null
+  }
+
+  return null
+}
+
+const parseGeminiResponse = (response: unknown): ParseGeminiResult => {
+  if (!response || typeof response !== 'object') {
+    return { ok: false, reason: 'invalid_shape', details: 'Response was not an object' }
+  }
+
+  const candidates = (response as { candidates?: unknown[] }).candidates
+  if (!Array.isArray(candidates) || candidates.length === 0) {
+    return { ok: false, reason: 'no_candidates' }
+  }
+
+  const firstCandidate = candidates[0]
+  if (!firstCandidate || typeof firstCandidate !== 'object') {
+    return { ok: false, reason: 'invalid_shape', details: 'First candidate missing or invalid' }
+  }
+
+  const finishReason = (firstCandidate as { finishReason?: unknown }).finishReason
+  if (finishReason === 'SAFETY') {
+    return { ok: false, reason: 'safety_filtered' }
+  }
+  if (finishReason === 'MAX_TOKENS') {
+    return { ok: false, reason: 'truncated' }
+  }
+
+  const content = (firstCandidate as { content?: unknown }).content
+  if (!content || typeof content !== 'object') {
+    return { ok: false, reason: 'missing_content' }
+  }
+
+  const parts = (content as { parts?: unknown[] }).parts
+  if (!Array.isArray(parts) || parts.length === 0) {
+    return { ok: false, reason: 'missing_content', details: 'Content parts missing or empty' }
+  }
+
+  const text = parts
+    .map((part) => (part as { text?: unknown }).text)
+    .filter((value): value is string => typeof value === 'string')
+    .join('\n')
+
+  if (!text) {
+    return { ok: false, reason: 'missing_text', details: 'No text field found in content parts' }
+  }
+
+  const parsed = parseJsonObject(text)
+
+  if (!parsed || typeof parsed !== 'object') {
+    return { ok: false, reason: 'invalid_json' }
+  }
+
+  const result = parsed as {
+    tailoredResume?: unknown
+    suggestions?: unknown
+    recommendations?: unknown
+  }
+
+  const tailoredResume = typeof result.tailoredResume === 'string' ? result.tailoredResume : ''
+  const suggestions = parseSuggestions(result.suggestions) ?? parseSuggestions(result.recommendations)
+
+  if (!suggestions) {
+    return {
+      ok: false,
+      reason: 'invalid_shape',
+      details: 'Missing string[] suggestions/recommendations in parsed JSON',
+    }
+  }
 
   return {
-    tailoredResume: result.tailoredResume,
-    suggestions: result.suggestions,
+    ok: true,
+    value: {
+      tailoredResume,
+      suggestions,
+    },
   }
 }
 
@@ -114,26 +269,36 @@ export const tailorResumeWithAI = async (
   }
 
   const prompt = buildPrompt(payload)
-
-  const requestBody = {
-    contents: [
-      {
-        parts: [
-          {
-            text: prompt,
-          },
-        ],
-      },
-    ],
-    generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 4096,
-    },
-  }
+  const mode = getMode(payload.mode)
 
   let lastError: Error | null = null
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const maxOutputTokens =
+      mode === 'suggestions_only'
+        ? Math.min(
+            SUGGESTIONS_ONLY_BASE_OUTPUT_TOKENS + attempt * 600,
+            SUGGESTIONS_ONLY_MAX_OUTPUT_TOKENS
+          )
+        : 4096
+
+    const requestBody = {
+      contents: [
+        {
+          parts: [
+            {
+              text: prompt,
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: mode === 'suggestions_only' ? 0.4 : 0.7,
+        maxOutputTokens,
+        responseMimeType: 'application/json',
+      },
+    }
+
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS)
 
@@ -157,16 +322,35 @@ export const tailorResumeWithAI = async (
       const data = await response.json()
       const parsed = parseGeminiResponse(data)
 
-      if (!parsed) {
-        throw new Error('Failed to parse Gemini response into expected JSON format')
+      if (!parsed.ok) {
+        const failureMessage =
+          parsed.details !== undefined
+            ? `Failed to parse Gemini response [${parsed.reason}]: ${parsed.details}`
+            : `Failed to parse Gemini response [${parsed.reason}]`
+
+        console.error('resume-tailor parse failure', {
+          reason: parsed.reason,
+          details: parsed.details,
+          mode,
+          attempt,
+          maxOutputTokens,
+        })
+
+        throw new Error(failureMessage)
       }
 
-      return parsed
+      return parsed.value
     } catch (error) {
       clearTimeout(timeoutId)
       lastError = error instanceof Error ? error : new Error(String(error))
 
-      if (attempt < MAX_RETRIES) {
+      const message = lastError.message.toLowerCase()
+      const shouldRetry =
+        !message.includes('resource_exhausted') &&
+        !message.includes('gemini api error (429)') &&
+        (!message.includes('failed to parse') || message.includes('[truncated]'))
+
+      if (attempt < MAX_RETRIES && shouldRetry) {
         await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)))
         continue
       }

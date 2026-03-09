@@ -175,6 +175,7 @@ export default function ResumePage() {
       jobDescription,
       skills,
       resumeContent: buildResumeContent(),
+      mode: 'suggestions_only',
     }
 
     try {

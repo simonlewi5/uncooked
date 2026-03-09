@@ -31,6 +31,7 @@ const normalizeBody = (payload: unknown): ResumeTailorPayload | null => {
   if (!isRecord(payload)) return null
 
   const { jobDescription, resumeContent, skills } = payload
+  const mode = payload.mode
   if (typeof jobDescription !== 'string') return null
 
   const isResumeString = typeof resumeContent === 'string'
@@ -42,10 +43,15 @@ const normalizeBody = (payload: unknown): ResumeTailorPayload | null => {
     if (!skills.every((skill) => typeof skill === 'string')) return null
   }
 
+  if (mode !== undefined && mode !== 'suggestions_only' && mode !== 'full_rewrite') {
+    return null
+  }
+
   return {
     jobDescription,
     resumeContent,
     skills,
+    mode,
   }
 }
 
@@ -164,7 +170,7 @@ Deno.serve(async (req: Request) => {
     return json(400, {
       error: 'Invalid payload shape',
       details:
-        'Expected { jobDescription: string, resumeContent: string|object, skills?: string[] }',
+        'Expected { jobDescription: string, resumeContent: string|object, skills?: string[], mode?: suggestions_only|full_rewrite }',
     })
   }
 
@@ -206,6 +212,28 @@ Deno.serve(async (req: Request) => {
     }
 
     if (errorMessage.includes('Failed to parse')) {
+      if (errorMessage.includes('[truncated]')) {
+        return json(502, {
+          error: 'AI Response Truncated',
+          details: 'AI output was truncated before valid JSON could be returned. Please retry.',
+        })
+      }
+
+      if (errorMessage.includes('[safety_filtered]')) {
+        return json(502, {
+          error: 'AI Response Filtered',
+          details:
+            'AI response was filtered by safety settings. Try rephrasing job description or resume wording.',
+        })
+      }
+
+      if (errorMessage.includes('[missing_text]') || errorMessage.includes('[missing_content]')) {
+        return json(502, {
+          error: 'AI Empty Response',
+          details: 'AI returned an empty response shape. Please retry.',
+        })
+      }
+
       return json(502, {
         error: 'AI Response Error',
         details: 'AI service returned invalid response format',
