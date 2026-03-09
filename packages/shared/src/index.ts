@@ -21,7 +21,10 @@ export interface ResumeTailorRequest {
 	jobDescription: string
 	resumeContent: string | ResumeTailorInputObject
 	skills?: string[]
+	mode?: ResumeTailorMode
 }
+
+export type ResumeTailorMode = 'suggestions_only' | 'full_rewrite'
 
 export interface ResumeTailorResponse {
 	tailoredResume: string

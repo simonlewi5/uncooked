@@ -18,6 +18,7 @@ export interface PastJobDescription {
 
 export type {
   ResumeTailorInputObject,
+  ResumeTailorMode,
   ResumeTailorRequest,
   ResumeTailorResponse,
 } from '@uncooked/shared'
