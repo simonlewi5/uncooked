@@ -54,7 +54,6 @@ Deno.serve(async (req) => {
       companyContext,
       interviewStyle,
       userMessage,
-      conversationHistory = [],
     } = (await req.json()) as InterviewRequest
 
     if (!jobDescription || !companyName || !userMessage || !interviewStyle) {
@@ -183,7 +182,8 @@ You are having a conversation with the candidate. Respond naturally and ask your
     // Store messages to Deno KV for periodic flushing to database
     // Add new user message and assistant message to the array
     const updatedMessages = [
-      ...userMessage,
+      ...storedMessages,
+      userMessage,
       generatedText,
     ]
 
