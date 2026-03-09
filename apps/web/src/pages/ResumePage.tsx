@@ -146,8 +146,17 @@ export default function ResumePage() {
       name: MOCK_RESUME.name,
       contact: MOCK_RESUME.contact,
       summary: MOCK_RESUME.summary,
-      experience: experience.map(({ id, ...entry }) => entry),
-      education: education.map(({ id, ...entry }) => entry),
+      experience: experience.map((entry) => ({
+        title: entry.title,
+        company: entry.company,
+        period: entry.period,
+        bullets: entry.bullets,
+      })),
+      education: education.map((entry) => ({
+        degree: entry.degree,
+        school: entry.school,
+        period: entry.period,
+      })),
       skills,
     }
   }
