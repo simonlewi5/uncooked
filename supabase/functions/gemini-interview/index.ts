@@ -1,7 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-
 interface InterviewRequest {
   jobDescription: string
   companyName: string
@@ -40,7 +39,10 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     )
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: 'Invalid or expired session. Please log in again.' }),
@@ -60,7 +62,8 @@ Deno.serve(async (req) => {
     if (!jobDescription || !companyName || !userMessage || !interviewStyle) {
       return new Response(
         JSON.stringify({
-          error: 'Missing required fields: jobDescription, companyName, userMessage, or interviewStyle',
+          error:
+            'Missing required fields: jobDescription, companyName, userMessage, or interviewStyle',
         }),
         {
           status: 400,
@@ -71,13 +74,10 @@ Deno.serve(async (req) => {
 
     const apiKey = Deno.env.get('GEMINI_API_KEY')
     if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: 'GEMINI_API_KEY not configured' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
+      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not configured' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
     // Fetch message history from KV (not available in local dev runtime — falls back to
     // conversationHistory passed in the request body, which the frontend maintains in state)
@@ -99,9 +99,7 @@ Deno.serve(async (req) => {
     const jobLevelMatch = jobDescription
       .toLowerCase()
       .match(/\b(junior|mid-?level|senior|staff|principal|lead|entry-?level)\b/i)
-    const detectedLevel = jobLevelMatch
-      ? jobLevelMatch[1].toLowerCase()
-      : 'mid-level'
+    const detectedLevel = jobLevelMatch ? jobLevelMatch[1].toLowerCase() : 'mid-level'
 
     // Build system prompt with job context
     const systemPrompt = `You are an expert AI interviewer conducting a ${interviewStyle} interview for the role at ${companyName}.
@@ -154,23 +152,22 @@ You are having a conversation with the candidate. Respond naturally and ask your
       },
     ]
 
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+    const url =
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
-    const response = await fetch( url,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: systemPrompt }],
         },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: systemPrompt }],
-          },
-          contents: messages,
-        }),
-      }
-    )
+        contents: messages,
+      }),
+    })
 
     const data = await response.json()
 
@@ -197,13 +194,17 @@ You are having a conversation with the candidate. Respond naturally and ask your
       await kv.set(kvKey, updatedMessages, { expireIn: 24 * 60 * 60 * 1000 })
 
       const metadataKey = ['interview_metadata', user.id]
-      await kv.set(metadataKey, {
-        userId: user.id,
-        jobDescription,
-        companyName,
-        interviewStyle,
-        lastUpdated: new Date().toISOString(),
-      }, { expireIn: 24 * 60 * 60 * 1000 })
+      await kv.set(
+        metadataKey,
+        {
+          userId: user.id,
+          jobDescription,
+          companyName,
+          interviewStyle,
+          lastUpdated: new Date().toISOString(),
+        },
+        { expireIn: 24 * 60 * 60 * 1000 }
+      )
 
       kv.close()
     }

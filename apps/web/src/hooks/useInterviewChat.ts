@@ -11,7 +11,7 @@ interface UseInterviewChatReturn {
 
 export function useInterviewChat(
   jobData: JobDescriptionFormValue,
-  style: InterviewStyle,
+  style: InterviewStyle
 ): UseInterviewChatReturn {
   const { user } = useAuth()
   // Tracks whether a practice_sessions row has been recorded for this session.
@@ -50,81 +50,83 @@ export function useInterviewChat(
 
     return () => clearInterval(intervalId)
   }, [])
-  
-  const sendMessage = useCallback(async (content: string) => {
-    const userMsg: Message = {
-      id: `u-${Date.now()}`,
-      role: 'user',
-      content,
-      timestamp: new Date(),
-    }
 
-    const previousMessages = messagesRef.current
-    const conversationHistory = previousMessages.map((msg) => ({
-      role: msg.role,
-      content: msg.content,
-    }))
+  const sendMessage = useCallback(
+    async (content: string) => {
+      const userMsg: Message = {
+        id: `u-${Date.now()}`,
+        role: 'user',
+        content,
+        timestamp: new Date(),
+      }
 
-    setMessages((prev) => [...prev, userMsg])
-    setIsTyping(true)
+      const previousMessages = messagesRef.current
+      const conversationHistory = previousMessages.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      }))
 
-    // Record the practice session on first user message so XP is awarded
-    if (!sessionRecordedRef.current && user) {
-      sessionRecordedRef.current = true
-      supabase
-        .from('practice_sessions')
-        .insert({ user_id: user.id, duration_minutes: 1 })
-        .then(({ error }) => {
-          if (error) {
-            console.error('Failed to record practice session:', error)
-            sessionRecordedRef.current = false
-          }
+      setMessages((prev) => [...prev, userMsg])
+      setIsTyping(true)
+
+      // Record the practice session on first user message so XP is awarded
+      if (!sessionRecordedRef.current && user) {
+        sessionRecordedRef.current = true
+        supabase
+          .from('practice_sessions')
+          .insert({ user_id: user.id, duration_minutes: 1 })
+          .then(({ error }) => {
+            if (error) {
+              console.error('Failed to record practice session:', error)
+              sessionRecordedRef.current = false
+            }
+          })
+      }
+
+      try {
+        const { data, error } = await supabase.functions.invoke<{
+          message?: string
+          error?: string
+        }>('gemini-interview', {
+          body: {
+            jobDescription: jobData.jobDescription,
+            companyName: jobData.companyName,
+            companyContext: jobData.companyContext || undefined,
+            interviewStyle: style,
+            userMessage: content,
+            conversationHistory,
+          },
         })
-    }
 
-    try {
-      const { data, error } = await supabase.functions.invoke<{
-        message?: string
-        error?: string
-      }>('gemini-interview', {
-        body: {
-          jobDescription: jobData.jobDescription,
-          companyName: jobData.companyName,
-          companyContext: jobData.companyContext || undefined,
-          interviewStyle: style,
-          userMessage: content,
-          conversationHistory,
-        },
-      })
+        const text =
+          data?.error ??
+          error?.message ??
+          data?.message ??
+          'Sorry, I could not generate a response. Please try again.'
 
-      const text =
-        data?.error ??
-        error?.message ??
-        data?.message ??
-        'Sorry, I could not generate a response. Please try again.'
+        const assistantMsg: Message = {
+          id: `a-${Date.now()}`,
+          role: 'assistant',
+          content: text,
+          timestamp: new Date(),
+        }
 
-      const assistantMsg: Message = {
-        id: `a-${Date.now()}`,
-        role: 'assistant',
-        content: text,
-        timestamp: new Date(),
+        setMessages((prev) => [...prev, assistantMsg])
+      } catch (e) {
+        const errMsg = e instanceof Error ? e.message : 'Something went wrong. Please try again.'
+        const assistantMsg: Message = {
+          id: `a-${Date.now()}`,
+          role: 'assistant',
+          content: errMsg,
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, assistantMsg])
+      } finally {
+        setIsTyping(false)
       }
-
-      setMessages((prev) => [...prev, assistantMsg])
-    } catch (e) {
-      const errMsg =
-        e instanceof Error ? e.message : 'Something went wrong. Please try again.'
-      const assistantMsg: Message = {
-        id: `a-${Date.now()}`,
-        role: 'assistant',
-        content: errMsg,
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, assistantMsg])
-    } finally {
-      setIsTyping(false)
-    }
-  }, [jobData, style])
+    },
+    [jobData, style]
+  )
 
   return { messages, isTyping, sendMessage }
 }
