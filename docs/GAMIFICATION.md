@@ -1,5 +1,5 @@
 # Gamification System
-
+ 
 ## Overview
 
 The gamification system rewards users for activity across the app — mock interview practice, company research, and job application tracking. It surfaces a **Career Progress** card on the Dashboard showing the user's current level, XP progress, tier title, and earned badges.
