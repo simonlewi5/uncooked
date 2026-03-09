@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import type { Message, JobDescriptionFormValue, InterviewStyle } from '@/types'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface UseInterviewChatReturn {
   messages: Message[]
@@ -12,6 +13,11 @@ export function useInterviewChat(
   jobData: JobDescriptionFormValue,
   style: InterviewStyle,
 ): UseInterviewChatReturn {
+  const { user } = useAuth()
+  // Tracks whether a practice_sessions row has been recorded for this session.
+  // Ensures we only insert once per hook instance, not on every message.
+  const sessionRecordedRef = useRef(false)
+
   const INITIAL_MESSAGE: Message = {
     id: 'init',
     role: 'assistant',
@@ -61,6 +67,20 @@ export function useInterviewChat(
 
     setMessages((prev) => [...prev, userMsg])
     setIsTyping(true)
+
+    // Record the practice session on first user message so XP is awarded
+    if (!sessionRecordedRef.current && user) {
+      sessionRecordedRef.current = true
+      supabase
+        .from('practice_sessions')
+        .insert({ user_id: user.id, duration_minutes: 1 })
+        .then(({ error }) => {
+          if (error) {
+            console.error('Failed to record practice session:', error)
+            sessionRecordedRef.current = false
+          }
+        })
+    }
 
     try {
       const { data, error } = await supabase.functions.invoke<{

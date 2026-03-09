@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
       companyContext,
       interviewStyle,
       userMessage,
+      conversationHistory = [],
     } = (await req.json()) as InterviewRequest
 
     if (!jobDescription || !companyName || !userMessage || !interviewStyle) {
@@ -78,11 +79,21 @@ Deno.serve(async (req) => {
         }
       )
     }
-    // Fetch message history from KV
-    const kv = await Deno.openKv()
-    const kvKey = ['interview_messages', user.id]
-    const kvEntry = await kv.get(kvKey)
-    const storedMessages = (kvEntry.value as string[]) || []
+    // Fetch message history from KV (not available in local dev runtime — falls back to
+    // conversationHistory passed in the request body, which the frontend maintains in state)
+    // deno-lint-ignore no-explicit-any
+    let kv: any = null
+    let storedMessages: string[] = []
+    try {
+      kv = await Deno.openKv()
+      const kvKey = ['interview_messages', user.id]
+      const kvEntry = await kv.get(kvKey)
+      storedMessages = (kvEntry.value as string[]) || []
+    } catch {
+      // Deno KV not available (local dev runtime) — use conversationHistory from request body
+      storedMessages = conversationHistory.flatMap((m) => [m.content])
+      kv = null
+    }
 
     // Extract job level (junior, mid, senior) from job description
     const jobLevelMatch = jobDescription
@@ -179,28 +190,23 @@ You are having a conversation with the candidate. Respond naturally and ask your
     const generatedText =
       data.candidates?.[0]?.content?.parts?.[0]?.text ||
       'Sorry, I could not generate a response. Please try again.'
-    // Store messages to Deno KV for periodic flushing to database
-    // Add new user message and assistant message to the array
-    const updatedMessages = [
-      ...storedMessages,
-      userMessage,
-      generatedText,
-    ]
+    // Persist updated message history and metadata to KV (skipped in local dev)
+    if (kv) {
+      const kvKey = ['interview_messages', user.id]
+      const updatedMessages = [...storedMessages, userMessage, generatedText]
+      await kv.set(kvKey, updatedMessages, { expireIn: 24 * 60 * 60 * 1000 })
 
-    // Store back to KV with expiration (24 hours)
-    await kv.set(kvKey, updatedMessages, { expireIn: 24 * 60 * 60 * 1000 })
+      const metadataKey = ['interview_metadata', user.id]
+      await kv.set(metadataKey, {
+        userId: user.id,
+        jobDescription,
+        companyName,
+        interviewStyle,
+        lastUpdated: new Date().toISOString(),
+      }, { expireIn: 24 * 60 * 60 * 1000 })
 
-    // Store interview metadata (company, job, style) for later flushing
-    const metadataKey = ['interview_metadata', user.id]
-    await kv.set(metadataKey, {
-      userId: user.id,
-      jobDescription,
-      companyName,
-      interviewStyle,
-      lastUpdated: new Date().toISOString(),
-    }, { expireIn: 24 * 60 * 60 * 1000 })
-
-    kv.close()
+      kv.close()
+    }
 
     return new Response(JSON.stringify({ message: generatedText }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
