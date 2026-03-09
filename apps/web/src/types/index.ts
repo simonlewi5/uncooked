@@ -60,3 +60,23 @@ export interface DashboardData {
   companies: CompanySummary[]
   pipeline: PipelineCounts
 }
+
+// ── Gamification ──────────────────────────────────────────────────────────────
+
+export interface Badge {
+  id: string
+  label: string
+  description: string
+  icon: string // emoji
+  earned: boolean
+}
+
+export interface GamificationData {
+  level: number
+  totalXp: number
+  xpInLevel: number
+  xpForNextLevel: number
+  progressPct: number
+  tierLabel: string
+  badges: Badge[]
+}
