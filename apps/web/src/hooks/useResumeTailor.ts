@@ -44,7 +44,7 @@ async function mapErrorMessage(error: unknown): Promise<string> {
   }
 
   if (response.status === 429) {
-    return details || 'AI service is rate limited. Please wait a bit and try again.'
+    return details || 'The AI service is rate limited. Please wait a bit and try again.'
   }
 
   if (response.status === 401) {
