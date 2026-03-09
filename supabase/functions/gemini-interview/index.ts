@@ -1,7 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-
 interface InterviewRequest {
   jobDescription: string
   companyName: string
@@ -40,7 +39,10 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     )
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: 'Invalid or expired session. Please log in again.' }),
@@ -54,12 +56,14 @@ Deno.serve(async (req) => {
       companyContext,
       interviewStyle,
       userMessage,
+      conversationHistory = [],
     } = (await req.json()) as InterviewRequest
 
     if (!jobDescription || !companyName || !userMessage || !interviewStyle) {
       return new Response(
         JSON.stringify({
-          error: 'Missing required fields: jobDescription, companyName, userMessage, or interviewStyle',
+          error:
+            'Missing required fields: jobDescription, companyName, userMessage, or interviewStyle',
         }),
         {
           status: 400,
@@ -70,27 +74,32 @@ Deno.serve(async (req) => {
 
     const apiKey = Deno.env.get('GEMINI_API_KEY')
     if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: 'GEMINI_API_KEY not configured' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
+      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not configured' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
-    // Fetch message history from KV
-    const kv = await Deno.openKv()
-    const kvKey = ['interview_messages', user.id]
-    const kvEntry = await kv.get(kvKey)
-    const storedMessages = (kvEntry.value as string[]) || []
+    // Fetch message history from KV (not available in local dev runtime — falls back to
+    // conversationHistory passed in the request body, which the frontend maintains in state)
+    // deno-lint-ignore no-explicit-any
+    let kv: any = null
+    let storedMessages: string[] = []
+    try {
+      kv = await Deno.openKv()
+      const kvKey = ['interview_messages', user.id]
+      const kvEntry = await kv.get(kvKey)
+      storedMessages = (kvEntry.value as string[]) || []
+    } catch {
+      // Deno KV not available (local dev runtime) — use conversationHistory from request body
+      storedMessages = conversationHistory.flatMap((m) => [m.content])
+      kv = null
+    }
 
     // Extract job level (junior, mid, senior) from job description
     const jobLevelMatch = jobDescription
       .toLowerCase()
       .match(/\b(junior|mid-?level|senior|staff|principal|lead|entry-?level)\b/i)
-    const detectedLevel = jobLevelMatch
-      ? jobLevelMatch[1].toLowerCase()
-      : 'mid-level'
+    const detectedLevel = jobLevelMatch ? jobLevelMatch[1].toLowerCase() : 'mid-level'
 
     // Build system prompt with job context
     const systemPrompt = `You are an expert AI interviewer conducting a ${interviewStyle} interview for the role at ${companyName}.
@@ -143,23 +152,22 @@ You are having a conversation with the candidate. Respond naturally and ask your
       },
     ]
 
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+    const url =
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
-    const response = await fetch( url,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: systemPrompt }],
         },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: systemPrompt }],
-          },
-          contents: messages,
-        }),
-      }
-    )
+        contents: messages,
+      }),
+    })
 
     const data = await response.json()
 
@@ -179,28 +187,27 @@ You are having a conversation with the candidate. Respond naturally and ask your
     const generatedText =
       data.candidates?.[0]?.content?.parts?.[0]?.text ||
       'Sorry, I could not generate a response. Please try again.'
-    // Store messages to Deno KV for periodic flushing to database
-    // Add new user message and assistant message to the array
-    const updatedMessages = [
-      ...storedMessages,
-      userMessage,
-      generatedText,
-    ]
+    // Persist updated message history and metadata to KV (skipped in local dev)
+    if (kv) {
+      const kvKey = ['interview_messages', user.id]
+      const updatedMessages = [...storedMessages, userMessage, generatedText]
+      await kv.set(kvKey, updatedMessages, { expireIn: 24 * 60 * 60 * 1000 })
 
-    // Store back to KV with expiration (24 hours)
-    await kv.set(kvKey, updatedMessages, { expireIn: 24 * 60 * 60 * 1000 })
+      const metadataKey = ['interview_metadata', user.id]
+      await kv.set(
+        metadataKey,
+        {
+          userId: user.id,
+          jobDescription,
+          companyName,
+          interviewStyle,
+          lastUpdated: new Date().toISOString(),
+        },
+        { expireIn: 24 * 60 * 60 * 1000 }
+      )
 
-    // Store interview metadata (company, job, style) for later flushing
-    const metadataKey = ['interview_metadata', user.id]
-    await kv.set(metadataKey, {
-      userId: user.id,
-      jobDescription,
-      companyName,
-      interviewStyle,
-      lastUpdated: new Date().toISOString(),
-    }, { expireIn: 24 * 60 * 60 * 1000 })
-
-    kv.close()
+      kv.close()
+    }
 
     return new Response(JSON.stringify({ message: generatedText }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
