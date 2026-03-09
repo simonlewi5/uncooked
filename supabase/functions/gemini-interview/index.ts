@@ -79,6 +79,11 @@ Deno.serve(async (req) => {
         }
       )
     }
+    // Fetch message history from KV
+    const kv = await Deno.openKv()
+    const kvKey = ['interview_messages', user.id]
+    const kvEntry = await kv.get(kvKey)
+    const storedMessages = (kvEntry.value as string[]) || []
 
     // Extract job level (junior, mid, senior) from job description
     const jobLevelMatch = jobDescription
@@ -125,12 +130,14 @@ ${
 
 You are having a conversation with the candidate. Respond naturally and ask your next interview question based on what they just said.`
 
-    // Build message history for context
+    // Alternate between user and assistant roles based on position in array
+    const messageHistory = storedMessages.map((msg, index) => ({
+      role: index % 2 === 0 ? 'user' : 'model',
+      parts: [{ text: msg }],
+    }))
+
     const messages = [
-      ...conversationHistory.map((msg) => ({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }],
-      })),
+      ...messageHistory,
       {
         role: 'user',
         parts: [{ text: userMessage }],
@@ -173,6 +180,27 @@ You are having a conversation with the candidate. Respond naturally and ask your
     const generatedText =
       data.candidates?.[0]?.content?.parts?.[0]?.text ||
       'Sorry, I could not generate a response. Please try again.'
+    // Store messages to Deno KV for periodic flushing to database
+    // Add new user message and assistant message to the array
+    const updatedMessages = [
+      ...userMessage,
+      generatedText,
+    ]
+
+    // Store back to KV with expiration (24 hours)
+    await kv.set(kvKey, updatedMessages, { expireIn: 24 * 60 * 60 * 1000 })
+
+    // Store interview metadata (company, job, style) for later flushing
+    const metadataKey = ['interview_metadata', user.id]
+    await kv.set(metadataKey, {
+      userId: user.id,
+      jobDescription,
+      companyName,
+      interviewStyle,
+      lastUpdated: new Date().toISOString(),
+    }, { expireIn: 24 * 60 * 60 * 1000 })
+
+    kv.close()
 
     return new Response(JSON.stringify({ message: generatedText }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

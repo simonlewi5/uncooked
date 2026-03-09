@@ -28,6 +28,23 @@ export function useInterviewChat(
     messagesRef.current = messages
   }, [messages])
 
+  // Set up periodic flush of interview messages every 2 minutes
+  useEffect(() => {
+    const flushMessages = async () => {
+      try {
+        await supabase.functions.invoke('flush-interview-messages', {
+          body: {},
+        })
+      } catch (error) {
+        console.error('Error flushing interview messages:', error)
+      }
+    }
+
+    const intervalId = setInterval(flushMessages, 2 * 60 * 1000)
+
+    return () => clearInterval(intervalId)
+  }, [])
+  
   const sendMessage = useCallback(async (content: string) => {
     const userMsg: Message = {
       id: `u-${Date.now()}`,
