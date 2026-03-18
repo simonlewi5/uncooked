@@ -29,7 +29,7 @@ export function CompanyLogo({ company, size }: CompanyLogoProps): React.JSX.Elem
     return (
       <img
         className={cn(styles.logo, styles[size])}
-        src={`https://logo.clearbit.com/${domain}`}
+        src={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/company-logo?domain=${encodeURIComponent(domain)}`}
         alt={company.companyName}
         onError={() => setImgFailed(true)}
       />
