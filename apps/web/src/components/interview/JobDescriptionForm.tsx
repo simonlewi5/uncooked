@@ -8,6 +8,7 @@ interface JobDescriptionFormProps {
   onCompanyNameChange: (value: string) => void
   selectedCompanyId: string | null
   onCompanyProfileSelect: (profile: CompanyProfile) => void
+  onCreateCompany: (companyName: string) => void
   jobDescription: string
   onJobDescriptionChange: (value: string) => void
 }
@@ -28,6 +29,7 @@ export function JobDescriptionForm({
         value={companyName}
         onChange={onCompanyNameChange}
         onProfileSelect={onCompanyProfileSelect}
+        onCreateCompany={onCreateCompany}
       />
 
       {jobs.length > 0 && (

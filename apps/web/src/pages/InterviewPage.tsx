@@ -8,6 +8,8 @@ import { useInterviewChat } from '@/hooks/useInterviewChat'
 import { cn } from '@/utils/cn'
 import type { ActiveTab, CompanyProfile, InterviewStyle } from '@/types'
 import styles from './InterviewPage.module.css'
+import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 
 export default function InterviewPage(): JSX.Element {
   const [jobDescription, setJobDescription] = useState('')
@@ -32,6 +34,37 @@ export default function InterviewPage(): JSX.Element {
   function handleCompanyNameChange(value: string): void {
     setCompanyName(value)
     setSelectedCompanyId(null)
+  }
+
+  const { user } = useAuth()
+
+  async function handleCreateCompany(companyName: string): Promise<void> {
+    if (!user) return
+    const trimmedName = companyName.trim()
+    if (!trimmedName) return
+
+    const { data, err} = await supabase
+      .form('company_profiles')
+      .insert({
+        user_id: user.id,
+        company_name: trimmedName,
+      }) 
+      .select('id, company_name, company_website, industry, company_size')
+      .single()
+    if (err) {
+      console.error('InterviewPage: failed to create company profile', err)
+      return
+    }
+
+    if (data) {
+      handleCompanyProfileSelect({
+        id: data.id,
+        companyName: data.company_name,
+        companyWebsite: data.company_website,
+        industry: data.industry,
+        companySize: data.company_size,
+      })
+    }
   }
 
   return (
@@ -82,6 +115,7 @@ export default function InterviewPage(): JSX.Element {
                 onCompanyNameChange={handleCompanyNameChange}
                 selectedCompanyId={selectedCompanyId}
                 onCompanyProfileSelect={handleCompanyProfileSelect}
+                onCreateCompany={handleCreateCompany}
                 jobDescription={jobDescription}
                 onJobDescriptionChange={setJobDescription}
               />
