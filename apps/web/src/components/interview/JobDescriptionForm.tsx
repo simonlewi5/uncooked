@@ -18,6 +18,7 @@ export function JobDescriptionForm({
   onCompanyNameChange,
   selectedCompanyId,
   onCompanyProfileSelect,
+  onCreateCompany,
   jobDescription,
   onJobDescriptionChange,
 }: JobDescriptionFormProps): React.JSX.Element {

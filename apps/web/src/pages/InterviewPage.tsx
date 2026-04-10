@@ -44,7 +44,7 @@ export default function InterviewPage(): JSX.Element {
     if (!trimmedName) return
 
     const { data, err} = await supabase
-      .form('company_profiles')
+      .from('company_profiles')
       .insert({
         user_id: user.id,
         company_name: trimmedName,
