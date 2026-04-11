@@ -1,6 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { corsHeaders } from '../_shared/cors.ts'
-import { tailorResumeWithAI, type ResumeTailorPayload } from './ai.ts'
+import { tailorResumeWithAI, type ResumeTailorEdit, type ResumeTailorPayload } from './ai.ts'
 
 declare const Deno: {
   env: {
@@ -12,11 +12,30 @@ declare const Deno: {
 const MAX_BODY_BYTES = 80_000
 const MIN_JOB_DESCRIPTION_CHARS = 200
 const MAX_JOB_DESCRIPTION_CHARS = 12_000
-const MIN_RESUME_TEXT_CHARS = 200
-const MAX_RESUME_TEXT_CHARS = 20_000
 const MAX_RESUME_OBJECT_CHARS = 30_000
-const MAX_SKILLS = 30
-const MAX_SKILL_CHARS = 40
+const DEBUG_ENABLED = Deno.env.get('RESUME_TAILOR_DEBUG') === 'true'
+const DEBUG_VERBOSE = Deno.env.get('RESUME_TAILOR_DEBUG_VERBOSE') === 'true'
+const DEBUG_PREVIEW_CHARS = 1500
+
+const toDebugPreview = (value: unknown, maxChars = DEBUG_PREVIEW_CHARS): string => {
+  try {
+    const serialized = typeof value === 'string' ? value : JSON.stringify(value)
+    if (serialized.length <= maxChars) return serialized
+    return `${serialized.slice(0, maxChars)}... [truncated ${serialized.length - maxChars} chars]`
+  } catch {
+    return '[unserializable]'
+  }
+}
+
+const debugLog = (requestId: string, event: string, data?: Record<string, unknown>) => {
+  if (!DEBUG_ENABLED) return
+
+  console.log('resume-tailor.http', {
+    requestId,
+    event,
+    ...data,
+  })
+}
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), {
@@ -27,30 +46,59 @@ const json = (status: number, body: unknown) =>
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
+const collectKnownTargetIds = (value: unknown, targetIds: Set<string> = new Set()): Set<string> => {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectKnownTargetIds(item, targetIds)
+    }
+    return targetIds
+  }
+
+  if (!isRecord(value)) return targetIds
+
+  const maybeId = value.id
+  if (typeof maybeId === 'string' && maybeId.trim()) {
+    targetIds.add(maybeId.trim())
+  }
+
+  for (const nested of Object.values(value)) {
+    collectKnownTargetIds(nested, targetIds)
+  }
+
+  return targetIds
+}
+
+const filterResolvableEdits = (edits: ResumeTailorEdit[] | undefined, targetIds: Set<string>) => {
+  if (!edits?.length) return []
+
+  const filtered = edits.filter((edit) => targetIds.has(edit.targetId))
+
+  if (filtered.length !== edits.length) {
+    console.warn('resume-tailor dropped unresolved edits', {
+      before: edits.length,
+      after: filtered.length,
+    })
+  }
+
+  return filtered
+}
+
 const normalizeBody = (payload: unknown): ResumeTailorPayload | null => {
   if (!isRecord(payload)) return null
 
-  const { jobDescription, resumeContent, skills } = payload
+  const { jobDescription, resumeContent } = payload
   const mode = payload.mode
   if (typeof jobDescription !== 'string') return null
 
-  const isResumeString = typeof resumeContent === 'string'
-  const isResumeObject = isRecord(resumeContent)
-  if (!isResumeString && !isResumeObject) return null
+  if (!isRecord(resumeContent)) return null
 
-  if (skills !== undefined) {
-    if (!Array.isArray(skills)) return null
-    if (!skills.every((skill) => typeof skill === 'string')) return null
-  }
-
-  if (mode !== undefined && mode !== 'suggestions_only' && mode !== 'full_rewrite') {
+  if (mode !== undefined && mode !== 'delta_only') {
     return null
   }
 
   return {
     jobDescription,
     resumeContent,
-    skills,
     mode,
   }
 }
@@ -64,35 +112,9 @@ const validatePayload = (payload: ResumeTailorPayload): string | null => {
     return `jobDescription must be at most ${MAX_JOB_DESCRIPTION_CHARS} characters`
   }
 
-  if (typeof payload.resumeContent === 'string') {
-    const resumeText = payload.resumeContent.trim()
-    if (resumeText.length < MIN_RESUME_TEXT_CHARS) {
-      return `resumeContent must be at least ${MIN_RESUME_TEXT_CHARS} characters when provided as text`
-    }
-    if (resumeText.length > MAX_RESUME_TEXT_CHARS) {
-      return `resumeContent must be at most ${MAX_RESUME_TEXT_CHARS} characters when provided as text`
-    }
-  } else {
-    const resumeObjectLength = JSON.stringify(payload.resumeContent).length
-    if (resumeObjectLength > MAX_RESUME_OBJECT_CHARS) {
-      return `resumeContent object is too large (max ${MAX_RESUME_OBJECT_CHARS} characters when stringified)`
-    }
-  }
-
-  if (payload.skills) {
-    if (payload.skills.length > MAX_SKILLS) {
-      return `skills cannot contain more than ${MAX_SKILLS} items`
-    }
-
-    for (const skill of payload.skills) {
-      const normalized = skill.trim()
-      if (!normalized) {
-        return 'skills cannot contain empty values'
-      }
-      if (normalized.length > MAX_SKILL_CHARS) {
-        return `each skill must be at most ${MAX_SKILL_CHARS} characters`
-      }
-    }
+  const resumeObjectLength = JSON.stringify(payload.resumeContent).length
+  if (resumeObjectLength > MAX_RESUME_OBJECT_CHARS) {
+    return `resumeContent object is too large (max ${MAX_RESUME_OBJECT_CHARS} characters when stringified)`
   }
 
   return null
@@ -125,9 +147,17 @@ const getAuthenticatedUserId = async (req: Request): Promise<string | null> => {
 }
 
 Deno.serve(async (req: Request) => {
+  const requestId = crypto.randomUUID().slice(0, 8)
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
+
+  debugLog(requestId, 'request_received', {
+    method: req.method,
+    hasAuthorization: Boolean(req.headers.get('authorization')),
+    contentLength: req.headers.get('content-length') ?? null,
+  })
 
   if (req.method !== 'POST') {
     return json(405, { error: 'Method Not Allowed' })
@@ -148,6 +178,7 @@ Deno.serve(async (req: Request) => {
   try {
     userId = await getAuthenticatedUserId(req)
   } catch (_error) {
+    debugLog(requestId, 'auth_misconfigured')
     return json(500, {
       error: 'Server Misconfiguration',
       details: 'Missing required Supabase environment variables',
@@ -155,6 +186,7 @@ Deno.serve(async (req: Request) => {
   }
 
   if (!userId) {
+    debugLog(requestId, 'auth_failed')
     return json(401, { error: 'Unauthorized' })
   }
 
@@ -162,20 +194,32 @@ Deno.serve(async (req: Request) => {
   try {
     parsedBody = await req.json()
   } catch {
+    debugLog(requestId, 'invalid_json_body')
     return json(400, { error: 'Invalid JSON body' })
   }
 
   const payload = normalizeBody(parsedBody)
   if (!payload) {
+    debugLog(requestId, 'invalid_payload_shape', {
+      payloadPreview: DEBUG_VERBOSE ? toDebugPreview(parsedBody) : undefined,
+    })
     return json(400, {
       error: 'Invalid payload shape',
-      details:
-        'Expected { jobDescription: string, resumeContent: string|object, skills?: string[], mode?: suggestions_only|full_rewrite }',
+      details: 'Expected { jobDescription: string, resumeContent: object, mode?: delta_only }',
     })
   }
 
+  debugLog(requestId, 'payload_normalized', {
+    userId,
+    mode: payload.mode ?? 'delta_only',
+    jobDescriptionChars: payload.jobDescription.length,
+    resumeObjectChars: JSON.stringify(payload.resumeContent).length,
+    payloadPreview: DEBUG_VERBOSE ? toDebugPreview(payload) : undefined,
+  })
+
   const validationError = validatePayload(payload)
   if (validationError) {
+    debugLog(requestId, 'payload_validation_failed', { validationError })
     return json(400, {
       error: 'Validation failed',
       details: validationError,
@@ -185,9 +229,10 @@ Deno.serve(async (req: Request) => {
   // Phase 4: AI tailoring
   let tailorResult
   try {
-    tailorResult = await tailorResumeWithAI(payload)
+    tailorResult = await tailorResumeWithAI(payload, { requestId })
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
+    debugLog(requestId, 'tailor_failed', { errorMessage })
 
     // Distinguish between client errors and server errors
     if (errorMessage.includes('Missing GEMINI_API_KEY')) {
@@ -247,8 +292,24 @@ Deno.serve(async (req: Request) => {
     })
   }
 
+  const knownTargetIds = collectKnownTargetIds(payload.resumeContent)
+  const resolvedEdits = filterResolvableEdits(tailorResult.edits, knownTargetIds)
+
+  debugLog(requestId, 'tailor_success', {
+    returnedEdits: tailorResult.edits?.length ?? 0,
+    resolvedEdits: resolvedEdits.length,
+    resultPreview: DEBUG_VERBOSE
+      ? toDebugPreview({
+          edits: resolvedEdits,
+          appliedMode: tailorResult.appliedMode,
+          isPartial: tailorResult.isPartial,
+        })
+      : undefined,
+  })
+
   return json(200, {
-    tailoredResume: tailorResult.tailoredResume,
-    suggestions: tailorResult.suggestions,
+    edits: resolvedEdits,
+    appliedMode: tailorResult.appliedMode,
+    isPartial: tailorResult.isPartial,
   })
 })

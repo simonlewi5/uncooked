@@ -17,16 +17,56 @@ export interface ResumeTailorInputObject {
 
 export interface ResumeTailorInputArray extends Array<ResumeTailorInputValue> {}
 
+export interface ResumeTailorTextField {
+	id: string
+	text: string
+}
+
+export interface ResumeTailorBulletField extends ResumeTailorTextField {}
+
+export interface ResumeTailorExperienceEntry {
+	id: string
+	title: ResumeTailorTextField
+	company: ResumeTailorTextField
+	period: ResumeTailorTextField
+	bullets: ResumeTailorBulletField[]
+}
+
+export interface ResumeTailorEducationEntry {
+	id: string
+	degree: ResumeTailorTextField
+	school: ResumeTailorTextField
+	period: ResumeTailorTextField
+}
+
+export interface ResumeTailorResumeContent {
+	name: ResumeTailorTextField
+	contact: ResumeTailorTextField
+	summary: ResumeTailorTextField
+	experience: ResumeTailorExperienceEntry[]
+	education: ResumeTailorEducationEntry[]
+	skills: ResumeTailorTextField[]
+}
+
 export interface ResumeTailorRequest {
 	jobDescription: string
-	resumeContent: string | ResumeTailorInputObject
-	skills?: string[]
+	resumeContent: ResumeTailorResumeContent
 	mode?: ResumeTailorMode
 }
 
-export type ResumeTailorMode = 'suggestions_only' | 'full_rewrite'
+export type ResumeTailorMode = 'delta_only'
+
+export type ResumeTailorEditSection = 'summary' | 'experience' | 'skills'
+
+export interface ResumeTailorEdit {
+	section: ResumeTailorEditSection
+	targetId: string
+	operation: 'replace' | 'insert' | 'remove'
+	replacement: string
+}
 
 export interface ResumeTailorResponse {
-	tailoredResume: string
-	suggestions: string[]
+	edits?: ResumeTailorEdit[]
+	appliedMode?: ResumeTailorMode
+	isPartial?: boolean
 }

@@ -17,7 +17,9 @@ export interface PastJobDescription {
 }
 
 export type {
+  ResumeTailorEdit,
   ResumeTailorInputObject,
+  ResumeTailorResumeContent,
   ResumeTailorMode,
   ResumeTailorRequest,
   ResumeTailorResponse,

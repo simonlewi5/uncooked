@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, KeyboardEvent } from 'react'
+import { useState, useRef, KeyboardEvent } from 'react'
 import html2pdf from 'html2pdf.js'
 import { Download, Sparkles, Search, X, Plus, FileUp } from 'lucide-react'
-import { Button, Badge } from '@/components/ui'
+import { Button } from '@/components/ui'
 import { useResumeTailor } from '@/hooks/useResumeTailor'
-import type { ResumeTailorRequest } from '@/types'
+import type { ResumeTailorEdit, ResumeTailorRequest, ResumeTailorResumeContent } from '@/types'
 import { cn } from '@/utils/cn'
 import styles from './ResumePage.module.css'
 
@@ -12,7 +12,7 @@ interface ExperienceEntry {
   title: string
   company: string
   period: string
-  bullets: string[]
+  bullets: ResumeTextItem[]
 }
 
 interface EducationEntry {
@@ -20,6 +20,11 @@ interface EducationEntry {
   degree: string
   school: string
   period: string
+}
+
+interface ResumeTextItem {
+  id: string
+  text: string
 }
 
 const MOCK_RESUME = {
@@ -36,8 +41,14 @@ const MOCK_EXPERIENCE: ExperienceEntry[] = [
     company: 'TechNova Solutions',
     period: '2021 – Present',
     bullets: [
-      'Architected and migrated legacy dashboard to React/Next.js, improving page load speeds by 40%.',
-      'Mentored 3 junior developers and established frontend testing standards using Jest and Cypress.',
+      {
+        id: 'e1_b1',
+        text: 'Architected and migrated legacy dashboard to React/Next.js, improving page load speeds by 40%.',
+      },
+      {
+        id: 'e1_b2',
+        text: 'Mentored 3 junior developers and established frontend testing standards using Jest and Cypress.',
+      },
     ],
   },
   {
@@ -46,8 +57,14 @@ const MOCK_EXPERIENCE: ExperienceEntry[] = [
     company: 'Brightwave Inc.',
     period: '2018 – 2021',
     bullets: [
-      'Built reusable component library used across 6 product teams.',
-      'Led accessibility audit — brought WCAG compliance from 60% to 98%.',
+      {
+        id: 'e2_b1',
+        text: 'Built reusable component library used across 6 product teams.',
+      },
+      {
+        id: 'e2_b2',
+        text: 'Led accessibility audit — brought WCAG compliance from 60% to 98%.',
+      },
     ],
   },
 ]
@@ -56,21 +73,160 @@ const MOCK_EDUCATION: EducationEntry[] = [
   { id: 'ed1', degree: 'B.S. Computer Science', school: 'UC San Diego', period: '2014 – 2018' },
 ]
 
+// Stable ID generators (single source of truth)
+const ID_GENERATORS = {
+  profileName: () => 'profile_name',
+  profileContact: () => 'profile_contact',
+  summary: () => 'summary',
+  experienceField: (entryId: string, field: 'title' | 'company' | 'period') =>
+    `experience_${entryId}_${field}`,
+  experienceBullet: (entryId: string, bulletId: string) => `experience_${entryId}_bullet_${bulletId}`,
+  educationField: (entryId: string, field: 'degree' | 'school' | 'period') =>
+    `education_${entryId}_${field}`,
+  skillItem: (skillId: string) => `skill_${skillId}`,
+}
+
+const createId = () => crypto.randomUUID().replace(/-/g, '')
+
+// Inline suggestion renderer: minimal diff block with accept/decline
+interface SuggestionDiffProps {
+  edit: ResumeTailorEdit
+  currentValue: string | null
+  onAccept: () => void
+  onDecline: () => void
+  variant?: 'compact' | 'stacked'
+}
+
+const SuggestionDiff = ({ edit, currentValue, onAccept, onDecline, variant = 'compact' }: SuggestionDiffProps) => {
+  if (variant === 'stacked') {
+    return (
+      <div style={{ borderLeft: '3px solid #4f46e5', paddingLeft: '0.75rem', marginTop: '0.5rem' }}>
+        <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#666', marginBottom: '0.5rem' }}>
+          AI Suggestion:
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gap: '0.75rem',
+            marginBottom: '0.75rem',
+            fontSize: '0.875rem',
+          }}
+        >
+          <div style={{ padding: '0.75rem', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
+            <strong style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.25rem', color: '#999' }}>
+              Current
+            </strong>
+            <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {currentValue ?? '(not found)'}
+            </p>
+          </div>
+          <div style={{ padding: '0.75rem', backgroundColor: '#f0f9ff', borderRadius: '4px' }}>
+            <strong style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.25rem', color: '#166534' }}>
+              Proposed
+            </strong>
+            <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {edit.replacement}
+            </p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            onClick={onAccept}
+            style={{
+              padding: '0.375rem 0.75rem',
+              fontSize: '0.75rem',
+              backgroundColor: '#10b981',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+            }}
+          >
+            Accept
+          </button>
+          <button
+            onClick={onDecline}
+            style={{
+              padding: '0.375rem 0.75rem',
+              fontSize: '0.75rem',
+              backgroundColor: '#ef4444',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+            }}
+          >
+            Decline
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // compact variant for bullets: single line current → proposed
+  return (
+    <div style={{ borderLeft: '3px solid #4f46e5', paddingLeft: '0.75rem', marginTop: '0.25rem', fontSize: '0.8125rem' }}>
+      <div style={{ marginBottom: '0.25rem', color: '#666' }}>
+        <span style={{ textDecoration: 'line-through', color: '#7f1d1d' }}>{currentValue}</span>
+        <span style={{ margin: '0 0.25rem' }}>→</span>
+        <span style={{ color: '#166534' }}>{edit.replacement}</span>
+      </div>
+      <div style={{ display: 'flex', gap: '0.375rem' }}>
+        <button
+          onClick={onAccept}
+          style={{
+            padding: '0.25rem 0.5rem',
+            fontSize: '0.7rem',
+            backgroundColor: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '3px',
+            cursor: 'pointer',
+          }}
+        >
+          Accept
+        </button>
+        <button
+          onClick={onDecline}
+          style={{
+            padding: '0.25rem 0.5rem',
+            fontSize: '0.7rem',
+            backgroundColor: '#ef4444',
+            color: 'white',
+            border: 'none',
+            borderRadius: '3px',
+            cursor: 'pointer',
+          }}
+        >
+          Decline
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Get suggestion for a specific targetId
+const getEditForTarget = (targetId: string, edits: ResumeTailorEdit[]): ResumeTailorEdit | null => {
+  return edits.find((e) => e.targetId === targetId) ?? null
+}
+
 export default function ResumePage() {
   const resumeRef = useRef<HTMLDivElement>(null)
+  const [resumeName, setResumeName] = useState(MOCK_RESUME.name)
+  const [resumeContact, setResumeContact] = useState(MOCK_RESUME.contact)
+  const [resumeSummary, setResumeSummary] = useState(MOCK_RESUME.summary)
   const [jobDescription, setJobDescription] = useState('')
-  const [skills, setSkills] = useState<string[]>([
-    'React',
-    'TypeScript',
-    'Node.js',
-    'GraphQL',
-    'Tailwind CSS',
+  const [skills, setSkills] = useState<ResumeTextItem[]>([
+    { id: 's1', text: 'React' },
+    { id: 's2', text: 'TypeScript' },
+    { id: 's3', text: 'Node.js' },
+    { id: 's4', text: 'GraphQL' },
+    { id: 's5', text: 'Tailwind CSS' },
   ])
   const [skillInput, setSkillInput] = useState('')
-  const [isTailored, setIsTailored] = useState(false)
   const [experience, setExperience] = useState<ExperienceEntry[]>(MOCK_EXPERIENCE)
   const [education, setEducation] = useState<EducationEntry[]>(MOCK_EDUCATION)
-  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [pendingEdits, setPendingEdits] = useState<ResumeTailorEdit[]>([])
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
   const { runTailor, isLoading, error: tailorError, clearError } = useResumeTailor()
@@ -82,6 +238,30 @@ export default function ResumePage() {
     if (!file) return
     console.log('PDF selected:', file.name)
   }
+
+  function updateExperienceField(id: string, field: 'title' | 'company' | 'period', value: string) {
+    setExperience((prev) => prev.map((e) => (e.id === id ? { ...e, [field]: value } : e)))
+  }
+
+  function updateEducationField(id: string, field: 'degree' | 'school' | 'period', value: string) {
+    setEducation((prev) => prev.map((e) => (e.id === id ? { ...e, [field]: value } : e)))
+  }
+
+  function updateBullet(expId: string, bulletId: string, value: string) {
+    setExperience((prev) =>
+      prev.map((e) =>
+        e.id === expId
+          ? {
+              ...e,
+              bullets: e.bullets.map((bullet) =>
+                bullet.id === bulletId ? { ...bullet, text: value } : bullet
+              ),
+            }
+          : e
+      )
+    )
+  }
+
   function addExperience() {
     setExperience((prev) => [
       ...prev,
@@ -90,7 +270,7 @@ export default function ResumePage() {
         title: 'Job Title',
         company: 'Company Name',
         period: 'Year – Year',
-        bullets: ['Describe your responsibilities here.'],
+        bullets: [{ id: `${createId()}_b1`, text: 'Describe your responsibilities here.' }],
       },
     ])
   }
@@ -101,14 +281,21 @@ export default function ResumePage() {
 
   function addBullet(expId: string) {
     setExperience((prev) =>
-      prev.map((e) => (e.id === expId ? { ...e, bullets: [...e.bullets, 'New bullet point.'] } : e))
+      prev.map((e) =>
+        e.id === expId
+          ? {
+              ...e,
+              bullets: [...e.bullets, { id: createId(), text: 'New bullet point.' }],
+            }
+          : e
+      )
     )
   }
 
-  function removeBullet(expId: string, index: number) {
+  function removeBullet(expId: string, bulletId: string) {
     setExperience((prev) =>
       prev.map((e) =>
-        e.id === expId ? { ...e, bullets: e.bullets.filter((_, i) => i !== index) } : e
+        e.id === expId ? { ...e, bullets: e.bullets.filter((bullet) => bullet.id !== bulletId) } : e
       )
     )
   }
@@ -133,38 +320,215 @@ export default function ResumePage() {
     if (e.key === 'Enter') {
       e.preventDefault()
       const trimmed = skillInput.trim()
-      if (trimmed && !skills.includes(trimmed)) setSkills((prev) => [...prev, trimmed])
+      if (trimmed && !skills.some((skill) => skill.text.toLowerCase() === trimmed.toLowerCase())) {
+        setSkills((prev) => [...prev, { id: createId(), text: trimmed }])
+      }
       setSkillInput('')
     }
   }
 
-  function removeSkill(skill: string) {
-    setSkills((prev) => prev.filter((s) => s !== skill))
+  function removeSkill(skillId: string) {
+    setSkills((prev) => prev.filter((skill) => skill.id !== skillId))
   }
 
-  useEffect(() => {
-    if (!isTailored) return
-    const t = setTimeout(() => setIsTailored(false), 10000)
-    return () => clearTimeout(t)
-  }, [isTailored])
+  function getCurrentValueForTarget(targetId: string): string | null {
+    if (targetId === ID_GENERATORS.profileName()) return resumeName
+    if (targetId === ID_GENERATORS.profileContact()) return resumeContact
+    if (targetId === ID_GENERATORS.summary()) return resumeSummary
 
-  function buildResumeContent(): ResumeTailorRequest['resumeContent'] {
+    const expFieldMatch = targetId.match(/^experience_(.+?)_(title|company|period)$/)
+    if (expFieldMatch) {
+      const [, entryId, field] = expFieldMatch
+      const entry = experience.find((e) => e.id === entryId)
+      return entry ? entry[field as 'title' | 'company' | 'period'] : null
+    }
+
+    const expBulletMatch = targetId.match(/^experience_(.+?)_bullet_(.+)$/)
+    if (expBulletMatch) {
+      const [, entryId, bulletId] = expBulletMatch
+      const entry = experience.find((e) => e.id === entryId)
+      return entry?.bullets.find((bullet) => bullet.id === bulletId)?.text ?? null
+    }
+
+    const eduFieldMatch = targetId.match(/^education_(.+?)_(degree|school|period)$/)
+    if (eduFieldMatch) {
+      const [, entryId, field] = eduFieldMatch
+      const entry = education.find((e) => e.id === entryId)
+      return entry ? entry[field as 'degree' | 'school' | 'period'] : null
+    }
+
+    const skillMatch = targetId.match(/^skill_(.+)$/)
+    if (skillMatch) {
+      const skillId = skillMatch[1]
+      return skills.find((skill) => skill.id === skillId)?.text ?? null
+    }
+
+    const legacyMatch = targetId.match(/^exp_(\d+)_bullet_(\d+)$/)
+    if (legacyMatch) {
+      const entry = experience[Number(legacyMatch[1]) - 1]
+      return entry?.bullets[Number(legacyMatch[2]) - 1]?.text ?? null
+    }
+
+    return null
+  }
+
+  function applyEdit(edit: ResumeTailorEdit): boolean {
+    const { targetId, operation, replacement } = edit
+
+    if (targetId === ID_GENERATORS.profileName()) {
+      if (operation === 'replace') setResumeName(replacement)
+      else if (operation === 'insert') setResumeName((prev) => `${prev} ${replacement}`.trim())
+      else setResumeName('')
+      return true
+    }
+
+    if (targetId === ID_GENERATORS.profileContact()) {
+      if (operation === 'replace') setResumeContact(replacement)
+      else if (operation === 'insert') setResumeContact((prev) => `${prev} ${replacement}`.trim())
+      else setResumeContact('')
+      return true
+    }
+
+    if (targetId === ID_GENERATORS.summary()) {
+      if (operation === 'replace') setResumeSummary(replacement)
+      else if (operation === 'insert') setResumeSummary((prev) => `${prev}\n${replacement}`.trim())
+      else setResumeSummary('')
+      return true
+    }
+
+    const expFieldMatch = targetId.match(/^experience_(.+?)_(title|company|period)$/)
+    if (expFieldMatch) {
+      const [, entryId, field] = expFieldMatch
+      const exists = experience.some((e) => e.id === entryId)
+      if (!exists) return false
+      const fieldKey = field as 'title' | 'company' | 'period'
+      if (operation === 'replace') updateExperienceField(entryId, fieldKey, replacement)
+      else if (operation === 'insert') {
+        const current = getCurrentValueForTarget(targetId)
+        updateExperienceField(entryId, fieldKey, `${current ?? ''} ${replacement}`.trim())
+      } else updateExperienceField(entryId, fieldKey, '')
+      return true
+    }
+
+    const expBulletMatch = targetId.match(/^experience_(.+?)_bullet_(.+)$/)
+    if (expBulletMatch) {
+      const [, entryId, bulletId] = expBulletMatch
+      const entry = experience.find((e) => e.id === entryId)
+      if (!entry) return false
+      if (operation === 'replace') {
+        updateBullet(entryId, bulletId, replacement)
+      } else if (operation === 'insert') {
+        setExperience((prev) =>
+          prev.map((e) =>
+            e.id === entryId
+              ? {
+                  ...e,
+                  bullets: (() => {
+                    const idx = e.bullets.findIndex((bullet) => bullet.id === bulletId)
+                    if (idx === -1) return e.bullets
+                    const next = [...e.bullets]
+                    next.splice(idx + 1, 0, { id: createId(), text: replacement })
+                    return next
+                  })(),
+                }
+              : e
+          )
+        )
+      } else {
+        setExperience((prev) =>
+          prev.map((e) =>
+            e.id === entryId
+              ? { ...e, bullets: e.bullets.filter((bullet) => bullet.id !== bulletId) }
+              : e
+          )
+        )
+      }
+      return true
+    }
+
+    const eduFieldMatch = targetId.match(/^education_(.+?)_(degree|school|period)$/)
+    if (eduFieldMatch) {
+      const [, entryId, field] = eduFieldMatch
+      const exists = education.some((e) => e.id === entryId)
+      if (!exists) return false
+      const fieldKey = field as 'degree' | 'school' | 'period'
+      if (operation === 'replace') updateEducationField(entryId, fieldKey, replacement)
+      else if (operation === 'insert') {
+        const current = getCurrentValueForTarget(targetId)
+        updateEducationField(entryId, fieldKey, `${current ?? ''} ${replacement}`.trim())
+      } else updateEducationField(entryId, fieldKey, '')
+      return true
+    }
+
+    const skillMatch = targetId.match(/^skill_(.+)$/)
+    if (skillMatch) {
+      const skillId = skillMatch[1]
+      const idx = skills.findIndex((skill) => skill.id === skillId)
+      if (idx === -1) return false
+      if (operation === 'replace') {
+        setSkills((prev) =>
+          prev.map((skill) => (skill.id === skillId ? { ...skill, text: replacement } : skill))
+        )
+      } else if (operation === 'insert') {
+        setSkills((prev) => [
+          ...prev.slice(0, idx + 1),
+          { id: createId(), text: replacement },
+          ...prev.slice(idx + 1),
+        ])
+      } else {
+        setSkills((prev) => prev.filter((skill) => skill.id !== skillId))
+      }
+      return true
+    }
+
+    return false
+  }
+
+  function acceptEdit(index: number) {
+    const edit = pendingEdits[index]
+    if (edit && applyEdit(edit)) {
+      // suggestion applied
+    }
+    setPendingEdits((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  function declineEdit(index: number) {
+    setPendingEdits((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleAcceptEdit = (index: number) => {
+    acceptEdit(index)
+  }
+
+  const handleDeclineEdit = (index: number) => {
+    declineEdit(index)
+  }
+
+  function buildResumeContent(): ResumeTailorResumeContent {
     return {
-      name: MOCK_RESUME.name,
-      contact: MOCK_RESUME.contact,
-      summary: MOCK_RESUME.summary,
+      name: { id: ID_GENERATORS.profileName(), text: resumeName },
+      contact: { id: ID_GENERATORS.profileContact(), text: resumeContact },
+      summary: { id: ID_GENERATORS.summary(), text: resumeSummary },
       experience: experience.map((entry) => ({
-        title: entry.title,
-        company: entry.company,
-        period: entry.period,
-        bullets: entry.bullets,
+        id: entry.id,
+        title: { id: ID_GENERATORS.experienceField(entry.id, 'title'), text: entry.title },
+        company: { id: ID_GENERATORS.experienceField(entry.id, 'company'), text: entry.company },
+        period: { id: ID_GENERATORS.experienceField(entry.id, 'period'), text: entry.period },
+        bullets: entry.bullets.map((bullet) => ({
+          id: ID_GENERATORS.experienceBullet(entry.id, bullet.id),
+          text: bullet.text,
+        })),
       })),
       education: education.map((entry) => ({
-        degree: entry.degree,
-        school: entry.school,
-        period: entry.period,
+        id: entry.id,
+        degree: { id: ID_GENERATORS.educationField(entry.id, 'degree'), text: entry.degree },
+        school: { id: ID_GENERATORS.educationField(entry.id, 'school'), text: entry.school },
+        period: { id: ID_GENERATORS.educationField(entry.id, 'period'), text: entry.period },
       })),
-      skills,
+      skills: skills.map((skill) => ({
+        id: ID_GENERATORS.skillItem(skill.id),
+        text: skill.text,
+      })),
     }
   }
 
@@ -174,23 +538,20 @@ export default function ResumePage() {
 
     if (jobDescription.trim().length < 200) {
       setSubmitError('Please paste a longer job description (minimum 200 characters).')
-      setIsTailored(false)
       return
     }
 
     const payload: ResumeTailorRequest = {
       jobDescription,
-      skills,
       resumeContent: buildResumeContent(),
-      mode: 'suggestions_only',
+      mode: 'delta_only',
     }
 
     try {
       const result = await runTailor(payload)
-      setSuggestions(result.suggestions)
-      setIsTailored(true)
+      setPendingEdits(result.edits ?? [])
     } catch {
-      setIsTailored(false)
+      // error already set by hook
     }
   }
 
@@ -279,12 +640,12 @@ export default function ResumePage() {
             </div>
             <div className={styles.skillChips}>
               {skills.map((skill) => (
-                <span key={skill} className={styles.skillChip}>
-                  {skill}
+                <span key={skill.id} className={styles.skillChip}>
+                  {skill.text}
                   <button
                     className={styles.skillChipRemove}
-                    onClick={() => removeSkill(skill)}
-                    aria-label={`Remove ${skill}`}
+                    onClick={() => removeSkill(skill.id)}
+                    aria-label={`Remove ${skill.text}`}
                   >
                     <X size={10} />
                   </button>
@@ -301,22 +662,7 @@ export default function ResumePage() {
             </div>
           )}
 
-          {isTailored && (
-            <div className={styles.suggestionsBadge}>
-              <Badge variant="success">AI Suggestions Applied</Badge>
-            </div>
-          )}
 
-          {suggestions.length > 0 && (
-            <div className={styles.suggestionsCard}>
-              <p className={styles.suggestionsTitle}>AI Suggestions</p>
-              <ul className={styles.suggestionsList}>
-                {suggestions.map((suggestion, index) => (
-                  <li key={`${suggestion}-${index}`}>{suggestion}</li>
-                ))}
-              </ul>
-            </div>
-          )}
 
           <div ref={resumeRef} className={styles.resumeDocument}>
             <div className={styles.resumeHeader}>
@@ -324,15 +670,17 @@ export default function ResumePage() {
                 className={styles.resumeName}
                 contentEditable={editable}
                 suppressContentEditableWarning
+                onBlur={(e) => setResumeName(e.currentTarget.textContent?.trim() || '')}
               >
-                {MOCK_RESUME.name}
+                {resumeName}
               </h2>
               <p
                 className={styles.resumeContact}
                 contentEditable={editable}
                 suppressContentEditableWarning
+                onBlur={(e) => setResumeContact(e.currentTarget.textContent?.trim() || '')}
               >
-                {MOCK_RESUME.contact}
+                {resumeContact}
               </p>
             </div>
 
@@ -342,9 +690,25 @@ export default function ResumePage() {
                 className={styles.resumeText}
                 contentEditable={editable}
                 suppressContentEditableWarning
+                onBlur={(e) => setResumeSummary(e.currentTarget.textContent?.trim() || '')}
               >
-                {MOCK_RESUME.summary}
+                {resumeSummary}
               </p>
+              {(() => {
+                const summaryEdit = getEditForTarget(ID_GENERATORS.summary(), pendingEdits)
+                if (summaryEdit) {
+                  return (
+                    <SuggestionDiff
+                      edit={summaryEdit}
+                      currentValue={resumeSummary}
+                      onAccept={() => handleAcceptEdit(pendingEdits.indexOf(summaryEdit))}
+                      onDecline={() => handleDeclineEdit(pendingEdits.indexOf(summaryEdit))}
+                      variant="stacked"
+                    />
+                  )
+                }
+                return null
+              })()}
             </div>
 
             <div className={styles.resumeSection}>
@@ -357,6 +721,7 @@ export default function ResumePage() {
                         className={styles.entryTitle}
                         contentEditable={editable}
                         suppressContentEditableWarning
+                        onBlur={(e) => updateExperienceField(job.id, 'title', e.currentTarget.textContent?.trim() || '')}
                       >
                         {job.title}
                       </span>
@@ -372,6 +737,7 @@ export default function ResumePage() {
                       className={styles.entryPeriod}
                       contentEditable={editable}
                       suppressContentEditableWarning
+                      onBlur={(e) => updateExperienceField(job.id, 'period', e.currentTarget.textContent?.trim() || '')}
                     >
                       {job.period}
                     </span>
@@ -380,24 +746,43 @@ export default function ResumePage() {
                     className={styles.entryCompany}
                     contentEditable={editable}
                     suppressContentEditableWarning
+                    onBlur={(e) => updateExperienceField(job.id, 'company', e.currentTarget.textContent?.trim() || '')}
                   >
                     {job.company}
                   </span>
                   <ul className={styles.entryBullets}>
-                    {job.bullets.map((bullet, i) => (
-                      <li key={i} className={styles.bulletItem}>
-                        <span contentEditable={editable} suppressContentEditableWarning>
-                          {bullet}
-                        </span>
-                        <button
-                          className={cn(styles.bulletRemoveBtn, !editable && styles.btnHidden)}
-                          onClick={() => removeBullet(job.id, i)}
-                          aria-label="Remove bullet"
-                        >
-                          <X size={10} />
-                        </button>
-                      </li>
-                    ))}
+                    {job.bullets.map((bullet) => {
+                      const bulletEdit = getEditForTarget(ID_GENERATORS.experienceBullet(job.id, bullet.id), pendingEdits)
+                      return (
+                        <li key={bullet.id} className={styles.bulletItem}>
+                          <span
+                            contentEditable={editable}
+                            suppressContentEditableWarning
+                            onBlur={(e) =>
+                              updateBullet(job.id, bullet.id, e.currentTarget.textContent?.trim() || '')
+                            }
+                          >
+                            {bullet.text}
+                          </span>
+                          <button
+                            className={cn(styles.bulletRemoveBtn, !editable && styles.btnHidden)}
+                            onClick={() => removeBullet(job.id, bullet.id)}
+                            aria-label="Remove bullet"
+                          >
+                            <X size={10} />
+                          </button>
+                          {bulletEdit && (
+                            <SuggestionDiff
+                              edit={bulletEdit}
+                              currentValue={bullet.text}
+                              onAccept={() => handleAcceptEdit(pendingEdits.indexOf(bulletEdit))}
+                              onDecline={() => handleDeclineEdit(pendingEdits.indexOf(bulletEdit))}
+                              variant="compact"
+                            />
+                          )}
+                        </li>
+                      )
+                    })}
                     {editable && (
                       <button className={styles.addBulletBtn} onClick={() => addBullet(job.id)}>
                         <Plus size={11} /> Add bullet
@@ -423,6 +808,7 @@ export default function ResumePage() {
                         className={styles.entryTitle}
                         contentEditable={editable}
                         suppressContentEditableWarning
+                        onBlur={(e) => updateEducationField(edu.id, 'degree', e.currentTarget.textContent?.trim() || '')}
                       >
                         {edu.degree}
                       </span>
@@ -438,6 +824,7 @@ export default function ResumePage() {
                       className={styles.entryPeriod}
                       contentEditable={editable}
                       suppressContentEditableWarning
+                      onBlur={(e) => updateEducationField(edu.id, 'period', e.currentTarget.textContent?.trim() || '')}
                     >
                       {edu.period}
                     </span>
@@ -446,6 +833,7 @@ export default function ResumePage() {
                     className={styles.entryCompany}
                     contentEditable={editable}
                     suppressContentEditableWarning
+                    onBlur={(e) => updateEducationField(edu.id, 'school', e.currentTarget.textContent?.trim() || '')}
                   >
                     {edu.school}
                   </span>
@@ -457,6 +845,28 @@ export default function ResumePage() {
                 </button>
               )}
             </div>
+
+            {(() => {
+              const skillEdits = pendingEdits.filter((e) => e.section === 'skills')
+              if (skillEdits.length > 0) {
+                return (
+                  <div className={styles.resumeSection}>
+                    <h3 className={styles.sectionHeading}>Suggested Skills</h3>
+                    {skillEdits.map((edit) => (
+                      <SuggestionDiff
+                        key={edit.targetId}
+                        edit={edit}
+                        currentValue={skills.find((s) => ID_GENERATORS.skillItem(s.id) === edit.targetId)?.text ?? null}
+                        onAccept={() => handleAcceptEdit(pendingEdits.indexOf(edit))}
+                        onDecline={() => handleDeclineEdit(pendingEdits.indexOf(edit))}
+                        variant="stacked"
+                      />
+                    ))}
+                  </div>
+                )
+              }
+              return null
+            })()}
           </div>
         </div>
       </div>
