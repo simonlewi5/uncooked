@@ -492,6 +492,7 @@
   transition: color 0.15s, border-color 0.15s, background-color 0.15s;
 }
 
+
 .addBulletBtn:hover {
   color: var(--color-primary);
   border-color: var(--color-primary);
