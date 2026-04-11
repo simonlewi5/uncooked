@@ -2,6 +2,27 @@ import { useCallback, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { ResumeTailorRequest, ResumeTailorResponse } from '@/types'
 
+const DEBUG_ENABLED = import.meta.env.VITE_RESUME_TAILOR_DEBUG === 'true'
+const DEBUG_VERBOSE = import.meta.env.VITE_RESUME_TAILOR_DEBUG_VERBOSE === 'true'
+
+const toDebugPreview = (value: unknown, maxChars = 1200): string => {
+  try {
+    const serialized = typeof value === 'string' ? value : JSON.stringify(value)
+    if (serialized.length <= maxChars) return serialized
+    return `${serialized.slice(0, maxChars)}... [truncated ${serialized.length - maxChars} chars]`
+  } catch {
+    return '[unserializable]'
+  }
+}
+
+const debugLog = (event: string, data?: Record<string, unknown>) => {
+  if (!DEBUG_ENABLED) return
+  console.log('resume-tailor.client', {
+    event,
+    ...data,
+  })
+}
+
 type UseResumeTailorReturn = {
   runTailor: (payload: ResumeTailorRequest) => Promise<ResumeTailorResponse>
   isLoading: boolean
@@ -82,6 +103,15 @@ export function useResumeTailor(): UseResumeTailorReturn {
     setIsLoading(true)
     setError(null)
 
+    const clientRequestId = Math.random().toString(36).slice(2, 10)
+    debugLog('request_start', {
+      clientRequestId,
+      mode: payload.mode ?? 'delta_only',
+      jobDescriptionChars: payload.jobDescription.length,
+      resumeObjectChars: JSON.stringify(payload.resumeContent).length,
+      payloadPreview: DEBUG_VERBOSE ? toDebugPreview(payload) : undefined,
+    })
+
     try {
       const invokeTailor = async () =>
         supabase.functions.invoke<ResumeTailorResponse>('resume-tailor', {
@@ -90,13 +120,29 @@ export function useResumeTailor(): UseResumeTailorReturn {
 
       let { data, error } = await invokeTailor()
 
+      debugLog('request_result', {
+        clientRequestId,
+        hasData: Boolean(data),
+        hasError: Boolean(error),
+        errorMessage: error?.message,
+        dataPreview: DEBUG_VERBOSE ? toDebugPreview(data) : undefined,
+      })
+
       const message = error?.message ?? ''
       if (error && /invalid jwt/i.test(message)) {
+        debugLog('jwt_refresh_attempt', { clientRequestId })
         const { error: refreshError } = await supabase.auth.refreshSession()
         if (refreshError) throw refreshError
         const retry = await invokeTailor()
         data = retry.data
         error = retry.error
+        debugLog('jwt_refresh_result', {
+          clientRequestId,
+          hasData: Boolean(data),
+          hasError: Boolean(error),
+          errorMessage: error?.message,
+          dataPreview: DEBUG_VERBOSE ? toDebugPreview(data) : undefined,
+        })
       }
 
       if (error) throw error
@@ -104,10 +150,20 @@ export function useResumeTailor(): UseResumeTailorReturn {
         throw new Error('resume-tailor returned no data')
       }
 
+      debugLog('request_success', {
+        clientRequestId,
+        editCount: data.edits?.length ?? 0,
+      })
+
       return data
     } catch (caughtError) {
       const friendlyMessage = await mapErrorMessage(caughtError)
       setError(friendlyMessage)
+      debugLog('request_failed', {
+        clientRequestId,
+        errorMessage: caughtError instanceof Error ? caughtError.message : String(caughtError),
+        friendlyMessage,
+      })
       throw caughtError
     } finally {
       setIsLoading(false)
