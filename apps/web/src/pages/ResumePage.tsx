@@ -240,7 +240,7 @@ export default function ResumePage() {
     if (!file) return
 
     // TODO(resume-import): wire real PDF parsing and field extraction in a follow-up PR.
-    setSubmitError(`PDF import for \"${file.name}\" is not implemented yet. Please edit fields manually.`)
+    setSubmitError(`PDF import for "${file.name}" is not implemented yet. Please edit fields manually.`)
     e.currentTarget.value = ''
   }
 
