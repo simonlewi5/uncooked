@@ -296,7 +296,8 @@ const parseEdits = (value: unknown): ResumeTailorEdit[] | null => {
     const replacement = typeof edit.replacement === 'string' ? edit.replacement.trim() : ''
     const reason = typeof edit.reason === 'string' ? edit.reason.trim() : undefined
 
-    if (!section || !targetId || !operation || !replacement) continue
+    if (!section || !targetId || !operation) continue
+    if (operation !== 'remove' && !replacement) continue
     if (!ALLOWED_EDIT_SECTIONS.has(section)) continue
     edits.push({ section, targetId, operation, replacement, reason })
   }
