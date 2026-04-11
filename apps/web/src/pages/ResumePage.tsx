@@ -167,7 +167,9 @@ const SuggestionDiff = ({ edit, currentValue, onAccept, onDecline, variant = 'co
   return (
     <div style={{ borderLeft: '3px solid #4f46e5', paddingLeft: '0.75rem', marginTop: '0.25rem', fontSize: '0.8125rem' }}>
       <div style={{ marginBottom: '0.25rem', color: '#666' }}>
-        <span style={{ textDecoration: 'line-through', color: '#7f1d1d' }}>{currentValue}</span>
+        <span style={{ textDecoration: 'line-through', color: '#7f1d1d' }}>
+          {currentValue ?? 'Current value unavailable (target may have been removed)'}
+        </span>
         <span style={{ margin: '0 0.25rem' }}>→</span>
         <span style={{ color: '#166534' }}>{edit.replacement}</span>
       </div>
@@ -236,7 +238,10 @@ export default function ResumePage() {
   function handlePdfImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    console.log('PDF selected:', file.name)
+
+    // TODO(resume-import): wire real PDF parsing and field extraction in a follow-up PR.
+    setSubmitError(`PDF import for \"${file.name}\" is not implemented yet. Please edit fields manually.`)
+    e.currentTarget.value = ''
   }
 
   function updateExperienceField(id: string, field: 'title' | 'company' | 'period', value: string) {
@@ -496,12 +501,17 @@ export default function ResumePage() {
     setPendingEdits((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const handleAcceptEdit = (index: number) => {
-    acceptEdit(index)
+  const getPendingEditIndex = (targetId: string) =>
+    pendingEdits.findIndex((edit) => edit.targetId === targetId)
+
+  const handleAcceptEditByTargetId = (targetId: string) => {
+    const idx = getPendingEditIndex(targetId)
+    if (idx !== -1) acceptEdit(idx)
   }
 
-  const handleDeclineEdit = (index: number) => {
-    declineEdit(index)
+  const handleDeclineEditByTargetId = (targetId: string) => {
+    const idx = getPendingEditIndex(targetId)
+    if (idx !== -1) declineEdit(idx)
   }
 
   function buildResumeContent(): ResumeTailorResumeContent {
@@ -570,6 +580,19 @@ export default function ResumePage() {
   }
 
   const editable = !isPreviewMode
+  const mappedSummaryTargetId = ID_GENERATORS.summary()
+  const mappedBulletTargetIds = new Set(
+    experience.flatMap((job) =>
+      job.bullets.map((bullet) => ID_GENERATORS.experienceBullet(job.id, bullet.id))
+    )
+  )
+  const mappedSkillTargetIds = new Set(skills.map((skill) => ID_GENERATORS.skillItem(skill.id)))
+  const mappedTargetIds = new Set<string>([
+    mappedSummaryTargetId,
+    ...Array.from(mappedBulletTargetIds),
+    ...Array.from(mappedSkillTargetIds),
+  ])
+  const unmappedEdits = pendingEdits.filter((edit) => !mappedTargetIds.has(edit.targetId))
 
   return (
     <div className={styles.page}>
@@ -695,14 +718,14 @@ export default function ResumePage() {
                 {resumeSummary}
               </p>
               {(() => {
-                const summaryEdit = getEditForTarget(ID_GENERATORS.summary(), pendingEdits)
+                const summaryEdit = getEditForTarget(mappedSummaryTargetId, pendingEdits)
                 if (summaryEdit) {
                   return (
                     <SuggestionDiff
                       edit={summaryEdit}
                       currentValue={resumeSummary}
-                      onAccept={() => handleAcceptEdit(pendingEdits.indexOf(summaryEdit))}
-                      onDecline={() => handleDeclineEdit(pendingEdits.indexOf(summaryEdit))}
+                      onAccept={() => handleAcceptEditByTargetId(summaryEdit.targetId)}
+                      onDecline={() => handleDeclineEditByTargetId(summaryEdit.targetId)}
                       variant="stacked"
                     />
                   )
@@ -752,7 +775,8 @@ export default function ResumePage() {
                   </span>
                   <ul className={styles.entryBullets}>
                     {job.bullets.map((bullet) => {
-                      const bulletEdit = getEditForTarget(ID_GENERATORS.experienceBullet(job.id, bullet.id), pendingEdits)
+                      const bulletTargetId = ID_GENERATORS.experienceBullet(job.id, bullet.id)
+                      const bulletEdit = getEditForTarget(bulletTargetId, pendingEdits)
                       return (
                         <li key={bullet.id} className={styles.bulletItem}>
                           <span
@@ -775,8 +799,8 @@ export default function ResumePage() {
                             <SuggestionDiff
                               edit={bulletEdit}
                               currentValue={bullet.text}
-                              onAccept={() => handleAcceptEdit(pendingEdits.indexOf(bulletEdit))}
-                              onDecline={() => handleDeclineEdit(pendingEdits.indexOf(bulletEdit))}
+                              onAccept={() => handleAcceptEditByTargetId(bulletEdit.targetId)}
+                              onDecline={() => handleDeclineEditByTargetId(bulletEdit.targetId)}
                               variant="compact"
                             />
                           )}
@@ -847,7 +871,9 @@ export default function ResumePage() {
             </div>
 
             {(() => {
-              const skillEdits = pendingEdits.filter((e) => e.section === 'skills')
+              const skillEdits = pendingEdits.filter(
+                (e) => e.section === 'skills' && mappedSkillTargetIds.has(e.targetId)
+              )
               if (skillEdits.length > 0) {
                 return (
                   <div className={styles.resumeSection}>
@@ -857,8 +883,8 @@ export default function ResumePage() {
                         key={edit.targetId}
                         edit={edit}
                         currentValue={skills.find((s) => ID_GENERATORS.skillItem(s.id) === edit.targetId)?.text ?? null}
-                        onAccept={() => handleAcceptEdit(pendingEdits.indexOf(edit))}
-                        onDecline={() => handleDeclineEdit(pendingEdits.indexOf(edit))}
+                        onAccept={() => handleAcceptEditByTargetId(edit.targetId)}
+                        onDecline={() => handleDeclineEditByTargetId(edit.targetId)}
                         variant="stacked"
                       />
                     ))}
@@ -867,6 +893,22 @@ export default function ResumePage() {
               }
               return null
             })()}
+
+            {unmappedEdits.length > 0 && (
+              <div className={styles.resumeSection}>
+                <h3 className={styles.sectionHeading}>Unmapped Suggestions</h3>
+                {unmappedEdits.map((edit) => (
+                  <SuggestionDiff
+                    key={edit.targetId}
+                    edit={edit}
+                    currentValue={getCurrentValueForTarget(edit.targetId)}
+                    onAccept={() => handleAcceptEditByTargetId(edit.targetId)}
+                    onDecline={() => handleDeclineEditByTargetId(edit.targetId)}
+                    variant="stacked"
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 import { tailorResumeWithAI, type ResumeTailorEdit, type ResumeTailorPayload } from './ai.ts'
+import { DEBUG_ENABLED, DEBUG_VERBOSE, isRecord, toDebugPreview } from './utils.ts'
 
 declare const Deno: {
   env: {
@@ -13,19 +14,6 @@ const MAX_BODY_BYTES = 80_000
 const MIN_JOB_DESCRIPTION_CHARS = 200
 const MAX_JOB_DESCRIPTION_CHARS = 12_000
 const MAX_RESUME_OBJECT_CHARS = 30_000
-const DEBUG_ENABLED = Deno.env.get('RESUME_TAILOR_DEBUG') === 'true'
-const DEBUG_VERBOSE = Deno.env.get('RESUME_TAILOR_DEBUG_VERBOSE') === 'true'
-const DEBUG_PREVIEW_CHARS = 1500
-
-const toDebugPreview = (value: unknown, maxChars = DEBUG_PREVIEW_CHARS): string => {
-  try {
-    const serialized = typeof value === 'string' ? value : JSON.stringify(value)
-    if (serialized.length <= maxChars) return serialized
-    return `${serialized.slice(0, maxChars)}... [truncated ${serialized.length - maxChars} chars]`
-  } catch {
-    return '[unserializable]'
-  }
-}
 
 const debugLog = (requestId: string, event: string, data?: Record<string, unknown>) => {
   if (!DEBUG_ENABLED) return
@@ -43,8 +31,69 @@ const json = (status: number, body: unknown) =>
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
+const isTextNode = (value: unknown): value is { id: string; text: string } =>
+  isRecord(value) && typeof value.id === 'string' && typeof value.text === 'string'
+
+const isExperienceEntry = (
+  value: unknown
+): value is {
+  id: string
+  title: { id: string; text: string }
+  company: { id: string; text: string }
+  period: { id: string; text: string }
+  bullets: Array<{ id: string; text: string }>
+} => {
+  if (!isRecord(value)) return false
+
+  return (
+    typeof value.id === 'string' &&
+    isTextNode(value.title) &&
+    isTextNode(value.company) &&
+    isTextNode(value.period) &&
+    Array.isArray(value.bullets) &&
+    value.bullets.every((bullet) => isTextNode(bullet))
+  )
+}
+
+const isEducationEntry = (
+  value: unknown
+): value is {
+  id: string
+  degree: { id: string; text: string }
+  school: { id: string; text: string }
+  period: { id: string; text: string }
+} => {
+  if (!isRecord(value)) return false
+
+  return (
+    typeof value.id === 'string' &&
+    isTextNode(value.degree) &&
+    isTextNode(value.school) &&
+    isTextNode(value.period)
+  )
+}
+
+const isValidResumeContent = (value: unknown): value is Record<string, unknown> => {
+  if (!isRecord(value)) return false
+
+  if (!isTextNode(value.name) || !isTextNode(value.contact) || !isTextNode(value.summary)) {
+    return false
+  }
+
+  if (!Array.isArray(value.experience) || !value.experience.every((entry) => isExperienceEntry(entry))) {
+    return false
+  }
+
+  if (!Array.isArray(value.education) || !value.education.every((entry) => isEducationEntry(entry))) {
+    return false
+  }
+
+  if (!Array.isArray(value.skills) || !value.skills.every((skill) => isTextNode(skill))) {
+    return false
+  }
+
+  return true
+}
 
 const collectKnownTargetIds = (value: unknown, targetIds: Set<string> = new Set()): Set<string> => {
   if (Array.isArray(value)) {
@@ -90,7 +139,7 @@ const normalizeBody = (payload: unknown): ResumeTailorPayload | null => {
   const mode = payload.mode
   if (typeof jobDescription !== 'string') return null
 
-  if (!isRecord(resumeContent)) return null
+  if (!isValidResumeContent(resumeContent)) return null
 
   if (mode !== undefined && mode !== 'delta_only') {
     return null
@@ -205,7 +254,8 @@ Deno.serve(async (req: Request) => {
     })
     return json(400, {
       error: 'Invalid payload shape',
-      details: 'Expected { jobDescription: string, resumeContent: object, mode?: delta_only }',
+      details:
+        'Expected { jobDescription: string, resumeContent: ResumeTailorResumeContent, mode?: delta_only }',
     })
   }
 

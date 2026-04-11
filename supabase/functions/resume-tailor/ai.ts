@@ -1,4 +1,5 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
+import { DEBUG_ENABLED, DEBUG_VERBOSE, isRecord, toDebugPreview } from './utils.ts'
 
 declare const Deno: {
   env: {
@@ -51,25 +52,12 @@ const ALLOWED_EDIT_SECTIONS = new Set<ResumeTailorEdit['section']>(['summary', '
 const MAX_EXPERIENCE_ENTRIES = 5
 const MAX_BULLETS_PER_EXPERIENCE = 4
 const MAX_SKILL_ITEMS = 20
-const DEBUG_ENABLED = Deno.env.get('RESUME_TAILOR_DEBUG') === 'true'
-const DEBUG_VERBOSE = Deno.env.get('RESUME_TAILOR_DEBUG_VERBOSE') === 'true'
-const DEBUG_PREVIEW_CHARS = 1800
 
 type TailorRunOptions = {
   requestId?: string
 }
 
 type ResumeTextNode = { id: string; text: string }
-
-const toDebugPreview = (value: unknown, maxChars = DEBUG_PREVIEW_CHARS): string => {
-  try {
-    const serialized = typeof value === 'string' ? value : JSON.stringify(value)
-    if (serialized.length <= maxChars) return serialized
-    return `${serialized.slice(0, maxChars)}... [truncated ${serialized.length - maxChars} chars]`
-  } catch {
-    return '[unserializable]'
-  }
-}
 
 const debugLog = (requestId: string | undefined, event: string, data?: Record<string, unknown>) => {
   if (!DEBUG_ENABLED) return
@@ -80,9 +68,6 @@ const debugLog = (requestId: string | undefined, event: string, data?: Record<st
     ...data,
   })
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
 
 const asTextNode = (value: unknown): ResumeTextNode | null => {
   if (!isRecord(value)) return null
@@ -417,7 +402,7 @@ const runTailor = async (
     promptChars: prompt.length,
     payloadJobDescriptionChars: payload.jobDescription.length,
     payloadResumeChars: JSON.stringify(payload.resumeContent).length,
-    promptPreview: DEBUG_VERBOSE ? toDebugPreview(prompt) : undefined,
+    promptPreview: DEBUG_VERBOSE ? toDebugPreview(prompt, 1800) : undefined,
   })
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -443,7 +428,7 @@ const runTailor = async (
     debugLog(requestId, 'llm_request', {
       attempt,
       generationConfig,
-      requestBodyPreview: DEBUG_VERBOSE ? toDebugPreview(requestBody) : undefined,
+      requestBodyPreview: DEBUG_VERBOSE ? toDebugPreview(requestBody, 1800) : undefined,
     })
 
     const controller = new AbortController()
@@ -466,7 +451,7 @@ const runTailor = async (
         debugLog(requestId, 'llm_http_error', {
           attempt,
           status: response.status,
-          bodyPreview: toDebugPreview(errorText),
+          bodyPreview: toDebugPreview(errorText, 1800),
         })
         throw new Error(`Gemini API error (${response.status}): ${errorText}`)
       }
@@ -477,7 +462,7 @@ const runTailor = async (
         finishReason:
           (data as { candidates?: Array<{ finishReason?: string }> })?.candidates?.[0]?.finishReason ??
           'unknown',
-        responsePreview: DEBUG_VERBOSE ? toDebugPreview(data) : undefined,
+        responsePreview: DEBUG_VERBOSE ? toDebugPreview(data, 1800) : undefined,
       })
 
       const parsed = parseGeminiResponse(data)
@@ -507,7 +492,7 @@ const runTailor = async (
       debugLog(requestId, 'parse_success', {
         attempt,
         editCount: parsed.value.edits?.length ?? 0,
-        resultPreview: DEBUG_VERBOSE ? toDebugPreview(parsed.value) : undefined,
+        resultPreview: DEBUG_VERBOSE ? toDebugPreview(parsed.value, 1800) : undefined,
       })
 
       return parsed.value
