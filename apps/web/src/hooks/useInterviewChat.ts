@@ -147,11 +147,16 @@ interface UseInterviewChatReturn {
   isTyping: boolean
   sendMessage: (content: string) => Promise<void>
   interviewSessionId: string | null
+  /** Load a previously saved session so the user can continue the conversation. */
+  resumeSession: (sessionId: string, pastMessages: Message[]) => void
+  /** Reset to a fresh interview. */
+  resetSession: () => void
 }
 
 export function useInterviewChat(
   jobData: JobDescriptionFormValue,
-  style: InterviewStyle
+  style: InterviewStyle,
+  onAssistantMessage?: (msg: Message) => void,
 ): UseInterviewChatReturn {
   const { user } = useAuth()
   // Tracks whether a practice_sessions row has been recorded for this session.
@@ -172,10 +177,27 @@ export function useInterviewChat(
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE])
   const [isTyping, setIsTyping] = useState(false)
   const messagesRef = useRef<Message[]>([])
+  const onAssistantMessageRef = useRef(onAssistantMessage)
+  onAssistantMessageRef.current = onAssistantMessage
 
   useEffect(() => {
     messagesRef.current = messages
   }, [messages])
+
+  const resumeSession = useCallback((sessionId: string, pastMessages: Message[]) => {
+    interviewSessionIdRef.current = sessionId
+    setInterviewSessionId(sessionId)
+    setMessages(pastMessages)
+    // Mark as already recorded so we don't create a duplicate session row
+    sessionRecordedRef.current = true
+  }, [])
+
+  const resetSession = useCallback(() => {
+    interviewSessionIdRef.current = null
+    setInterviewSessionId(null)
+    setMessages([INITIAL_MESSAGE])
+    sessionRecordedRef.current = false
+  }, [])
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -195,8 +217,8 @@ export function useInterviewChat(
       setMessages((prev) => [...prev, userMsg])
       setIsTyping(true)
 
-      // On first user message: record practice session, ensure company profile,
-      // and create the interview_sessions row.
+      // On first user message of a new session: record practice session,
+      // ensure company profile, and create the interview_sessions row.
       if (!sessionRecordedRef.current && user) {
         sessionRecordedRef.current = true
 
@@ -272,6 +294,7 @@ export function useInterviewChat(
           }
           return updated
         })
+        onAssistantMessageRef.current?.(assistantMsg)
       } catch (e) {
         const errMsg = await mapInterviewErrorMessage(e)
         const assistantMsg: Message = {
@@ -294,5 +317,5 @@ export function useInterviewChat(
     [jobData, style, user]
   )
 
-  return { messages, isTyping, sendMessage, interviewSessionId }
+  return { messages, isTyping, sendMessage, interviewSessionId, resumeSession, resetSession }
 }

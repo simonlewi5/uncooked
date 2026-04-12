@@ -38,6 +38,20 @@ export interface InterviewSessionSummary {
   createdAt: string
 }
 
+export interface InterviewQuestion {
+  id: string
+  interviewSessionId: string | null
+  companyProfileId: string | null
+  companyName: string
+  questionText: string
+  category: string | null
+  source: 'pre_generated' | 'chat_extracted'
+  isBookmarked: boolean
+  answerNotes: string | null
+  chatMessageId: string | null
+  createdAt: string
+}
+
 export interface JobDescriptionFormValue {
   jobDescription: string
   companyName: string
