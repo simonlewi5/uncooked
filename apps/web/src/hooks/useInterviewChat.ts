@@ -94,10 +94,59 @@ async function mapInterviewErrorMessage(error: unknown): Promise<string> {
   return fallback
 }
 
+/** Find or create a company_profile for the given name; returns the profile id. */
+async function ensureCompanyProfile(userId: string, companyName: string): Promise<string | null> {
+  const trimmed = companyName.trim()
+  if (!trimmed) return null
+
+  // Check for existing profile (case-insensitive)
+  const { data: matches } = await supabase
+    .from('company_profiles')
+    .select('id')
+    .eq('user_id', userId)
+    .ilike('company_name', trimmed)
+    .limit(1)
+
+  if (matches && matches.length > 0) return matches[0].id as string
+
+  // Create a new profile with just the company name
+  const { data: created, error } = await supabase
+    .from('company_profiles')
+    .insert({ user_id: userId, company_name: trimmed })
+    .select('id')
+    .single()
+
+  if (error) {
+    console.error('Failed to create company profile:', error)
+    return null
+  }
+
+  return created.id as string
+}
+
+/** Persist a message array to the interview_sessions row. */
+async function persistMessages(sessionId: string, messages: Message[]): Promise<void> {
+  const rows = messages.map((m) => ({
+    role: m.role,
+    content: m.content,
+    timestamp: m.timestamp.toISOString(),
+  }))
+
+  const { error } = await supabase
+    .from('interview_sessions')
+    .update({ messages: rows })
+    .eq('id', sessionId)
+
+  if (error) {
+    console.error('Failed to persist interview messages:', error)
+  }
+}
+
 interface UseInterviewChatReturn {
   messages: Message[]
   isTyping: boolean
   sendMessage: (content: string) => Promise<void>
+  interviewSessionId: string | null
 }
 
 export function useInterviewChat(
@@ -108,6 +157,9 @@ export function useInterviewChat(
   // Tracks whether a practice_sessions row has been recorded for this session.
   // Ensures we only insert once per hook instance, not on every message.
   const sessionRecordedRef = useRef(false)
+  // Tracks the interview_sessions row id once created.
+  const interviewSessionIdRef = useRef<string | null>(null)
+  const [interviewSessionId, setInterviewSessionId] = useState<string | null>(null)
 
   const INITIAL_MESSAGE: Message = {
     id: 'init',
@@ -124,23 +176,6 @@ export function useInterviewChat(
   useEffect(() => {
     messagesRef.current = messages
   }, [messages])
-
-  // Set up periodic flush of interview messages every 2 minutes
-  useEffect(() => {
-    const flushMessages = async () => {
-      try {
-        await supabase.functions.invoke('flush-interview-messages', {
-          body: {},
-        })
-      } catch (error) {
-        console.error('Error flushing interview messages:', error)
-      }
-    }
-
-    const intervalId = setInterval(flushMessages, 2 * 60 * 1000)
-
-    return () => clearInterval(intervalId)
-  }, [])
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -160,9 +195,12 @@ export function useInterviewChat(
       setMessages((prev) => [...prev, userMsg])
       setIsTyping(true)
 
-      // Record the practice session on first user message so XP is awarded
+      // On first user message: record practice session, ensure company profile,
+      // and create the interview_sessions row.
       if (!sessionRecordedRef.current && user) {
         sessionRecordedRef.current = true
+
+        // Record practice session for XP
         supabase
           .from('practice_sessions')
           .insert({ user_id: user.id, duration_minutes: 1 })
@@ -172,6 +210,29 @@ export function useInterviewChat(
               sessionRecordedRef.current = false
             }
           })
+
+        // Ensure company profile exists and create interview session
+        const companyProfileId = await ensureCompanyProfile(user.id, jobData.companyName)
+
+        const { data: session, error: sessionError } = await supabase
+          .from('interview_sessions')
+          .insert({
+            user_id: user.id,
+            company_profile_id: companyProfileId,
+            company_name: jobData.companyName.trim(),
+            job_description: jobData.jobDescription,
+            interview_style: style,
+            messages: [],
+          })
+          .select('id')
+          .single()
+
+        if (sessionError) {
+          console.error('Failed to create interview session:', sessionError)
+        } else {
+          interviewSessionIdRef.current = session.id as string
+          setInterviewSessionId(session.id as string)
+        }
       }
 
       try {
@@ -203,7 +264,14 @@ export function useInterviewChat(
           timestamp: new Date(),
         }
 
-        setMessages((prev) => [...prev, assistantMsg])
+        setMessages((prev) => {
+          const updated = [...prev, assistantMsg]
+          // Persist the full conversation to the database
+          if (interviewSessionIdRef.current) {
+            persistMessages(interviewSessionIdRef.current, updated)
+          }
+          return updated
+        })
       } catch (e) {
         const errMsg = await mapInterviewErrorMessage(e)
         const assistantMsg: Message = {
@@ -212,7 +280,13 @@ export function useInterviewChat(
           content: errMsg,
           timestamp: new Date(),
         }
-        setMessages((prev) => [...prev, assistantMsg])
+        setMessages((prev) => {
+          const updated = [...prev, assistantMsg]
+          if (interviewSessionIdRef.current) {
+            persistMessages(interviewSessionIdRef.current, updated)
+          }
+          return updated
+        })
       } finally {
         setIsTyping(false)
       }
@@ -220,5 +294,5 @@ export function useInterviewChat(
     [jobData, style, user]
   )
 
-  return { messages, isTyping, sendMessage }
+  return { messages, isTyping, sendMessage, interviewSessionId }
 }

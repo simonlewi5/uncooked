@@ -30,6 +30,14 @@ export interface Message {
   timestamp: Date
 }
 
+export interface InterviewSessionSummary {
+  id: string
+  companyName: string
+  companyProfileId: string | null
+  interviewStyle: string | null
+  createdAt: string
+}
+
 export interface JobDescriptionFormValue {
   jobDescription: string
   companyName: string
