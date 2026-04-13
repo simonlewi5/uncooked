@@ -256,34 +256,10 @@ export default function ResumePage() {
 
   const pdfInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    let cancelled = false
-
-    const load = async () => {
-      if (!user?.id) return
-      clearPersistenceError()
-
-      try {
-        const existing = await loadPrimaryResume(user.id)
-        if (cancelled || !existing?.structuredContent) return
-        hydrateFromStructuredContent(existing.structuredContent)
-        setActiveResumeId(existing.id)
-      } catch {
-        // error surfaced through persistenceError
-      }
-    }
-
-    void load()
-
-    return () => {
-      cancelled = true
-    }
-  }, [user?.id, loadPrimaryResume, clearPersistenceError])
-
-  function toCanonicalId(id: string, fallback: string): string {
+  const toCanonicalId = useCallback((id: string, fallback: string): string => {
     const normalized = normalizeTargetId(id)
     return normalized || fallback
-  }
+  }, [])
 
   const hydrateFromStructuredContent = useCallback(
     (content: ResumeDocument) => {
@@ -340,8 +316,32 @@ export default function ResumePage() {
         })),
       })
     },
-    []
+    [toCanonicalId]
   )
+
+  useEffect(() => {
+    let cancelled = false
+
+    const load = async () => {
+      if (!user?.id) return
+      clearPersistenceError()
+
+      try {
+        const existing = await loadPrimaryResume(user.id)
+        if (cancelled || !existing?.structuredContent) return
+        hydrateFromStructuredContent(existing.structuredContent)
+        setActiveResumeId(existing.id)
+      } catch {
+        // error surfaced through persistenceError
+      }
+    }
+
+    void load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id, loadPrimaryResume, clearPersistenceError, hydrateFromStructuredContent])
 
   async function handlePdfImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
