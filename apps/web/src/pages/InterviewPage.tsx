@@ -52,7 +52,7 @@ export default function InterviewPage(): JSX.Element {
       .select('id, company_name, company_website, industry, company_size')
       .single()
     if (error) {
-      console.error('InterviewPage: failed to create company profile', err)
+      console.error('InterviewPage: failed to create company profile', error)
       return
     }
 
