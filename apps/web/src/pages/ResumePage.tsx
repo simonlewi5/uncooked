@@ -1,4 +1,4 @@
-import { useState, useRef, KeyboardEvent, useEffect } from 'react'
+import { useState, useEffect, useRef, KeyboardEvent, useCallback } from 'react'
 import html2pdf from 'html2pdf.js'
 import { Download, Sparkles, Search, X, Plus, FileUp } from 'lucide-react'
 import { Button } from '@/components/ui'
@@ -285,60 +285,63 @@ export default function ResumePage() {
     return normalized || fallback
   }
 
-  function hydrateFromStructuredContent(content: ResumeDocument) {
-    setResumeContent({
-      name: {
-        id: toCanonicalId(content.name.id, ID_GENERATORS.profileName()),
-        text: content.name.text,
-      },
-      contact: {
-        id: toCanonicalId(content.contact.id, ID_GENERATORS.profileContact()),
-        text: content.contact.text,
-      },
-      summary: {
-        id: toCanonicalId(content.summary.id, ID_GENERATORS.summary()),
-        text: content.summary.text,
-      },
-      experience: content.experience.map((entry) => ({
-        id: entry.id,
-        title: {
-          id: toCanonicalId(entry.title.id, ID_GENERATORS.experienceField(entry.id, 'title')),
-          text: entry.title.text,
+  const hydrateFromStructuredContent = useCallback(
+    (content: ResumeDocument) => {
+      setResumeContent({
+        name: {
+          id: toCanonicalId(content.name.id, ID_GENERATORS.profileName()),
+          text: content.name.text,
         },
-        company: {
-          id: toCanonicalId(entry.company.id, ID_GENERATORS.experienceField(entry.id, 'company')),
-          text: entry.company.text,
+        contact: {
+          id: toCanonicalId(content.contact.id, ID_GENERATORS.profileContact()),
+          text: content.contact.text,
         },
-        period: {
-          id: toCanonicalId(entry.period.id, ID_GENERATORS.experienceField(entry.id, 'period')),
-          text: entry.period.text,
+        summary: {
+          id: toCanonicalId(content.summary.id, ID_GENERATORS.summary()),
+          text: content.summary.text,
         },
-        bullets: entry.bullets.map((bullet, index) => ({
-          id: toCanonicalId(bullet.id, ID_GENERATORS.experienceBullet(entry.id, `b${index + 1}`)),
-          text: bullet.text,
+        experience: content.experience.map((entry) => ({
+          id: entry.id,
+          title: {
+            id: toCanonicalId(entry.title.id, ID_GENERATORS.experienceField(entry.id, 'title')),
+            text: entry.title.text,
+          },
+          company: {
+            id: toCanonicalId(entry.company.id, ID_GENERATORS.experienceField(entry.id, 'company')),
+            text: entry.company.text,
+          },
+          period: {
+            id: toCanonicalId(entry.period.id, ID_GENERATORS.experienceField(entry.id, 'period')),
+            text: entry.period.text,
+          },
+          bullets: entry.bullets.map((bullet, index) => ({
+            id: toCanonicalId(bullet.id, ID_GENERATORS.experienceBullet(entry.id, `b${index + 1}`)),
+            text: bullet.text,
+          })),
         })),
-      })),
-      education: content.education.map((entry) => ({
-        id: entry.id,
-        degree: {
-          id: toCanonicalId(entry.degree.id, ID_GENERATORS.educationField(entry.id, 'degree')),
-          text: entry.degree.text,
-        },
-        school: {
-          id: toCanonicalId(entry.school.id, ID_GENERATORS.educationField(entry.id, 'school')),
-          text: entry.school.text,
-        },
-        period: {
-          id: toCanonicalId(entry.period.id, ID_GENERATORS.educationField(entry.id, 'period')),
-          text: entry.period.text,
-        },
-      })),
-      skills: content.skills.map((skill, index) => ({
-        id: toCanonicalId(skill.id, ID_GENERATORS.skillItem(`s${index + 1}`)),
-        text: skill.text,
-      })),
-    })
-  }
+        education: content.education.map((entry) => ({
+          id: entry.id,
+          degree: {
+            id: toCanonicalId(entry.degree.id, ID_GENERATORS.educationField(entry.id, 'degree')),
+            text: entry.degree.text,
+          },
+          school: {
+            id: toCanonicalId(entry.school.id, ID_GENERATORS.educationField(entry.id, 'school')),
+            text: entry.school.text,
+          },
+          period: {
+            id: toCanonicalId(entry.period.id, ID_GENERATORS.educationField(entry.id, 'period')),
+            text: entry.period.text,
+          },
+        })),
+        skills: content.skills.map((skill, index) => ({
+          id: toCanonicalId(skill.id, ID_GENERATORS.skillItem(`s${index + 1}`)),
+          text: skill.text,
+        })),
+      })
+    },
+    []
+  )
 
   async function handlePdfImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]

@@ -21,7 +21,6 @@ export async function readPdf(file: File): Promise<ParserTextItems> {
       const pageTextItems = textContent.items.map((item) => {
         const {
           str: text,
-          dir,
           transform,
           fontName: pdfFontName,
           ...otherProps
