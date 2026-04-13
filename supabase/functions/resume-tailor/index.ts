@@ -255,7 +255,7 @@ Deno.serve(async (req: Request) => {
     return json(400, {
       error: 'Invalid payload shape',
       details:
-        'Expected { jobDescription: string, resumeContent: ResumeTailorResumeContent, mode?: delta_only }',
+        'Expected { jobDescription: string, resumeContent: ResumeDocument, mode?: delta_only }',
     })
   }
 

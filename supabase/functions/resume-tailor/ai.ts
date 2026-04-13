@@ -205,7 +205,7 @@ OUTPUT (strict JSON only):
   "edits": [
     {
       "section": "experience",
-      "targetId": "experience_e1_bullet_e1_b1",
+      "targetId": "experience/e1/bullets/b1",
       "operation": "replace",
       "replacement": "Improved bullet text aligned to job keywords"
     }
