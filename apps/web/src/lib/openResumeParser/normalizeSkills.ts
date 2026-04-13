@@ -39,7 +39,13 @@ function decodeHtmlEntities(text: string): string {
  * Remove control characters and invalid UTF-8 sequences
  */
 function removeControlCharacters(text: string): string {
-  return text.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim()
+  return Array.from(text)
+    .filter((char) => {
+      const code = char.charCodeAt(0)
+      return code === 9 || code === 10 || code === 13 || code >= 32
+    })
+    .join('')
+    .trim()
 }
 
 /**
