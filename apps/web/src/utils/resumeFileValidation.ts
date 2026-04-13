@@ -50,7 +50,7 @@ export function validateResumeFile(file: File): ResumeFileValidationResult {
     return {
       ok: false,
       errorCode: 'file_too_large',
-      message: 'File is too large. Maximum allowed size is 5 MB.',
+      message: `File is too large. Maximum allowed size is ${RESUME_UPLOAD_CONSTRAINTS.maxBytes / (1024 * 1024)} MB.`,
     }
   }
 
