@@ -43,7 +43,7 @@ export default function InterviewPage(): JSX.Element {
     const trimmedName = companyName.trim()
     if (!trimmedName) return
 
-    const { data, err} = await supabase
+    const { data, error} = await supabase
       .from('company_profiles')
       .insert({
         user_id: user.id,
@@ -51,7 +51,7 @@ export default function InterviewPage(): JSX.Element {
       }) 
       .select('id, company_name, company_website, industry, company_size')
       .single()
-    if (err) {
+    if (error) {
       console.error('InterviewPage: failed to create company profile', err)
       return
     }
