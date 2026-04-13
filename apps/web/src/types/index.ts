@@ -16,11 +16,19 @@ export interface PastJobDescription {
   jobDescription: string
 }
 
+
 export type {
+  ResumeAllowedExtension,
+  ResumeAllowedMimeType,
   ResumeTailorEdit,
-  ResumeTailorInputObject,
-  ResumeTailorResumeContent,
+  ResumeDocument,
+  ResumeDocumentField,
+  ResumeUploadConstraints,
   ResumeTailorMode,
+  ResumeParseErrorCode,
+  ResumeParseResponse,
+  ResumeRecordDto,
+  ResumeRecordStatus,
   ResumeTailorRequest,
   ResumeTailorResponse,
 } from '@uncooked/shared'

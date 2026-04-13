@@ -3,54 +3,38 @@
 
 export type { Database } from './types/database'
 
-export type ResumeTailorInputValue =
-	| string
-	| number
-	| boolean
-	| null
-	| ResumeTailorInputObject
-	| ResumeTailorInputArray
-
-export interface ResumeTailorInputObject {
-	[key: string]: ResumeTailorInputValue
-}
-
-export interface ResumeTailorInputArray extends Array<ResumeTailorInputValue> {}
-
-export interface ResumeTailorTextField {
+export interface ResumeDocumentField {
 	id: string
 	text: string
 }
 
-export interface ResumeTailorBulletField extends ResumeTailorTextField {}
-
-export interface ResumeTailorExperienceEntry {
+export interface ResumeDocumentExperienceEntry {
 	id: string
-	title: ResumeTailorTextField
-	company: ResumeTailorTextField
-	period: ResumeTailorTextField
-	bullets: ResumeTailorBulletField[]
+	title: ResumeDocumentField
+	company: ResumeDocumentField
+	period: ResumeDocumentField
+	bullets: ResumeDocumentField[]
 }
 
-export interface ResumeTailorEducationEntry {
+export interface ResumeDocumentEducationEntry {
 	id: string
-	degree: ResumeTailorTextField
-	school: ResumeTailorTextField
-	period: ResumeTailorTextField
+	degree: ResumeDocumentField
+	school: ResumeDocumentField
+	period: ResumeDocumentField
 }
 
-export interface ResumeTailorResumeContent {
-	name: ResumeTailorTextField
-	contact: ResumeTailorTextField
-	summary: ResumeTailorTextField
-	experience: ResumeTailorExperienceEntry[]
-	education: ResumeTailorEducationEntry[]
-	skills: ResumeTailorTextField[]
+export interface ResumeDocument {
+	name: ResumeDocumentField
+	contact: ResumeDocumentField
+	summary: ResumeDocumentField
+	experience: ResumeDocumentExperienceEntry[]
+	education: ResumeDocumentEducationEntry[]
+	skills: ResumeDocumentField[]
 }
 
 export interface ResumeTailorRequest {
 	jobDescription: string
-	resumeContent: ResumeTailorResumeContent
+	resumeContent: ResumeDocument
 	mode?: ResumeTailorMode
 }
 
@@ -69,4 +53,63 @@ export interface ResumeTailorResponse {
 	edits?: ResumeTailorEdit[]
 	appliedMode?: ResumeTailorMode
 	isPartial?: boolean
+}
+
+export const RESUME_UPLOAD_MAX_BYTES = 5 * 1024 * 1024
+
+export const RESUME_ALLOWED_EXTENSIONS = ['pdf'] as const
+export type ResumeAllowedExtension = (typeof RESUME_ALLOWED_EXTENSIONS)[number]
+
+export const RESUME_ALLOWED_MIME_TYPES = ['application/pdf'] as const
+export type ResumeAllowedMimeType = (typeof RESUME_ALLOWED_MIME_TYPES)[number]
+
+export interface ResumeUploadConstraints {
+	maxBytes: number
+	allowedExtensions: readonly ResumeAllowedExtension[]
+	allowedMimeTypes: readonly ResumeAllowedMimeType[]
+}
+
+export const RESUME_UPLOAD_CONSTRAINTS: ResumeUploadConstraints = {
+	maxBytes: RESUME_UPLOAD_MAX_BYTES,
+	allowedExtensions: RESUME_ALLOWED_EXTENSIONS,
+	allowedMimeTypes: RESUME_ALLOWED_MIME_TYPES,
+}
+
+export type ResumeParseErrorCode =
+	| 'unsupported_format'
+	| 'file_too_large'
+	| 'invalid_file'
+
+export type ResumeParseStatus = 'parsed' | 'partial' | 'failed'
+
+export interface ResumeParseWarning {
+	code: string
+	message: string
+	fieldId?: string
+}
+
+export interface ResumeParseResponse {
+	status: ResumeParseStatus
+	structuredContent?: ResumeDocument
+	warnings?: ResumeParseWarning[]
+	errorCode?: ResumeParseErrorCode
+	errorMessage?: string
+}
+
+export type ResumeRecordStatus = 'pending_parse' | 'parsed' | 'partial' | 'failed' | 'edited'
+
+export interface ResumeRecordDto {
+	id: string
+	userId: string
+	title: string
+	structuredContent: ResumeDocument | null
+	filePath: string | null
+	fileName: string | null
+	fileMimeType: string | null
+	fileSize: number | null
+	status: ResumeRecordStatus
+	parseError: string | null
+	isPrimary: boolean
+	createdAt: string
+	updatedAt: string
 }
