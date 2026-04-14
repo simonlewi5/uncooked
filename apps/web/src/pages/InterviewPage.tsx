@@ -8,12 +8,11 @@ import { QuestionList } from '@/components/interview/QuestionList'
 import { useInterviewChat } from '@/hooks/useInterviewChat'
 import { useInterviewQuestions } from '@/hooks/useInterviewQuestions'
 import { extractQuestions } from '@/utils/extractQuestions'
+import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/utils/cn'
 import type { ActiveTab, CompanyProfile, InterviewStyle, InterviewSessionSummary, Message } from '@/types'
 import styles from './InterviewPage.module.css'
-import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
 
 export default function InterviewPage(): JSX.Element {
   const [jobDescription, setJobDescription] = useState('')
@@ -82,14 +81,15 @@ export default function InterviewPage(): JSX.Element {
     const trimmedName = companyName.trim()
     if (!trimmedName) return
 
-    const { data, error} = await supabase
+    const { data, error } = await supabase
       .from('company_profiles')
       .insert({
         user_id: user.id,
         company_name: trimmedName,
-      }) 
+      })
       .select('id, company_name, company_website, industry, company_size')
       .single()
+
     if (error) {
       console.error('InterviewPage: failed to create company profile', error)
       return
@@ -105,6 +105,7 @@ export default function InterviewPage(): JSX.Element {
       })
     }
   }
+
   function handleNewInterview(): void {
     resetSession()
     setJobDescription('')
