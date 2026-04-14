@@ -24,13 +24,16 @@ export function JobDescriptionForm({
 }: JobDescriptionFormProps): React.JSX.Element {
   const { jobs } = usePastJobDescriptions(selectedCompanyId)
 
+  const handleCreateCompany = (companyName: string) => {
+    onCreateCompany(companyName)
+  }
   return (
     <div className={styles.form}>
       <CompanyAutocomplete
         value={companyName}
         onChange={onCompanyNameChange}
         onProfileSelect={onCompanyProfileSelect}
-        onCreateCompany={onCreateCompany}
+        onCreateCompany={handleCreateCompany}
       />
 
       {jobs.length > 0 && (
