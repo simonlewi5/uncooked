@@ -1,4 +1,5 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
+import { DEBUG_ENABLED, DEBUG_VERBOSE, isRecord, toDebugPreview } from './utils.ts'
 
 declare const Deno: {
   env: {
@@ -8,14 +9,24 @@ declare const Deno: {
 
 export type ResumeTailorPayload = {
   jobDescription: string
-  resumeContent: string | Record<string, unknown>
-  skills?: string[]
-  mode?: 'suggestions_only' | 'full_rewrite'
+  resumeContent: Record<string, unknown>
+  mode?: 'delta_only'
 }
 
+export type ResumeTailorEdit = {
+  section: 'summary' | 'experience' | 'skills'
+  targetId: string
+  operation: 'replace' | 'insert' | 'remove'
+  replacement: string
+  reason?: string
+}
+
+export type ResumeTailorMode = 'delta_only'
+
 export type ResumeTailorResult = {
-  tailoredResume: string
-  suggestions: string[]
+  edits?: ResumeTailorEdit[]
+  appliedMode?: ResumeTailorMode
+  isPartial?: boolean
 }
 
 type ParseFailureReason =
@@ -34,83 +45,172 @@ type ParseGeminiResult =
 const GEMINI_MODEL = 'gemini-2.5-flash'
 const GEMINI_API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
 const MAX_RETRIES = 2
-const TIMEOUT_MS = 60_000
-const SUGGESTIONS_ONLY_BASE_OUTPUT_TOKENS = 2200
-const SUGGESTIONS_ONLY_MAX_OUTPUT_TOKENS = 3400
+const TIMEOUT_MS = 25_000
+const DELTA_ONLY_BASE_OUTPUT_TOKENS = 4000
+const DELTA_ONLY_MAX_OUTPUT_TOKENS = 8000
+const ALLOWED_EDIT_SECTIONS = new Set<ResumeTailorEdit['section']>(['summary', 'experience', 'skills'])
+const MAX_EXPERIENCE_ENTRIES = 5
+const MAX_BULLETS_PER_EXPERIENCE = 4
+const MAX_SKILL_ITEMS = 20
 
-const getMode = (mode: ResumeTailorPayload['mode']) =>
-  mode === 'suggestions_only' ? 'suggestions_only' : 'full_rewrite'
-
-const buildPrompt = (payload: ResumeTailorPayload): string => {
-  const mode = getMode(payload.mode)
-  let resumeText = ''
-  if (typeof payload.resumeContent === 'string') {
-    resumeText = payload.resumeContent
-  } else {
-    try {
-      resumeText = JSON.stringify(payload.resumeContent, null, 2)
-    } catch {
-      resumeText = String(payload.resumeContent)
-    }
-  }
-
-  const skillsSection = payload.skills?.length
-    ? `\n\nUser-specified skills to emphasize:\n${payload.skills.join(', ')}`
-    : ''
-
-  if (mode === 'suggestions_only') {
-    return `You are an ATS resume optimizer.
-
-TASK:
-Return 5-7 quick, high-impact suggestions that improve this resume for the job.
-
-RULES:
-- Do not invent facts, dates, metrics, or credentials.
-- Use only information already present in the resume.
-- Each suggestion must be one sentence and at most 18 words.
-- Prioritize missing job keywords, weak bullets, and measurable-impact opportunities.
-- No markdown, numbering, or extra commentary.
-
-JOB DESCRIPTION:
-${payload.jobDescription}
-${skillsSection}
-
-CURRENT RESUME:
-${resumeText}
-
-OUTPUT (strict JSON only):
-{"tailoredResume":"","suggestions":["suggestion 1","suggestion 2","suggestion 3"]}`
-  }
-
-  return `You are an expert resume writer specializing in STAR-format bullet points and ATS optimization.
-
-CRITICAL INSTRUCTIONS:
-- Do NOT invent companies, dates, metrics, degrees, or any factual information
-- ONLY rewrite and reframe existing content
-- Use STAR format (Situation/Task, Action, Result) for experience bullets
-- If metrics are missing, use qualitative results without fabricating numbers
-- Emphasize skills and keywords from the job description
-- Keep section structure intact
-- Be concise and professional
-
-MODE: full_rewrite
-- Return a complete tailored resume in "tailoredResume".
-- Suggestion count: 3 to 6.
-
-JOB DESCRIPTION:
-${payload.jobDescription}
-${skillsSection}
-
-CURRENT RESUME:
-${resumeText}
-
-OUTPUT FORMAT (strict JSON):
-{
-  "tailoredResume": "full rewritten resume text with STAR bullets and job-relevant keywords",
-  "suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"]
+type TailorRunOptions = {
+  requestId?: string
 }
 
-Return ONLY valid JSON. No markdown, no code blocks, no explanations.`
+type ResumeTextNode = { id: string; text: string }
+
+const debugLog = (requestId: string | undefined, event: string, data?: Record<string, unknown>) => {
+  if (!DEBUG_ENABLED) return
+
+  console.log('resume-tailor.ai', {
+    requestId,
+    event,
+    ...data,
+  })
+}
+
+const asTextNode = (value: unknown): ResumeTextNode | null => {
+  if (!isRecord(value)) return null
+
+  const id = typeof value.id === 'string' ? value.id.trim() : ''
+  const text = typeof value.text === 'string' ? value.text.trim() : ''
+  if (!id || !text) return null
+
+  return { id, text }
+}
+
+const collectIds = (value: unknown, out: string[] = []): string[] => {
+  if (Array.isArray(value)) {
+    for (const item of value) collectIds(item, out)
+    return out
+  }
+
+  if (!isRecord(value)) return out
+
+  const id = typeof value.id === 'string' ? value.id.trim() : ''
+  if (id) out.push(id)
+
+  for (const nested of Object.values(value)) collectIds(nested, out)
+  return out
+}
+
+const buildLeanResumeContext = (resumeContent: Record<string, unknown>) => {
+  const summary = asTextNode(resumeContent.summary)
+
+  const skills = Array.isArray(resumeContent.skills)
+    ? resumeContent.skills.map(asTextNode).filter((item): item is ResumeTextNode => item !== null)
+    : []
+
+  const experience = Array.isArray(resumeContent.experience)
+    ? resumeContent.experience
+        .slice(0, MAX_EXPERIENCE_ENTRIES)
+        .map((rawEntry) => {
+          if (!isRecord(rawEntry)) return null
+
+          const id = typeof rawEntry.id === 'string' ? rawEntry.id.trim() : ''
+          const title = asTextNode(rawEntry.title)
+          const company = asTextNode(rawEntry.company)
+          const bullets = Array.isArray(rawEntry.bullets)
+            ? rawEntry.bullets
+                .slice(0, MAX_BULLETS_PER_EXPERIENCE)
+                .map(asTextNode)
+                .filter((item): item is ResumeTextNode => item !== null)
+            : []
+
+          if (!id || !title || !company || bullets.length === 0) return null
+
+          return {
+            id,
+            title,
+            company,
+            bullets,
+          }
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+    : []
+
+  return {
+    summary,
+    skills: skills.slice(0, MAX_SKILL_ITEMS),
+    experience,
+  }
+}
+
+const RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  required: ['edits'],
+  properties: {
+    edits: {
+      type: 'ARRAY',
+      minItems: 1,
+      maxItems: 5,
+      items: {
+        type: 'OBJECT',
+        required: ['section', 'targetId', 'operation', 'replacement'],
+        properties: {
+          section: {
+            type: 'STRING',
+            enum: ['summary', 'experience', 'skills'],
+          },
+          targetId: { type: 'STRING' },
+          operation: {
+            type: 'STRING',
+            enum: ['replace', 'insert', 'remove'],
+          },
+          replacement: { type: 'STRING' },
+        },
+      },
+    },
+  },
+} as const
+
+const buildPrompt = (payload: ResumeTailorPayload): string => {
+  // Keep the context compact to reduce token pressure and truncation risk.
+  const leanResume = buildLeanResumeContext(payload.resumeContent)
+  const resumeText = JSON.stringify(leanResume)
+  const validTargetIds = JSON.stringify(collectIds(leanResume))
+
+  return `You are a resume tailoring engine that outputs minimal edit deltas.
+
+TASK:
+Return only the highest-impact changes to align the resume with the job description.
+
+RULES:
+- Return valid JSON only.
+- Do not include reasoning, commentary, notes, markdown, code fences, or extra keys.
+- Do not return the full resume.
+- Return changed content only.
+- Preserve original facts and chronology.
+- Do not invent metrics, tools, experiences, achievements, or credentials.
+- Focus only on summary, skills, and selected experience bullets.
+- Return 2-5 edits total.
+- Keep replacement text concise and directly usable.
+
+EDIT TARGETS:
+- section: one of summary|experience|skills
+- operation: replace|insert|remove
+- targetId: MUST be one of VALID_TARGET_IDS (never create new ids)
+
+JOB DESCRIPTION:
+${payload.jobDescription}
+
+CURRENT RESUME (trimmed context):
+${resumeText}
+
+VALID_TARGET_IDS:
+${validTargetIds}
+
+OUTPUT (strict JSON only):
+{
+  "edits": [
+    {
+      "section": "experience",
+      "targetId": "experience/e1/bullets/b1",
+      "operation": "replace",
+      "replacement": "Improved bullet text aligned to job keywords"
+    }
+  ]
+}`
 }
 
 const cleanModelText = (text: string): string =>
@@ -176,21 +276,33 @@ const parseJsonObject = (text: string): unknown | null => {
   }
 }
 
-const parseSuggestions = (value: unknown): string[] | null => {
-  if (Array.isArray(value) && value.every((v) => typeof v === 'string')) {
-    const normalized = value.map((item) => item.trim()).filter(Boolean)
-    return normalized.length > 0 ? normalized : null
+const parseEdits = (value: unknown): ResumeTailorEdit[] | null => {
+  if (!Array.isArray(value)) return null
+
+  const edits: ResumeTailorEdit[] = []
+  const sectionValues: ResumeTailorEdit['section'][] = ['summary', 'experience', 'skills']
+
+  for (const rawEdit of value) {
+    if (!rawEdit || typeof rawEdit !== 'object') continue
+
+    const edit = rawEdit as Record<string, unknown>
+    const rawSection = typeof edit.section === 'string' ? edit.section.trim() : ''
+    const section = sectionValues.find((candidate) => candidate === rawSection)
+    const targetId = typeof edit.targetId === 'string' ? edit.targetId.trim() : ''
+    const operation =
+      edit.operation === 'replace' || edit.operation === 'insert' || edit.operation === 'remove'
+        ? edit.operation
+        : null
+    const replacement = typeof edit.replacement === 'string' ? edit.replacement.trim() : ''
+    const reason = typeof edit.reason === 'string' ? edit.reason.trim() : undefined
+
+    if (!section || !targetId || !operation) continue
+    if (operation !== 'remove' && !replacement) continue
+    if (!ALLOWED_EDIT_SECTIONS.has(section)) continue
+    edits.push({ section, targetId, operation, replacement, reason })
   }
 
-  if (typeof value === 'string') {
-    const normalized = value
-      .split(/\r?\n/)
-      .map((line) => line.replace(/^[-*\d.)\s]+/, '').trim())
-      .filter(Boolean)
-    return normalized.length > 0 ? normalized : null
-  }
-
-  return null
+  return edits.length > 0 ? edits : null
 }
 
 const parseGeminiResponse = (response: unknown): ParseGeminiResult => {
@@ -242,52 +354,60 @@ const parseGeminiResponse = (response: unknown): ParseGeminiResult => {
   }
 
   const result = parsed as {
-    tailoredResume?: unknown
-    suggestions?: unknown
-    recommendations?: unknown
+    edits?: unknown
   }
 
-  const tailoredResume = typeof result.tailoredResume === 'string' ? result.tailoredResume : ''
-  const suggestions = parseSuggestions(result.suggestions) ?? parseSuggestions(result.recommendations)
+  const edits = parseEdits(result.edits)
 
-  if (!suggestions) {
+  if (!edits) {
     return {
       ok: false,
       reason: 'invalid_shape',
-      details: 'Missing string[] suggestions/recommendations in parsed JSON',
+      details: 'delta_only mode requires edits[]',
     }
   }
 
   return {
     ok: true,
     value: {
-      tailoredResume,
-      suggestions,
+      edits,
     },
   }
 }
 
-export const tailorResumeWithAI = async (
-  payload: ResumeTailorPayload
+const getGenerationConfig = (attempt: number) => ({
+  temperature: 0.1,
+  maxOutputTokens: Math.min(
+    DELTA_ONLY_BASE_OUTPUT_TOKENS + attempt * 300,
+    DELTA_ONLY_MAX_OUTPUT_TOKENS
+  ),
+})
+
+const runTailor = async (
+  payload: ResumeTailorPayload,
+  options?: TailorRunOptions
 ): Promise<ResumeTailorResult> => {
   const apiKey = Deno.env.get('GEMINI_API_KEY')
   if (!apiKey) {
     throw new Error('Missing GEMINI_API_KEY environment variable')
   }
 
+  const requestId = options?.requestId
   const prompt = buildPrompt(payload)
-  const mode = getMode(payload.mode)
-
   let lastError: Error | null = null
 
+  debugLog(requestId, 'start', {
+    model: GEMINI_MODEL,
+    retries: MAX_RETRIES,
+    timeoutMs: TIMEOUT_MS,
+    promptChars: prompt.length,
+    payloadJobDescriptionChars: payload.jobDescription.length,
+    payloadResumeChars: JSON.stringify(payload.resumeContent).length,
+    promptPreview: DEBUG_VERBOSE ? toDebugPreview(prompt, 1800) : undefined,
+  })
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    const maxOutputTokens =
-      mode === 'suggestions_only'
-        ? Math.min(
-            SUGGESTIONS_ONLY_BASE_OUTPUT_TOKENS + attempt * 600,
-            SUGGESTIONS_ONLY_MAX_OUTPUT_TOKENS
-          )
-        : 4096
+    const generationConfig = getGenerationConfig(attempt)
 
     const requestBody = {
       contents: [
@@ -300,11 +420,17 @@ export const tailorResumeWithAI = async (
         },
       ],
       generationConfig: {
-        temperature: mode === 'suggestions_only' ? 0.4 : 0.7,
-        maxOutputTokens,
+        ...generationConfig,
         responseMimeType: 'application/json',
+        responseSchema: RESPONSE_SCHEMA,
       },
     }
+
+    debugLog(requestId, 'llm_request', {
+      attempt,
+      generationConfig,
+      requestBodyPreview: DEBUG_VERBOSE ? toDebugPreview(requestBody, 1800) : undefined,
+    })
 
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS)
@@ -323,10 +449,23 @@ export const tailorResumeWithAI = async (
 
       if (!response.ok) {
         const errorText = await response.text()
+        debugLog(requestId, 'llm_http_error', {
+          attempt,
+          status: response.status,
+          bodyPreview: toDebugPreview(errorText, 1800),
+        })
         throw new Error(`Gemini API error (${response.status}): ${errorText}`)
       }
 
       const data = await response.json()
+      debugLog(requestId, 'llm_response', {
+        attempt,
+        finishReason:
+          (data as { candidates?: Array<{ finishReason?: string }> })?.candidates?.[0]?.finishReason ??
+          'unknown',
+        responsePreview: DEBUG_VERBOSE ? toDebugPreview(data, 1800) : undefined,
+      })
+
       const parsed = parseGeminiResponse(data)
 
       if (!parsed.ok) {
@@ -338,13 +477,24 @@ export const tailorResumeWithAI = async (
         console.error('resume-tailor parse failure', {
           reason: parsed.reason,
           details: parsed.details,
-          mode,
           attempt,
-          maxOutputTokens,
+          maxOutputTokens: generationConfig.maxOutputTokens,
+        })
+
+        debugLog(requestId, 'parse_failure', {
+          attempt,
+          reason: parsed.reason,
+          details: parsed.details,
         })
 
         throw new Error(failureMessage)
       }
+
+      debugLog(requestId, 'parse_success', {
+        attempt,
+        editCount: parsed.value.edits?.length ?? 0,
+        resultPreview: DEBUG_VERBOSE ? toDebugPreview(parsed.value, 1800) : undefined,
+      })
 
       return parsed.value
     } catch (error) {
@@ -357,6 +507,12 @@ export const tailorResumeWithAI = async (
         !message.includes('gemini api error (429)') &&
         (!message.includes('failed to parse') || message.includes('[truncated]'))
 
+      debugLog(requestId, 'attempt_failed', {
+        attempt,
+        message: lastError.message,
+        shouldRetry,
+      })
+
       if (attempt < MAX_RETRIES && shouldRetry) {
         await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)))
         continue
@@ -364,5 +520,21 @@ export const tailorResumeWithAI = async (
     }
   }
 
+  debugLog(requestId, 'failed_all_attempts', {
+    message: lastError?.message,
+  })
+
   throw lastError || new Error('AI request failed after retries')
+}
+
+export const tailorResumeWithAI = async (
+  payload: ResumeTailorPayload,
+  options?: TailorRunOptions
+): Promise<ResumeTailorResult> => {
+  const result = await runTailor(payload, options)
+  return {
+    ...result,
+    appliedMode: 'delta_only',
+    isPartial: false,
+  }
 }

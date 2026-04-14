@@ -232,6 +232,17 @@
   line-height: 1.5;
 }
 
+.editAfter p {
+  margin: var(--space-1) 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+}
+
+.editAfter {
+  background: var(--color-success-subtle);
+}
+
 .resumeDocument {
   padding: var(--space-10) var(--space-12);
   max-width: 680px;
@@ -480,6 +491,7 @@
   list-style: none;
   transition: color 0.15s, border-color 0.15s, background-color 0.15s;
 }
+
 
 .addBulletBtn:hover {
   color: var(--color-primary);
