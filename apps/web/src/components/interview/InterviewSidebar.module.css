@@ -1,0 +1,142 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--color-bg);
+  overflow: hidden;
+}
+
+.contextHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.contextInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+}
+
+.companyName {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contextMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.styleBadge {
+  font-size: var(--font-xs);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  background-color: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  text-transform: capitalize;
+}
+
+.accordions {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.accordion {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.accordionToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: color 0.15s;
+}
+
+.accordionToggle:hover {
+  color: var(--color-text);
+}
+
+.questionsContent {
+  padding: 0 var(--space-3) var(--space-3);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.accordionContent {
+  padding: 0 var(--space-4) var(--space-3);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.jdTextarea {
+  width: 100%;
+  min-height: 120px;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg-subtle);
+  font-size: var(--font-xs);
+  font-family: inherit;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.jdTextarea:focus {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.jdTextarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.footer {
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-3) var(--space-4);
+  flex-shrink: 0;
+}
+
+.backBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: none;
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.backBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}

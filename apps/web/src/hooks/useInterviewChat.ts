@@ -164,7 +164,6 @@ interface UseInterviewChatReturn {
 export function useInterviewChat(
   jobData: JobDescriptionFormValue,
   style: InterviewStyle,
-  onAssistantMessage?: (msg: Message) => void,
 ): UseInterviewChatReturn {
   const { user } = useAuth()
   // Tracks whether a practice_sessions row has been recorded for this session.
@@ -177,8 +176,6 @@ export function useInterviewChat(
   const [messages, setMessages] = useState<Message[]>([createInitialInterviewMessage()])
   const [isTyping, setIsTyping] = useState(false)
   const messagesRef = useRef<Message[]>([])
-  const onAssistantMessageRef = useRef(onAssistantMessage)
-  onAssistantMessageRef.current = onAssistantMessage
 
   useEffect(() => {
     messagesRef.current = messages
@@ -294,7 +291,6 @@ export function useInterviewChat(
           }
           return updated
         })
-        onAssistantMessageRef.current?.(assistantMsg)
       } catch (e) {
         const errMsg = await mapInterviewErrorMessage(e)
         const assistantMsg: Message = {
