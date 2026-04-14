@@ -8,18 +8,21 @@
 .messages {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-4);
+  padding: var(--space-6) var(--space-8);
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
   scroll-behavior: smooth;
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .message {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  max-width: 75%;
+  max-width: 680px;
 }
 
 .messageUser {
@@ -95,9 +98,12 @@
   display: flex;
   align-items: flex-end;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-8);
   border-top: 1px solid var(--color-border);
   background-color: var(--color-bg);
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .inputField {
