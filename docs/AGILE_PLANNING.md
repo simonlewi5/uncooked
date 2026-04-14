@@ -1,4 +1,4 @@
-# Agile Planning 
+# Agile Planning  
 
 ## Team Context
 
