@@ -1,8 +1,8 @@
-# Agile Planning 
+# Agile Planning  
 
 ## Team Context
 
-Our team consists of working professionals. We operate async-first using Discord and GitHub Issues, with necessary meetings held on weekends.
+Our team consists of working professionals. We operate async-first using Discord and GitHub Issues, with necessary meetings held on weekends.   
 
 ## Tools
 
