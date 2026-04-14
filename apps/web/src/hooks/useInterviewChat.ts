@@ -13,6 +13,14 @@ type ErrorBody = {
   details?: string
 }
 
+const createInitialInterviewMessage = (): Message => ({
+  id: 'init',
+  role: 'assistant',
+  content:
+    "Hi! I'm your AI interviewer. I've reviewed the job description and I'm ready to begin. Tell me a bit about yourself and why you're interested in this role.",
+  timestamp: new Date(),
+})
+
 const RATE_LIMIT_FRIENDLY_MESSAGE =
   'You are sending messages too quickly right now. Please wait a minute and try again.'
 
@@ -166,15 +174,7 @@ export function useInterviewChat(
   const interviewSessionIdRef = useRef<string | null>(null)
   const [interviewSessionId, setInterviewSessionId] = useState<string | null>(null)
 
-  const INITIAL_MESSAGE: Message = {
-    id: 'init',
-    role: 'assistant',
-    content:
-      "Hi! I'm your AI interviewer. I've reviewed the job description and I'm ready to begin. Tell me a bit about yourself and why you're interested in this role.",
-    timestamp: new Date(),
-  }
-
-  const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE])
+  const [messages, setMessages] = useState<Message[]>([createInitialInterviewMessage()])
   const [isTyping, setIsTyping] = useState(false)
   const messagesRef = useRef<Message[]>([])
   const onAssistantMessageRef = useRef(onAssistantMessage)
@@ -195,7 +195,7 @@ export function useInterviewChat(
   const resetSession = useCallback(() => {
     interviewSessionIdRef.current = null
     setInterviewSessionId(null)
-    setMessages([INITIAL_MESSAGE])
+    setMessages([createInitialInterviewMessage()])
     sessionRecordedRef.current = false
   }, [])
 
