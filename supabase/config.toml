@@ -83,5 +83,7 @@ verify_jwt = false
 verify_jwt = false
 [functions.flush-interview-messages]
 verify_jwt = false
+[functions.generate-questions]
+verify_jwt = false
 [functions.hello]
 verify_jwt = false
