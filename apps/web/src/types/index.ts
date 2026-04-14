@@ -16,9 +16,19 @@ export interface PastJobDescription {
   jobDescription: string
 }
 
+
 export type {
-  ResumeTailorInputObject,
+  ResumeAllowedExtension,
+  ResumeAllowedMimeType,
+  ResumeTailorEdit,
+  ResumeDocument,
+  ResumeDocumentField,
+  ResumeUploadConstraints,
   ResumeTailorMode,
+  ResumeParseErrorCode,
+  ResumeParseResponse,
+  ResumeRecordDto,
+  ResumeRecordStatus,
   ResumeTailorRequest,
   ResumeTailorResponse,
 } from '@uncooked/shared'
@@ -28,6 +38,28 @@ export interface Message {
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
+}
+
+export interface InterviewSessionSummary {
+  id: string
+  companyName: string
+  companyProfileId: string | null
+  interviewStyle: string | null
+  createdAt: string
+}
+
+export interface InterviewQuestion {
+  id: string
+  interviewSessionId: string | null
+  companyProfileId: string | null
+  companyName: string
+  questionText: string
+  category: string | null
+  source: 'pre_generated' | 'chat_extracted'
+  isBookmarked: boolean
+  answerNotes: string | null
+  chatMessageId: string | null
+  createdAt: string
 }
 
 export interface JobDescriptionFormValue {

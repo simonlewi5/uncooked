@@ -5,7 +5,7 @@ interface InterviewRequest {
   jobDescription: string
   companyName: string
   companyContext?: string
-  interviewStyle: 'technical' | 'behavioral' | 'mixed'
+  interviewStyle: 'technical' | 'behavioral' | 'mixed' | 'friendly'
   userMessage: string
   conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>
 }
@@ -118,7 +118,9 @@ ${
     ? 'Ask deeply technical questions related to the technologies and skills mentioned in the job description. Test programming concepts, system design, and problem-solving abilities.'
     : interviewStyle === 'behavioral'
       ? 'Ask behavioral questions about past experiences, teamwork, conflict resolution, and how the candidate handles challenges.'
-      : 'Mix both technical and behavioral questions to assess both technical skills and soft skills.'
+      : interviewStyle === 'friendly'
+        ? 'Conduct a warm, conversational interview. Ask open-ended questions about interests, motivations, and career goals. Be encouraging and supportive while still exploring relevant experience.'
+        : 'Mix both technical and behavioral questions to assess both technical skills and soft skills.'
 }
 
 ## Guidelines
