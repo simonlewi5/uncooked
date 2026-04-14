@@ -1,27 +1,66 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Mic, Briefcase, FileText, Building2 } from 'lucide-react'
 import { JobDescriptionForm } from '@/components/interview/JobDescriptionForm'
 import { InterviewStyleSelector } from '@/components/interview/InterviewStyleSelector'
 import { ChatBox } from '@/components/interview/ChatBox'
 import { CompanyHistory } from '@/components/interview/CompanyHistory'
+import { QuestionList } from '@/components/interview/QuestionList'
 import { useInterviewChat } from '@/hooks/useInterviewChat'
+import { useInterviewQuestions } from '@/hooks/useInterviewQuestions'
+import { extractQuestions } from '@/utils/extractQuestions'
+import { supabase } from '@/lib/supabase'
 import { cn } from '@/utils/cn'
-import type { ActiveTab, CompanyProfile, InterviewStyle } from '@/types'
+import type { ActiveTab, CompanyProfile, InterviewStyle, InterviewSessionSummary, Message } from '@/types'
 import styles from './InterviewPage.module.css'
 
 export default function InterviewPage(): JSX.Element {
   const [jobDescription, setJobDescription] = useState('')
   const [companyName, setCompanyName] = useState('')
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null)
-  const [style, setStyle] = useState<InterviewStyle | null>(null)
+  const [style, setStyle] = useState<InterviewStyle | null>('mixed')
   const [activeTab, setActiveTab] = useState<ActiveTab>('jobDesc')
 
-  const { messages, isTyping, sendMessage } = useInterviewChat(
-    { jobDescription, companyName, companyContext: '' },
-    style ?? 'mixed',
+  // Track session ID as state so both hooks can reference it
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+
+  const {
+    questions,
+    isGenerating,
+    generateQuestions,
+    addExtractedQuestions,
+    toggleBookmark,
+    updateNotes,
+  } = useInterviewQuestions(activeSessionId)
+
+  const handleAssistantMessage = useCallback(
+    (msg: Message) => {
+      const extracted = extractQuestions(msg.content)
+      if (extracted.length > 0) {
+        addExtractedQuestions(
+          extracted,
+          activeSessionId,
+          companyName,
+          selectedCompanyId,
+          msg.id,
+        )
+      }
+    },
+    [addExtractedQuestions, activeSessionId, companyName, selectedCompanyId],
   )
 
-  const isChatEnabled = jobDescription.trim().length > 0
+  const { messages, isTyping, sendMessage, interviewSessionId, resumeSession, resetSession } =
+    useInterviewChat(
+      { jobDescription, companyName, companyContext: '' },
+      style ?? 'mixed',
+      handleAssistantMessage,
+    )
+
+  // Keep activeSessionId in sync with the chat hook's session id
+  if (interviewSessionId !== activeSessionId) {
+    setActiveSessionId(interviewSessionId)
+  }
+
+  const isChatEnabled = jobDescription.trim().length > 0 || interviewSessionId !== null
 
   function handleCompanyProfileSelect(profile: CompanyProfile): void {
     setCompanyName(profile.companyName)
@@ -34,6 +73,52 @@ export default function InterviewPage(): JSX.Element {
     setSelectedCompanyId(null)
   }
 
+  function handleNewInterview(): void {
+    resetSession()
+    setJobDescription('')
+    setCompanyName('')
+    setSelectedCompanyId(null)
+    setStyle('mixed')
+    setActiveTab('jobDesc')
+  }
+
+  const handleLoadSession = useCallback(async (session: InterviewSessionSummary) => {
+    const { data, error } = await supabase
+      .from('interview_sessions')
+      .select('messages, job_description, interview_style, company_name')
+      .eq('id', session.id)
+      .single()
+
+    if (error || !data) {
+      console.error('Failed to load interview session:', error)
+      return
+    }
+
+    const loaded = (data.messages as Array<{ role: string; content: string; timestamp: string }>)
+      .map((m, i) => ({
+        id: `past-${i}`,
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+        timestamp: new Date(m.timestamp),
+      }))
+
+    resumeSession(session.id, loaded)
+    setCompanyName(data.company_name as string)
+    if (data.job_description) setJobDescription(data.job_description as string)
+    if (data.interview_style) setStyle(data.interview_style as InterviewStyle)
+    setActiveTab('jobDesc')
+  }, [resumeSession])
+
+  const handleGenerateQuestions = useCallback(() => {
+    generateQuestions(
+      jobDescription,
+      companyName,
+      style ?? 'mixed',
+      interviewSessionId,
+      selectedCompanyId,
+    )
+  }, [generateQuestions, jobDescription, companyName, style, interviewSessionId, selectedCompanyId])
+
   return (
     <div className={styles.page}>
       <div className={styles.pageHeader}>
@@ -43,13 +128,23 @@ export default function InterviewPage(): JSX.Element {
             Practice answering questions live with AI. Provide context to make it realistic.
           </p>
         </div>
-        <button
-          className={styles.voiceBtn}
-          disabled
-          aria-label="Voice mode (coming soon)"
-        >
-          <Mic size={16} /> Voice Mode
-        </button>
+        <div className={styles.headerActions}>
+          {interviewSessionId && (
+            <button
+              className={styles.newSessionBtn}
+              onClick={handleNewInterview}
+            >
+              New Interview
+            </button>
+          )}
+          <button
+            className={styles.voiceBtn}
+            disabled
+            aria-label="Voice mode (coming soon)"
+          >
+            <Mic size={16} /> Voice Mode
+          </button>
+        </div>
       </div>
 
       <div className={styles.layout}>
@@ -92,17 +187,24 @@ export default function InterviewPage(): JSX.Element {
           )}
 
           {activeTab === 'questions' && (
-            <div className={styles.emptyTab}>
-              <FileText size={24} className={styles.emptyIcon} />
-              <p className={styles.emptyText}>
-                Questions will appear here once AI generates them.
-              </p>
+            <div className={styles.tabContent}>
+              <QuestionList
+                questions={questions}
+                isGenerating={isGenerating}
+                onGenerate={handleGenerateQuestions}
+                onToggleBookmark={toggleBookmark}
+                onUpdateNotes={updateNotes}
+                canGenerate={jobDescription.trim().length > 0 && companyName.trim().length > 0}
+              />
             </div>
           )}
 
           {activeTab === 'companies' && (
             <div className={styles.tabContent}>
-              <CompanyHistory onSelect={handleCompanyProfileSelect} />
+              <CompanyHistory
+                onSelect={handleCompanyProfileSelect}
+                onLoadSession={handleLoadSession}
+              />
             </div>
           )}
         </div>
