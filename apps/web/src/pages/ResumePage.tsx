@@ -2,7 +2,13 @@ import { useState, useEffect, useRef, KeyboardEvent, useCallback } from 'react'
 import html2pdf from 'html2pdf.js'
 import { Download, Sparkles, Search, X, Plus, FileUp } from 'lucide-react'
 import { Button } from '@/components/ui'
-import { ResumeSuggestionsPanel, type ResumeSuggestionItem } from '@/components/resume/ResumeSuggestionsPanel'
+import { ResumeSuggestionsPanel } from '@/components/resume/ResumeSuggestionsPanel'
+import {
+  applyResumeTailorEdit,
+  buildResumeSuggestionViewModels,
+  normalizeTargetId,
+  type ResumeSuggestionViewModel,
+} from '@/pages/resumeSuggestionTargets'
 import { useResumeTailor } from '@/hooks/useResumeTailor'
 import { useResumeUploadAndParse } from '@/hooks/useResumeUploadAndParse'
 import { useResumePersistence } from '@/hooks/useResumePersistence'
@@ -71,10 +77,6 @@ const ID_GENERATORS = {
 }
 
 const createId = () => crypto.randomUUID().replace(/-/g, '')
-
-const normalizeTargetId = (id: string): string => {
-  return id.trim()
-}
 
 const toInitialResumeContent = (): ResumeDocument => ({
   name: { id: ID_GENERATORS.profileName(), text: MOCK_RESUME.name },
@@ -401,234 +403,30 @@ export default function ResumePage() {
     }))
   }
 
-  function getCurrentValueForTarget(targetId: string): string | null {
+  const applyEditByTargetId = (targetId: string) => {
     const normalizedTargetId = normalizeTargetId(targetId)
-    if (normalizedTargetId === ID_GENERATORS.profileName()) return resumeContent.name.text
-    if (normalizedTargetId === ID_GENERATORS.profileContact()) return resumeContent.contact.text
-    if (normalizedTargetId === ID_GENERATORS.summary()) return resumeContent.summary.text
+    const edit = pendingEdits.find((candidate) => normalizeTargetId(candidate.targetId) === normalizedTargetId)
+    if (!edit) return false
 
-    const expFieldMatch = normalizedTargetId.match(/^experience\/(.+?)\/(title|company|period)$/)
-    if (expFieldMatch) {
-      const [, entryId, field] = expFieldMatch
-      const entry = resumeContent.experience.find((e) => e.id === entryId)
-      return entry ? entry[field as 'title' | 'company' | 'period'].text : null
+    const { nextContent, applied, targetResolution } = applyResumeTailorEdit(resumeContent, edit)
+    if (targetResolution?.source === 'fallback') {
+      console.warn('resume-tailor target resolved through fallback path', {
+        requestedTargetId: normalizedTargetId,
+        resolvedTargetId: targetResolution.targetId,
+      })
     }
 
-    const expBulletMatch = normalizedTargetId.match(/^experience\/(.+?)\/bullets\/(.+)$/)
-    if (expBulletMatch) {
-      const [, entryId, bulletId] = expBulletMatch
-      const entry = resumeContent.experience.find((e) => e.id === entryId)
-      return entry?.bullets.find((bullet) => bullet.id === bulletId)?.text ?? null
+    if (applied) {
+      setResumeContent(nextContent)
     }
 
-    const eduFieldMatch = normalizedTargetId.match(/^education\/(.+?)\/(degree|school|period)$/)
-    if (eduFieldMatch) {
-      const [, entryId, field] = eduFieldMatch
-      const entry = resumeContent.education.find((e) => e.id === entryId)
-      return entry ? entry[field as 'degree' | 'school' | 'period'].text : null
-    }
-
-    const skillMatch = normalizedTargetId.match(/^skills\/(.+)$/)
-    if (skillMatch) {
-      const skillId = skillMatch[1]
-      return resumeContent.skills.find((skill) => skill.id === skillId)?.text ?? null
-    }
-
-    return null
-  }
-
-  function applyEdit(edit: ResumeTailorEdit): boolean {
-    const { operation, replacement } = edit
-    const targetId = normalizeTargetId(edit.targetId)
-
-    if (targetId === ID_GENERATORS.profileName()) {
-      if (operation === 'replace') {
-        setResumeContent((prev) => ({
-          ...prev,
-          name: { ...prev.name, text: replacement },
-        }))
-      } else if (operation === 'insert') {
-        setResumeContent((prev) => ({
-          ...prev,
-          name: { ...prev.name, text: `${prev.name.text} ${replacement}`.trim() },
-        }))
-      } else {
-        setResumeContent((prev) => ({
-          ...prev,
-          name: { ...prev.name, text: '' },
-        }))
-      }
-      return true
-    }
-
-    if (targetId === ID_GENERATORS.profileContact()) {
-      if (operation === 'replace') {
-        setResumeContent((prev) => ({
-          ...prev,
-          contact: { ...prev.contact, text: replacement },
-        }))
-      } else if (operation === 'insert') {
-        setResumeContent((prev) => ({
-          ...prev,
-          contact: { ...prev.contact, text: `${prev.contact.text} ${replacement}`.trim() },
-        }))
-      } else {
-        setResumeContent((prev) => ({
-          ...prev,
-          contact: { ...prev.contact, text: '' },
-        }))
-      }
-      return true
-    }
-
-    if (targetId === ID_GENERATORS.summary()) {
-      if (operation === 'replace') {
-        setResumeContent((prev) => ({
-          ...prev,
-          summary: { ...prev.summary, text: replacement },
-        }))
-      } else if (operation === 'insert') {
-        setResumeContent((prev) => ({
-          ...prev,
-          summary: { ...prev.summary, text: `${prev.summary.text}\n${replacement}`.trim() },
-        }))
-      } else {
-        setResumeContent((prev) => ({
-          ...prev,
-          summary: { ...prev.summary, text: '' },
-        }))
-      }
-      return true
-    }
-
-    const expFieldMatch = targetId.match(/^experience\/(.+?)\/(title|company|period)$/)
-    if (expFieldMatch) {
-      const [, entryId, field] = expFieldMatch
-      const exists = resumeContent.experience.some((e) => e.id === entryId)
-      if (!exists) return false
-      const fieldKey = field as 'title' | 'company' | 'period'
-      if (operation === 'replace') updateExperienceField(entryId, fieldKey, replacement)
-      else if (operation === 'insert') {
-        const current = getCurrentValueForTarget(targetId)
-        updateExperienceField(entryId, fieldKey, `${current ?? ''} ${replacement}`.trim())
-      } else updateExperienceField(entryId, fieldKey, '')
-      return true
-    }
-
-    const expBulletMatch = targetId.match(/^experience\/(.+?)\/bullets\/(.+)$/)
-    if (expBulletMatch) {
-      const [, entryId, bulletId] = expBulletMatch
-      const entry = resumeContent.experience.find((e) => e.id === entryId)
-      if (!entry) return false
-      if (operation === 'replace') {
-        updateBullet(entryId, bulletId, replacement)
-      } else if (operation === 'insert') {
-        setResumeContent((prev) => ({
-          ...prev,
-          experience: prev.experience.map((entryItem) =>
-            entryItem.id === entryId
-              ? {
-                  ...entryItem,
-                  bullets: (() => {
-                    const idx = entryItem.bullets.findIndex((bullet) => bullet.id === bulletId)
-                    if (idx === -1) return entryItem.bullets
-                    const next = [...entryItem.bullets]
-                    next.splice(idx + 1, 0, {
-                      id: ID_GENERATORS.experienceBullet(entryId, `b${createId()}`),
-                      text: replacement,
-                    })
-                    return next
-                  })(),
-                }
-              : entryItem
-          ),
-        }))
-      } else {
-        setResumeContent((prev) => ({
-          ...prev,
-          experience: prev.experience.map((entryItem) =>
-            entryItem.id === entryId
-              ? {
-                  ...entryItem,
-                  bullets: entryItem.bullets.filter((bullet) => bullet.id !== bulletId),
-                }
-              : entryItem
-          ),
-        }))
-      }
-      return true
-    }
-
-    const eduFieldMatch = targetId.match(/^education\/(.+?)\/(degree|school|period)$/)
-    if (eduFieldMatch) {
-      const [, entryId, field] = eduFieldMatch
-      const exists = resumeContent.education.some((e) => e.id === entryId)
-      if (!exists) return false
-      const fieldKey = field as 'degree' | 'school' | 'period'
-      if (operation === 'replace') updateEducationField(entryId, fieldKey, replacement)
-      else if (operation === 'insert') {
-        const current = getCurrentValueForTarget(targetId)
-        updateEducationField(entryId, fieldKey, `${current ?? ''} ${replacement}`.trim())
-      } else updateEducationField(entryId, fieldKey, '')
-      return true
-    }
-
-    const skillMatch = targetId.match(/^skills\/(.+)$/)
-    if (skillMatch) {
-      const skillId = skillMatch[1]
-      const idx = resumeContent.skills.findIndex((skill) => skill.id === skillId)
-      if (idx === -1) return false
-      if (operation === 'replace') {
-        setResumeContent((prev) => ({
-          ...prev,
-          skills: prev.skills.map((skill) =>
-            skill.id === skillId ? { ...skill, text: replacement } : skill
-          ),
-        }))
-      } else if (operation === 'insert') {
-        setResumeContent((prev) => ({
-          ...prev,
-          skills: [
-            ...prev.skills.slice(0, idx + 1),
-            { id: ID_GENERATORS.skillItem(`s${createId()}`), text: replacement },
-            ...prev.skills.slice(idx + 1),
-          ],
-        }))
-      } else {
-        setResumeContent((prev) => ({
-          ...prev,
-          skills: prev.skills.filter((skill) => skill.id !== skillId),
-        }))
-      }
-      return true
-    }
-
-    return false
-  }
-
-  function acceptEdit(index: number) {
-    const edit = pendingEdits[index]
-    if (edit && applyEdit(edit)) {
-      // suggestion applied
-    }
-    setPendingEdits((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  function declineEdit(index: number) {
-    setPendingEdits((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  const getPendingEditIndex = (targetId: string) =>
-    pendingEdits.findIndex((edit) => normalizeTargetId(edit.targetId) === targetId)
-
-  const handleAcceptEditByTargetId = (targetId: string) => {
-    const idx = getPendingEditIndex(targetId)
-    if (idx !== -1) acceptEdit(idx)
+    setPendingEdits((prev) => prev.filter((candidate) => normalizeTargetId(candidate.targetId) !== normalizedTargetId))
+    return applied
   }
 
   const handleDeclineEditByTargetId = (targetId: string) => {
-    const idx = getPendingEditIndex(targetId)
-    if (idx !== -1) declineEdit(idx)
+    const normalizedTargetId = normalizeTargetId(targetId)
+    setPendingEdits((prev) => prev.filter((candidate) => normalizeTargetId(candidate.targetId) !== normalizedTargetId))
   }
 
   function buildResumeContent(): ResumeDocument {
@@ -713,28 +511,7 @@ export default function ResumePage() {
   }
 
   const editable = !isPreviewMode
-  const mappedTargetIds = new Set<string>([
-    ID_GENERATORS.profileName(),
-    ID_GENERATORS.profileContact(),
-    ID_GENERATORS.summary(),
-    ...resumeContent.experience.flatMap((job) => [
-      ID_GENERATORS.experienceField(job.id, 'title'),
-      ID_GENERATORS.experienceField(job.id, 'company'),
-      ID_GENERATORS.experienceField(job.id, 'period'),
-      ...job.bullets.map((bullet) => bullet.id),
-    ]),
-    ...resumeContent.education.flatMap((entry) => [
-      ID_GENERATORS.educationField(entry.id, 'degree'),
-      ID_GENERATORS.educationField(entry.id, 'school'),
-      ID_GENERATORS.educationField(entry.id, 'period'),
-    ]),
-    ...resumeContent.skills.map((skill) => skill.id),
-  ])
-  const suggestionItems: ResumeSuggestionItem[] = pendingEdits.map((edit) => ({
-    edit,
-    currentValue: getCurrentValueForTarget(edit.targetId),
-    isMapped: mappedTargetIds.has(normalizeTargetId(edit.targetId)),
-  }))
+  const suggestionItems: ResumeSuggestionViewModel[] = buildResumeSuggestionViewModels(resumeContent, pendingEdits)
 
   const handleRevealTarget = useCallback((targetId: string) => {
     const normalizedTargetId = normalizeTargetId(targetId)
@@ -746,7 +523,7 @@ export default function ResumePage() {
 
   const handleAcceptTarget = (targetId: string) => {
     const normalizedTargetId = normalizeTargetId(targetId)
-    handleAcceptEditByTargetId(normalizedTargetId)
+    applyEditByTargetId(normalizedTargetId)
     setActiveTargetId((current) => (current === normalizedTargetId ? null : current))
   }
 

@@ -1,23 +1,30 @@
 import type { KeyboardEvent } from 'react'
 import { cn } from '@/utils/cn'
-import type { ResumeTailorEdit } from '@/types'
+import type { ResumeSuggestionViewModel } from '@/pages/resumeSuggestionTargets'
 import styles from './ResumeSuggestionsPanel.module.css'
 
-export interface ResumeSuggestionItem {
-  edit: ResumeTailorEdit
-  currentValue: string | null
-  isMapped: boolean
-}
-
 interface SuggestionDiffProps {
-  edit: ResumeTailorEdit
-  currentValue: string | null
+  currentText: string | null
+  replacementText: string
+  targetExists: boolean
   onAccept: () => void
   onDecline: () => void
   variant?: 'compact' | 'stacked'
 }
 
-const SuggestionDiff = ({ edit, currentValue, onAccept, onDecline, variant = 'compact' }: SuggestionDiffProps) => {
+const SuggestionDiff = ({
+  currentText,
+  replacementText,
+  targetExists,
+  onAccept,
+  onDecline,
+  variant = 'compact',
+}: SuggestionDiffProps) => {
+  const currentLabel = targetExists ? 'Current' : 'Target removed'
+  const currentDisplayText = targetExists
+    ? currentText ?? '(current text unavailable)'
+    : 'This target no longer exists in the resume.'
+
   if (variant === 'stacked') {
     return (
       <div style={{ borderLeft: '3px solid #4f46e5', paddingLeft: '0.75rem', marginTop: '0.25rem' }}>
@@ -34,17 +41,17 @@ const SuggestionDiff = ({ edit, currentValue, onAccept, onDecline, variant = 'co
         >
           <div style={{ padding: '0.75rem', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
             <strong style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.25rem', color: '#999' }}>
-              Current
+              {currentLabel}
             </strong>
             <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {currentValue ?? '(not found)'}
+              {currentDisplayText}
             </p>
           </div>
           <div style={{ padding: '0.75rem', backgroundColor: '#f0f9ff', borderRadius: '4px' }}>
             <strong style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.25rem', color: '#166534' }}>
               Proposed
             </strong>
-            <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{edit.replacement}</p>
+            <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{replacementText}</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -91,10 +98,10 @@ const SuggestionDiff = ({ edit, currentValue, onAccept, onDecline, variant = 'co
     <div style={{ borderLeft: '3px solid #4f46e5', paddingLeft: '0.75rem', marginTop: '0.25rem', fontSize: '0.8125rem' }}>
       <div style={{ marginBottom: '0.25rem', color: '#666' }}>
         <span style={{ textDecoration: 'line-through', color: '#7f1d1d' }}>
-          {currentValue ?? 'Current value unavailable (target may have been removed)'}
+          {currentDisplayText}
         </span>
         <span style={{ margin: '0 0.25rem' }}>→</span>
-        <span style={{ color: '#166534' }}>{edit.replacement}</span>
+        <span style={{ color: '#166534' }}>{replacementText}</span>
       </div>
       <div style={{ display: 'flex', gap: '0.375rem' }}>
         <button
@@ -136,27 +143,8 @@ const SuggestionDiff = ({ edit, currentValue, onAccept, onDecline, variant = 'co
   )
 }
 
-const getTargetLabel = (targetId: string) => {
-  if (targetId === 'profile/name') return 'Name'
-  if (targetId === 'profile/contact') return 'Contact'
-  if (targetId === 'profile/summary') return 'Summary'
-  if (targetId.startsWith('experience/') && targetId.includes('/bullets/')) return 'Experience bullet'
-  if (targetId.startsWith('experience/')) return 'Experience'
-  if (targetId.startsWith('education/')) return 'Education'
-  if (targetId.startsWith('skills/')) return 'Skill'
-  return 'Suggestion target'
-}
-
-const getSectionLabel = (edit: ResumeTailorEdit, isMapped: boolean) => {
-  if (!isMapped) return 'Unmapped'
-  if (edit.section === 'summary') return 'Summary'
-  if (edit.section === 'experience') return 'Experience'
-  if (edit.section === 'skills') return 'Skills'
-  return 'Suggestion'
-}
-
 interface ResumeSuggestionsPanelProps {
-  suggestions: ResumeSuggestionItem[]
+  suggestions: ResumeSuggestionViewModel[]
   activeTargetId: string | null
   onActivateTarget: (targetId: string | null) => void
   onRevealTarget: (targetId: string) => void
@@ -172,8 +160,8 @@ export function ResumeSuggestionsPanel({
   onAcceptTarget,
   onDeclineTarget,
 }: ResumeSuggestionsPanelProps): JSX.Element {
-  const groupedSuggestions = suggestions.reduce<Record<string, ResumeSuggestionItem[]>>((groups, suggestion) => {
-    const groupKey = suggestion.isMapped ? suggestion.edit.section : 'unmapped'
+  const groupedSuggestions = suggestions.reduce<Record<string, ResumeSuggestionViewModel[]>>((groups, suggestion) => {
+    const groupKey = suggestion.targetExists ? suggestion.edit.section : 'unmapped'
     groups[groupKey] = groups[groupKey] ?? []
     groups[groupKey].push(suggestion)
     return groups
@@ -226,10 +214,8 @@ export function ResumeSuggestionsPanel({
           <div key={groupKey} className={styles.group}>
             <div className={styles.groupLabel}>{groupKey === 'unmapped' ? 'Unmapped' : groupKey}</div>
             {items.map((item, index) => {
-              const targetId = item.edit.targetId.trim()
+              const targetId = item.targetId
               const isActive = activeTargetId === targetId
-              const targetLabel = getTargetLabel(targetId)
-              const sectionLabel = getSectionLabel(item.edit, item.isMapped)
 
               return (
                 <article
@@ -243,13 +229,14 @@ export function ResumeSuggestionsPanel({
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
                   <div className={styles.cardMeta}>
-                    <div className={styles.targetLabel}>{sectionLabel}</div>
-                    <span className={styles.targetBadge}>{targetLabel}</span>
+                    <div className={styles.targetLabel}>{item.sectionLabel}</div>
+                    <span className={styles.targetBadge}>{item.targetLabel}</span>
                   </div>
                   <div className={styles.diff}>
                     <SuggestionDiff
-                      edit={item.edit}
-                      currentValue={item.currentValue}
+                      currentText={item.currentText}
+                      replacementText={item.replacementText}
+                      targetExists={item.targetExists}
                       onAccept={() => onAcceptTarget(targetId)}
                       onDecline={() => onDeclineTarget(targetId)}
                       variant={item.edit.section === 'experience' ? 'compact' : 'stacked'}
