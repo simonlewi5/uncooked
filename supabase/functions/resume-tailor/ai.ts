@@ -45,9 +45,9 @@ type ParseGeminiResult =
 const GEMINI_MODEL = 'gemini-2.5-flash'
 const GEMINI_API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
 const MAX_RETRIES = 2
-const TIMEOUT_MS = 25_000
-const DELTA_ONLY_BASE_OUTPUT_TOKENS = 4000
-const DELTA_ONLY_MAX_OUTPUT_TOKENS = 8000
+const TIMEOUT_MS = 35_000
+const DELTA_ONLY_BASE_OUTPUT_TOKENS = 6000
+const DELTA_ONLY_MAX_OUTPUT_TOKENS = 12000
 const ALLOWED_EDIT_SECTIONS = new Set<ResumeTailorEdit['section']>(['summary', 'experience', 'skills'])
 const MAX_EXPERIENCE_ENTRIES = 5
 const MAX_BULLETS_PER_EXPERIENCE = 4
@@ -259,6 +259,45 @@ const extractFirstJsonObject = (text: string): string | null => {
   return null
 }
 
+const hasUnterminatedJsonObject = (text: string): boolean => {
+  const start = text.indexOf('{')
+  if (start === -1) return false
+
+  let depth = 0
+  let inString = false
+  let isEscaped = false
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i]
+
+    if (isEscaped) {
+      isEscaped = false
+      continue
+    }
+
+    if (ch === '\\') {
+      isEscaped = true
+      continue
+    }
+
+    if (ch === '"') {
+      inString = !inString
+      continue
+    }
+
+    if (inString) continue
+
+    if (ch === '{') depth++
+    if (ch === '}') depth--
+
+    if (depth === 0) {
+      return false
+    }
+  }
+
+  return depth > 0
+}
+
 const parseJsonObject = (text: string): unknown | null => {
   const cleaned = cleanModelText(text)
 
@@ -276,8 +315,18 @@ const parseJsonObject = (text: string): unknown | null => {
   }
 }
 
-const parseEdits = (value: unknown): ResumeTailorEdit[] | null => {
-  if (!Array.isArray(value)) return null
+type ParseEditsResult =
+  | { ok: true; edits: ResumeTailorEdit[] }
+  | { ok: false; details: string }
+
+const parseEdits = (value: unknown): ParseEditsResult => {
+  if (value === undefined) {
+    return { ok: false, details: 'delta_only mode requires edits[]' }
+  }
+
+  if (!Array.isArray(value)) {
+    return { ok: false, details: 'edits must be an array' }
+  }
 
   const edits: ResumeTailorEdit[] = []
   const sectionValues: ResumeTailorEdit['section'][] = ['summary', 'experience', 'skills']
@@ -302,7 +351,11 @@ const parseEdits = (value: unknown): ResumeTailorEdit[] | null => {
     edits.push({ section, targetId, operation, replacement, reason })
   }
 
-  return edits
+  if (value.length > 0 && edits.length === 0) {
+    return { ok: false, details: 'edits array contained no valid edit items' }
+  }
+
+  return { ok: true, edits }
 }
 
 const parseGeminiResponse = (response: unknown): ParseGeminiResult => {
@@ -350,6 +403,9 @@ const parseGeminiResponse = (response: unknown): ParseGeminiResult => {
   const parsed = parseJsonObject(text)
 
   if (!parsed || typeof parsed !== 'object') {
+    if (hasUnterminatedJsonObject(cleanModelText(text))) {
+      return { ok: false, reason: 'truncated', details: 'Unterminated JSON object in model output' }
+    }
     return { ok: false, reason: 'invalid_json' }
   }
 
@@ -357,20 +413,20 @@ const parseGeminiResponse = (response: unknown): ParseGeminiResult => {
     edits?: unknown
   }
 
-  const edits = result.edits === undefined ? [] : parseEdits(result.edits)
+  const parsedEdits = parseEdits(result.edits)
 
-  if (edits === null) {
+  if (!parsedEdits.ok) {
     return {
       ok: false,
       reason: 'invalid_shape',
-      details: 'delta_only mode requires edits[]',
+      details: parsedEdits.details,
     }
   }
 
   return {
     ok: true,
     value: {
-      edits,
+      edits: parsedEdits.edits,
     },
   }
 }

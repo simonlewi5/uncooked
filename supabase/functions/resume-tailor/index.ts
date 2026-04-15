@@ -10,10 +10,10 @@ declare const Deno: {
   serve: (handler: (req: Request) => Response | Promise<Response>) => void
 }
 
-const MAX_BODY_BYTES = 80_000
+const MAX_BODY_BYTES = 120_000
 const MIN_JOB_DESCRIPTION_CHARS = 200
 const MAX_JOB_DESCRIPTION_CHARS = 12_000
-const MAX_RESUME_OBJECT_CHARS = 30_000
+const MAX_RESUME_OBJECT_CHARS = 45_000
 
 const debugLog = (requestId: string, event: string, data?: Record<string, unknown>) => {
   if (!DEBUG_ENABLED) return
