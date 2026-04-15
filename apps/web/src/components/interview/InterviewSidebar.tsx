@@ -2,11 +2,16 @@ import { useState } from 'react'
 import { ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react'
 import { CompanyLogo } from './CompanyLogo'
 import { QuestionList } from './QuestionList'
+import { JobDescriptionForm } from './JobDescriptionForm'
 import type { CompanyProfile, InterviewQuestion, InterviewStyle } from '@/types'
 import styles from './InterviewSidebar.module.css'
 
 interface InterviewSidebarProps {
   companyName: string
+  onCompanyNameChange: (name: string) => void
+  selectedCompanyId: string | null
+  onCompanyProfileSelect: (profile: CompanyProfile) => void
+  onCreateCompany: (name: string) => void
   companyProfile: CompanyProfile | null
   style: InterviewStyle
   jobDescription: string
@@ -22,6 +27,10 @@ interface InterviewSidebarProps {
 
 export function InterviewSidebar({
   companyName,
+  onCompanyNameChange,
+  selectedCompanyId,
+  onCompanyProfileSelect,
+  onCreateCompany,
   companyProfile,
   style,
   jobDescription,
@@ -39,7 +48,7 @@ export function InterviewSidebar({
 
   const logoProfile: CompanyProfile = companyProfile ?? {
     id: '',
-    companyName,
+    companyName: companyName,
     companyWebsite: null,
     industry: null,
     companySize: null,
@@ -90,11 +99,14 @@ export function InterviewSidebar({
           </button>
           {jdOpen && (
             <div className={styles.accordionContent}>
-              <textarea
-                className={styles.jdTextarea}
-                value={jobDescription}
-                onChange={(e) => onJobDescriptionChange(e.target.value)}
-                placeholder="Paste job description here..."
+              <JobDescriptionForm
+                companyName={companyName}
+                onCompanyNameChange={onCompanyNameChange}
+                selectedCompanyId={selectedCompanyId}
+                onCompanyProfileSelect={onCompanyProfileSelect}
+                onCreateCompany={onCreateCompany}
+                jobDescription={jobDescription}
+                onJobDescriptionChange={onJobDescriptionChange}
               />
             </div>
           )}

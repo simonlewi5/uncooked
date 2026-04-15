@@ -27,7 +27,7 @@ const CATEGORY_STYLE: Record<string, string> = {
   SaaS: styles.categorySaas,
 }
 
-function CompanyLogo({ company, styles }: { company: CompanyProfile, styles: any }) {
+function CompanyLogo({ company, styles }: { company: CompanyProfile, styles: Record<string, string> }) {
   const [hasError, setHasError] = useState(false);
   if (!company.company_website || hasError) {
     return (
@@ -69,7 +69,7 @@ export default function ResearchPage() {
         navigate(location.pathname, { replace: true, state: newState });
       }
     }
-  }, [location.state?.newCompanyId, dbCompanies, navigate, location.pathname])
+  }, [location.state, dbCompanies, navigate, location.pathname, searchQuery])
   const userInitial = user?.email?.[0].toUpperCase() ?? '?'
 
   const companyNames = activeContext.map((c) => c.name)
