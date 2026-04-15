@@ -142,7 +142,7 @@ const RESPONSE_SCHEMA = {
   properties: {
     edits: {
       type: 'ARRAY',
-      minItems: 1,
+      minItems: 0,
       maxItems: 5,
       items: {
         type: 'OBJECT',
@@ -302,7 +302,7 @@ const parseEdits = (value: unknown): ResumeTailorEdit[] | null => {
     edits.push({ section, targetId, operation, replacement, reason })
   }
 
-  return edits.length > 0 ? edits : null
+  return edits
 }
 
 const parseGeminiResponse = (response: unknown): ParseGeminiResult => {
@@ -357,9 +357,9 @@ const parseGeminiResponse = (response: unknown): ParseGeminiResult => {
     edits?: unknown
   }
 
-  const edits = parseEdits(result.edits)
+  const edits = result.edits === undefined ? [] : parseEdits(result.edits)
 
-  if (!edits) {
+  if (edits === null) {
     return {
       ok: false,
       reason: 'invalid_shape',
@@ -502,10 +502,15 @@ const runTailor = async (
       lastError = error instanceof Error ? error : new Error(String(error))
 
       const message = lastError.message.toLowerCase()
-      const shouldRetry =
-        !message.includes('resource_exhausted') &&
-        !message.includes('gemini api error (429)') &&
-        (!message.includes('failed to parse') || message.includes('[truncated]'))
+      const isRateLimited =
+        message.includes('resource_exhausted') ||
+        message.includes('gemini api error (429)')
+      const isSafetyFiltered = message.includes('[safety_filtered]')
+      const isLikelyClientRequestIssue =
+        message.includes('gemini api error (400)') ||
+        message.includes('gemini api error (401)') ||
+        message.includes('gemini api error (403)')
+      const shouldRetry = !isRateLimited && !isSafetyFiltered && !isLikelyClientRequestIssue
 
       debugLog(requestId, 'attempt_failed', {
         attempt,

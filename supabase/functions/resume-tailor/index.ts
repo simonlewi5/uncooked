@@ -307,31 +307,23 @@ Deno.serve(async (req: Request) => {
     }
 
     if (errorMessage.includes('Failed to parse')) {
-      if (errorMessage.includes('[truncated]')) {
-        return json(502, {
-          error: 'AI Response Truncated',
-          details: 'AI output was truncated before valid JSON could be returned. Please retry.',
-        })
-      }
+      const parseReason = errorMessage.includes('[truncated]')
+        ? 'truncated'
+        : errorMessage.includes('[safety_filtered]')
+          ? 'safety_filtered'
+          : errorMessage.includes('[missing_text]') || errorMessage.includes('[missing_content]')
+            ? 'empty_response'
+            : 'invalid_format'
 
-      if (errorMessage.includes('[safety_filtered]')) {
-        return json(502, {
-          error: 'AI Response Filtered',
-          details:
-            'AI response was filtered by safety settings. Try rephrasing job description or resume wording.',
-        })
-      }
+      debugLog(requestId, 'tailor_partial_parse_fallback', {
+        parseReason,
+      })
 
-      if (errorMessage.includes('[missing_text]') || errorMessage.includes('[missing_content]')) {
-        return json(502, {
-          error: 'AI Empty Response',
-          details: 'AI returned an empty response shape. Please retry.',
-        })
-      }
-
-      return json(502, {
-        error: 'AI Response Error',
-        details: 'AI service returned invalid response format',
+      return json(200, {
+        edits: [],
+        appliedMode: 'delta_only',
+        isPartial: true,
+        warning: `AI parse fallback applied: ${parseReason}`,
       })
     }
 

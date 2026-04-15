@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, KeyboardEvent, useCallback } from 'react'
 import html2pdf from 'html2pdf.js'
 import { Download, Sparkles, Search, X, Plus, FileUp } from 'lucide-react'
 import { Button } from '@/components/ui'
+import { ResumeSuggestionsPanel, type ResumeSuggestionItem } from '@/components/resume/ResumeSuggestionsPanel'
 import { useResumeTailor } from '@/hooks/useResumeTailor'
 import { useResumeUploadAndParse } from '@/hooks/useResumeUploadAndParse'
 import { useResumePersistence } from '@/hooks/useResumePersistence'
@@ -104,133 +105,10 @@ const toInitialResumeContent = (): ResumeDocument => ({
   ],
 })
 
-// Inline suggestion renderer: minimal diff block with accept/decline
-interface SuggestionDiffProps {
-  edit: ResumeTailorEdit
-  currentValue: string | null
-  onAccept: () => void
-  onDecline: () => void
-  variant?: 'compact' | 'stacked'
-}
-
-const SuggestionDiff = ({ edit, currentValue, onAccept, onDecline, variant = 'compact' }: SuggestionDiffProps) => {
-  if (variant === 'stacked') {
-    return (
-      <div style={{ borderLeft: '3px solid #4f46e5', paddingLeft: '0.75rem', marginTop: '0.5rem' }}>
-        <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#666', marginBottom: '0.5rem' }}>
-          AI Suggestion:
-        </div>
-        <div
-          style={{
-            display: 'grid',
-            gap: '0.75rem',
-            marginBottom: '0.75rem',
-            fontSize: '0.875rem',
-          }}
-        >
-          <div style={{ padding: '0.75rem', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
-            <strong style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.25rem', color: '#999' }}>
-              Current
-            </strong>
-            <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {currentValue ?? '(not found)'}
-            </p>
-          </div>
-          <div style={{ padding: '0.75rem', backgroundColor: '#f0f9ff', borderRadius: '4px' }}>
-            <strong style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.25rem', color: '#166534' }}>
-              Proposed
-            </strong>
-            <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {edit.replacement}
-            </p>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button
-            onClick={onAccept}
-            style={{
-              padding: '0.375rem 0.75rem',
-              fontSize: '0.75rem',
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            Accept
-          </button>
-          <button
-            onClick={onDecline}
-            style={{
-              padding: '0.375rem 0.75rem',
-              fontSize: '0.75rem',
-              backgroundColor: '#ef4444',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            Decline
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // compact variant for bullets: single line current → proposed
-  return (
-    <div style={{ borderLeft: '3px solid #4f46e5', paddingLeft: '0.75rem', marginTop: '0.25rem', fontSize: '0.8125rem' }}>
-      <div style={{ marginBottom: '0.25rem', color: '#666' }}>
-        <span style={{ textDecoration: 'line-through', color: '#7f1d1d' }}>
-          {currentValue ?? 'Current value unavailable (target may have been removed)'}
-        </span>
-        <span style={{ margin: '0 0.25rem' }}>→</span>
-        <span style={{ color: '#166534' }}>{edit.replacement}</span>
-      </div>
-      <div style={{ display: 'flex', gap: '0.375rem' }}>
-        <button
-          onClick={onAccept}
-          style={{
-            padding: '0.25rem 0.5rem',
-            fontSize: '0.7rem',
-            backgroundColor: '#10b981',
-            color: 'white',
-            border: 'none',
-            borderRadius: '3px',
-            cursor: 'pointer',
-          }}
-        >
-          Accept
-        </button>
-        <button
-          onClick={onDecline}
-          style={{
-            padding: '0.25rem 0.5rem',
-            fontSize: '0.7rem',
-            backgroundColor: '#ef4444',
-            color: 'white',
-            border: 'none',
-            borderRadius: '3px',
-            cursor: 'pointer',
-          }}
-        >
-          Decline
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// Get suggestion for a specific targetId
-const getEditForTarget = (targetId: string, edits: ResumeTailorEdit[]): ResumeTailorEdit | null => {
-  return edits.find((e) => normalizeTargetId(e.targetId) === targetId) ?? null
-}
-
 export default function ResumePage() {
   const { user } = useAuth()
   const resumeRef = useRef<HTMLDivElement>(null)
+  const [activeTargetId, setActiveTargetId] = useState<string | null>(null)
   const [resumeContent, setResumeContent] = useState<ResumeDocument>(toInitialResumeContent)
   const [jobDescription, setJobDescription] = useState('')
   const [skillInput, setSkillInput] = useState('')
@@ -835,17 +713,48 @@ export default function ResumePage() {
   }
 
   const editable = !isPreviewMode
-  const mappedSummaryTargetId = ID_GENERATORS.summary()
-  const mappedBulletTargetIds = new Set(
-    resumeContent.experience.flatMap((job) => job.bullets.map((bullet) => bullet.id))
-  )
-  const mappedSkillTargetIds = new Set(resumeContent.skills.map((skill) => skill.id))
   const mappedTargetIds = new Set<string>([
-    mappedSummaryTargetId,
-    ...Array.from(mappedBulletTargetIds),
-    ...Array.from(mappedSkillTargetIds),
+    ID_GENERATORS.profileName(),
+    ID_GENERATORS.profileContact(),
+    ID_GENERATORS.summary(),
+    ...resumeContent.experience.flatMap((job) => [
+      ID_GENERATORS.experienceField(job.id, 'title'),
+      ID_GENERATORS.experienceField(job.id, 'company'),
+      ID_GENERATORS.experienceField(job.id, 'period'),
+      ...job.bullets.map((bullet) => bullet.id),
+    ]),
+    ...resumeContent.education.flatMap((entry) => [
+      ID_GENERATORS.educationField(entry.id, 'degree'),
+      ID_GENERATORS.educationField(entry.id, 'school'),
+      ID_GENERATORS.educationField(entry.id, 'period'),
+    ]),
+    ...resumeContent.skills.map((skill) => skill.id),
   ])
-  const unmappedEdits = pendingEdits.filter((edit) => !mappedTargetIds.has(normalizeTargetId(edit.targetId)))
+  const suggestionItems: ResumeSuggestionItem[] = pendingEdits.map((edit) => ({
+    edit,
+    currentValue: getCurrentValueForTarget(edit.targetId),
+    isMapped: mappedTargetIds.has(normalizeTargetId(edit.targetId)),
+  }))
+
+  const handleRevealTarget = useCallback((targetId: string) => {
+    const normalizedTargetId = normalizeTargetId(targetId)
+    setActiveTargetId(normalizedTargetId)
+
+    const targetElement = resumeRef.current?.querySelector<HTMLElement>(`[data-target-id="${normalizedTargetId}"]`)
+    targetElement?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+  }, [])
+
+  const handleAcceptTarget = (targetId: string) => {
+    const normalizedTargetId = normalizeTargetId(targetId)
+    handleAcceptEditByTargetId(normalizedTargetId)
+    setActiveTargetId((current) => (current === normalizedTargetId ? null : current))
+  }
+
+  const handleDeclineTarget = (targetId: string) => {
+    const normalizedTargetId = normalizeTargetId(targetId)
+    handleDeclineEditByTargetId(normalizedTargetId)
+    setActiveTargetId((current) => (current === normalizedTargetId ? null : current))
+  }
 
   return (
     <div className={styles.page}>
@@ -951,129 +860,126 @@ export default function ResumePage() {
               {submitError ?? uploadError ?? persistenceError ?? tailorError}
             </div>
           )}
+          <div className={styles.resumeWorkspace}>
+            <div ref={resumeRef} className={styles.resumeDocument}>
+              <div className={styles.resumeHeader}>
+                <h2
+                  className={cn(styles.resumeName, activeTargetId === ID_GENERATORS.profileName() && styles.targetActive)}
+                  data-target-id={ID_GENERATORS.profileName()}
+                  contentEditable={editable}
+                  suppressContentEditableWarning
+                  onBlur={(e) => {
+                    const value = e.currentTarget?.textContent?.trim() || ''
+                    setResumeContent((prev) => ({
+                      ...prev,
+                      name: { ...prev.name, text: value },
+                    }))
+                  }}
+                >
+                  {resumeContent.name.text}
+                </h2>
+                <p
+                  className={cn(styles.resumeContact, activeTargetId === ID_GENERATORS.profileContact() && styles.targetActive)}
+                  data-target-id={ID_GENERATORS.profileContact()}
+                  contentEditable={editable}
+                  suppressContentEditableWarning
+                  onBlur={(e) => {
+                    const value = e.currentTarget?.textContent?.trim() || ''
+                    setResumeContent((prev) => ({
+                      ...prev,
+                      contact: { ...prev.contact, text: value },
+                    }))
+                  }}
+                >
+                  {resumeContent.contact.text}
+                </p>
+              </div>
 
+              <div className={styles.resumeSection}>
+                <h3 className={styles.sectionHeading}>Summary</h3>
+                <p
+                  className={cn(styles.resumeText, activeTargetId === ID_GENERATORS.summary() && styles.targetActive)}
+                  data-target-id={ID_GENERATORS.summary()}
+                  contentEditable={editable}
+                  suppressContentEditableWarning
+                  onBlur={(e) => {
+                    const value = e.currentTarget?.textContent?.trim() || ''
+                    setResumeContent((prev) => ({
+                      ...prev,
+                      summary: { ...prev.summary, text: value },
+                    }))
+                  }}
+                >
+                  {resumeContent.summary.text}
+                </p>
+              </div>
 
-
-          <div ref={resumeRef} className={styles.resumeDocument}>
-            <div className={styles.resumeHeader}>
-              <h2
-                className={styles.resumeName}
-                contentEditable={editable}
-                suppressContentEditableWarning
-                onBlur={(e) => {
-                  const value = e.currentTarget?.textContent?.trim() || ''
-                  setResumeContent((prev) => ({
-                    ...prev,
-                    name: { ...prev.name, text: value },
-                  }))
-                }}
-              >
-                {resumeContent.name.text}
-              </h2>
-              <p
-                className={styles.resumeContact}
-                contentEditable={editable}
-                suppressContentEditableWarning
-                onBlur={(e) => {
-                  const value = e.currentTarget?.textContent?.trim() || ''
-                  setResumeContent((prev) => ({
-                    ...prev,
-                    contact: { ...prev.contact, text: value },
-                  }))
-                }}
-              >
-                {resumeContent.contact.text}
-              </p>
-            </div>
-
-            <div className={styles.resumeSection}>
-              <h3 className={styles.sectionHeading}>Summary</h3>
-              <p
-                className={styles.resumeText}
-                contentEditable={editable}
-                suppressContentEditableWarning
-                onBlur={(e) => {
-                  const value = e.currentTarget?.textContent?.trim() || ''
-                  setResumeContent((prev) => ({
-                    ...prev,
-                    summary: { ...prev.summary, text: value },
-                  }))
-                }}
-              >
-                {resumeContent.summary.text}
-              </p>
-              {(() => {
-                const summaryEdit = getEditForTarget(mappedSummaryTargetId, pendingEdits)
-                if (summaryEdit) {
-                  return (
-                    <SuggestionDiff
-                      edit={summaryEdit}
-                      currentValue={resumeContent.summary.text}
-                      onAccept={() => handleAcceptEditByTargetId(summaryEdit.targetId)}
-                      onDecline={() => handleDeclineEditByTargetId(summaryEdit.targetId)}
-                      variant="stacked"
-                    />
-                  )
-                }
-                return null
-              })()}
-            </div>
-
-            <div className={styles.resumeSection}>
-              <h3 className={styles.sectionHeading}>Experience</h3>
-              {resumeContent.experience.map((job) => (
-                <div key={job.id} className={styles.resumeEntry}>
-                  <div className={styles.entryHeader}>
-                    <div className={styles.entryTitleWrapper}>
+              <div className={styles.resumeSection}>
+                <h3 className={styles.sectionHeading}>Experience</h3>
+                {resumeContent.experience.map((job) => (
+                  <div key={job.id} className={styles.resumeEntry}>
+                    <div className={styles.entryHeader}>
+                      <div className={styles.entryTitleWrapper}>
+                        <span
+                          className={cn(
+                            styles.entryTitle,
+                            activeTargetId === ID_GENERATORS.experienceField(job.id, 'title') && styles.targetActive
+                          )}
+                          data-target-id={ID_GENERATORS.experienceField(job.id, 'title')}
+                          contentEditable={editable}
+                          suppressContentEditableWarning
+                          onBlur={(e) => {
+                            const value = e.currentTarget?.textContent?.trim() || ''
+                            updateExperienceField(job.id, 'title', value)
+                          }}
+                        >
+                          {job.title.text}
+                        </span>
+                        <button
+                          className={cn(styles.entryRemoveBtn, !editable && styles.btnHidden)}
+                          onClick={() => removeExperience(job.id)}
+                          aria-label="Remove entry"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
                       <span
-                        className={styles.entryTitle}
+                        className={cn(
+                          styles.entryPeriod,
+                          activeTargetId === ID_GENERATORS.experienceField(job.id, 'period') && styles.targetActive
+                        )}
+                        data-target-id={ID_GENERATORS.experienceField(job.id, 'period')}
                         contentEditable={editable}
                         suppressContentEditableWarning
                         onBlur={(e) => {
                           const value = e.currentTarget?.textContent?.trim() || ''
-                          updateExperienceField(job.id, 'title', value)
+                          updateExperienceField(job.id, 'period', value)
                         }}
                       >
-                        {job.title.text}
+                        {job.period.text}
                       </span>
-                      <button
-                        className={cn(styles.entryRemoveBtn, !editable && styles.btnHidden)}
-                        onClick={() => removeExperience(job.id)}
-                        aria-label="Remove entry"
-                      >
-                        <X size={12} />
-                      </button>
                     </div>
                     <span
-                      className={styles.entryPeriod}
+                      className={cn(
+                        styles.entryCompany,
+                        activeTargetId === ID_GENERATORS.experienceField(job.id, 'company') && styles.targetActive
+                      )}
+                      data-target-id={ID_GENERATORS.experienceField(job.id, 'company')}
                       contentEditable={editable}
                       suppressContentEditableWarning
                       onBlur={(e) => {
                         const value = e.currentTarget?.textContent?.trim() || ''
-                        updateExperienceField(job.id, 'period', value)
+                        updateExperienceField(job.id, 'company', value)
                       }}
                     >
-                      {job.period.text}
+                      {job.company.text}
                     </span>
-                  </div>
-                  <span
-                    className={styles.entryCompany}
-                    contentEditable={editable}
-                    suppressContentEditableWarning
-                    onBlur={(e) => {
-                      const value = e.currentTarget?.textContent?.trim() || ''
-                      updateExperienceField(job.id, 'company', value)
-                    }}
-                  >
-                    {job.company.text}
-                  </span>
-                  <ul className={styles.entryBullets}>
-                    {job.bullets.map((bullet) => {
-                      const bulletTargetId = bullet.id
-                      const bulletEdit = getEditForTarget(bulletTargetId, pendingEdits)
-                      return (
+                    <ul className={styles.entryBullets}>
+                      {job.bullets.map((bullet) => (
                         <li key={bullet.id} className={styles.bulletItem}>
                           <span
+                            className={cn(activeTargetId === bullet.id && styles.targetActive, styles.bulletText)}
+                            data-target-id={bullet.id}
                             contentEditable={editable}
                             suppressContentEditableWarning
                             onBlur={(e) => {
@@ -1090,131 +996,101 @@ export default function ResumePage() {
                           >
                             <X size={10} />
                           </button>
-                          {bulletEdit && (
-                            <SuggestionDiff
-                              edit={bulletEdit}
-                              currentValue={bullet.text}
-                              onAccept={() => handleAcceptEditByTargetId(bulletEdit.targetId)}
-                              onDecline={() => handleDeclineEditByTargetId(bulletEdit.targetId)}
-                              variant="compact"
-                            />
-                          )}
                         </li>
-                      )
-                    })}
-                    {editable && (
-                      <button className={styles.addBulletBtn} onClick={() => addBullet(job.id)}>
-                        <Plus size={11} /> Add bullet
-                      </button>
-                    )}
-                  </ul>
-                </div>
-              ))}
-              {editable && (
-                <button className={styles.addEntryBtn} onClick={addExperience}>
-                  <Plus size={13} /> Add experience
-                </button>
-              )}
-            </div>
+                      ))}
+                      {editable && (
+                        <button className={styles.addBulletBtn} onClick={() => addBullet(job.id)}>
+                          <Plus size={11} /> Add bullet
+                        </button>
+                      )}
+                    </ul>
+                  </div>
+                ))}
+                {editable && (
+                  <button className={styles.addEntryBtn} onClick={addExperience}>
+                    <Plus size={13} /> Add experience
+                  </button>
+                )}
+              </div>
 
-            <div className={styles.resumeSection}>
-              <h3 className={styles.sectionHeading}>Education</h3>
-              {resumeContent.education.map((edu) => (
-                <div key={edu.id} className={styles.resumeEntry}>
-                  <div className={styles.entryHeader}>
-                    <div className={styles.entryTitleWrapper}>
+              <div className={styles.resumeSection}>
+                <h3 className={styles.sectionHeading}>Education</h3>
+                {resumeContent.education.map((edu) => (
+                  <div key={edu.id} className={styles.resumeEntry}>
+                    <div className={styles.entryHeader}>
+                      <div className={styles.entryTitleWrapper}>
+                        <span
+                          className={cn(
+                            styles.entryTitle,
+                            activeTargetId === ID_GENERATORS.educationField(edu.id, 'degree') && styles.targetActive
+                          )}
+                          data-target-id={ID_GENERATORS.educationField(edu.id, 'degree')}
+                          contentEditable={editable}
+                          suppressContentEditableWarning
+                          onBlur={(e) => {
+                            const value = e.currentTarget?.textContent?.trim() || ''
+                            updateEducationField(edu.id, 'degree', value)
+                          }}
+                        >
+                          {edu.degree.text}
+                        </span>
+                        <button
+                          className={cn(styles.entryRemoveBtn, !editable && styles.btnHidden)}
+                          onClick={() => removeEducation(edu.id)}
+                          aria-label="Remove entry"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
                       <span
-                        className={styles.entryTitle}
+                        className={cn(
+                          styles.entryPeriod,
+                          activeTargetId === ID_GENERATORS.educationField(edu.id, 'period') && styles.targetActive
+                        )}
+                        data-target-id={ID_GENERATORS.educationField(edu.id, 'period')}
                         contentEditable={editable}
                         suppressContentEditableWarning
                         onBlur={(e) => {
                           const value = e.currentTarget?.textContent?.trim() || ''
-                          updateEducationField(edu.id, 'degree', value)
+                          updateEducationField(edu.id, 'period', value)
                         }}
                       >
-                        {edu.degree.text}
+                        {edu.period.text}
                       </span>
-                      <button
-                        className={cn(styles.entryRemoveBtn, !editable && styles.btnHidden)}
-                        onClick={() => removeEducation(edu.id)}
-                        aria-label="Remove entry"
-                      >
-                        <X size={12} />
-                      </button>
                     </div>
                     <span
-                      className={styles.entryPeriod}
+                      className={cn(
+                        styles.entryCompany,
+                        activeTargetId === ID_GENERATORS.educationField(edu.id, 'school') && styles.targetActive
+                      )}
+                      data-target-id={ID_GENERATORS.educationField(edu.id, 'school')}
                       contentEditable={editable}
                       suppressContentEditableWarning
                       onBlur={(e) => {
                         const value = e.currentTarget?.textContent?.trim() || ''
-                        updateEducationField(edu.id, 'period', value)
+                        updateEducationField(edu.id, 'school', value)
                       }}
                     >
-                      {edu.period.text}
+                      {edu.school.text}
                     </span>
                   </div>
-                  <span
-                    className={styles.entryCompany}
-                    contentEditable={editable}
-                    suppressContentEditableWarning
-                    onBlur={(e) => {
-                      const value = e.currentTarget?.textContent?.trim() || ''
-                      updateEducationField(edu.id, 'school', value)
-                    }}
-                  >
-                    {edu.school.text}
-                  </span>
-                </div>
-              ))}
-              {editable && (
-                <button className={styles.addEntryBtn} onClick={addEducation}>
-                  <Plus size={13} /> Add education
-                </button>
-              )}
+                ))}
+                {editable && (
+                  <button className={styles.addEntryBtn} onClick={addEducation}>
+                    <Plus size={13} /> Add education
+                  </button>
+                )}
+              </div>
             </div>
 
-            {(() => {
-              const skillEdits = pendingEdits.filter(
-                (e) => e.section === 'skills' && mappedSkillTargetIds.has(e.targetId)
-              )
-              if (skillEdits.length > 0) {
-                return (
-                  <div className={styles.resumeSection}>
-                    <h3 className={styles.sectionHeading}>Suggested Skills</h3>
-                    {skillEdits.map((edit) => (
-                      <SuggestionDiff
-                        key={edit.targetId}
-                        edit={edit}
-                        currentValue={
-                          resumeContent.skills.find((s) => s.id === normalizeTargetId(edit.targetId))?.text ?? null
-                        }
-                        onAccept={() => handleAcceptEditByTargetId(edit.targetId)}
-                        onDecline={() => handleDeclineEditByTargetId(edit.targetId)}
-                        variant="stacked"
-                      />
-                    ))}
-                  </div>
-                )
-              }
-              return null
-            })()}
-
-            {unmappedEdits.length > 0 && (
-              <div className={styles.resumeSection}>
-                <h3 className={styles.sectionHeading}>Unmapped Suggestions</h3>
-                {unmappedEdits.map((edit) => (
-                  <SuggestionDiff
-                    key={edit.targetId}
-                    edit={edit}
-                    currentValue={getCurrentValueForTarget(edit.targetId)}
-                    onAccept={() => handleAcceptEditByTargetId(edit.targetId)}
-                    onDecline={() => handleDeclineEditByTargetId(edit.targetId)}
-                    variant="stacked"
-                  />
-                ))}
-              </div>
-            )}
+            <ResumeSuggestionsPanel
+              suggestions={suggestionItems}
+              activeTargetId={activeTargetId}
+              onActivateTarget={setActiveTargetId}
+              onRevealTarget={handleRevealTarget}
+              onAcceptTarget={handleAcceptTarget}
+              onDeclineTarget={handleDeclineTarget}
+            />
           </div>
         </div>
       </div>
