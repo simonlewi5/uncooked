@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Building2, MessageSquare } from 'lucide-react'
+import { Building2, MessageSquare, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { CompanyProfile, InterviewSessionSummary } from '@/types'
 import { CompanyLogo } from './CompanyLogo'
@@ -86,23 +86,49 @@ export function CompanyHistory({ onSelect, onLoadSession }: CompanyHistoryProps)
     sessionsByCompany.set(key, list)
   }
 
+  const handleDeleteCompany = async (id: string, name: string) => {
+    if (confirm(`Delete "${name}" from your saved companies?`)) {
+      try {
+        const { error } = await supabase
+          .from('company_profiles')
+          .delete()
+          .eq('id', id)
+
+        if (error) throw error
+
+        setCompanies((prev) => prev.filter((c) => c.id !== id))
+      } catch (err) {
+        console.error('CompanyHistory: failed to delete company', err)
+      }
+    }
+  }
+
   return (
     <ul className={styles.list}>
       {companies.map((company) => {
         const companySessions = sessionsByCompany.get(company.id) ?? []
         return (
           <li key={company.id}>
-            <button className={styles.card} onClick={() => onSelect(company)}>
-              <CompanyLogo company={company} size="md" />
-              <div className={styles.cardText}>
-                <span className={styles.cardName}>{company.companyName}</span>
-                {(company.industry || company.companySize) && (
-                  <span className={styles.cardMeta}>
-                    {[company.industry, company.companySize].filter(Boolean).join(' · ')}
-                  </span>
-                )}
-              </div>
-            </button>
+            <div className={styles.cardWrapper}>
+              <button className={styles.card} onClick={() => onSelect(company)}>
+                <CompanyLogo company={company} size="md" />
+                <div className={styles.cardText}>
+                  <span className={styles.cardName}>{company.companyName}</span>
+                  {(company.industry || company.companySize) && (
+                    <span className={styles.cardMeta}>
+                      {[company.industry, company.companySize].filter(Boolean).join(' · ')}
+                    </span>
+                  )}
+                </div>
+              </button>
+              <button
+                className={styles.cardDeleteBtn}
+                onClick={() => handleDeleteCompany(company.id, company.companyName)}
+                aria-label={`Delete ${company.companyName}`}
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
             {companySessions.length > 0 && onLoadSession && (
               <ul className={styles.sessionList}>
                 {companySessions.map((s) => (

@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
             ? 'Focus on conversational questions: motivations, career goals, interests, and culture fit. Keep them warm and open-ended.'
             : 'Mix technical and behavioral questions roughly equally.'
 
-    const systemPrompt = `You are an expert interview coach. Generate 8-12 interview questions for a candidate applying to ${companyName}.
+    const systemPrompt = `You are an expert interview coach. Generate 3-5 interview questions for a candidate applying to ${companyName}.
 
 ## Job Description
 ${jobDescription}

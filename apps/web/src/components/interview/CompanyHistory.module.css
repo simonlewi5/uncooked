@@ -102,6 +102,43 @@
   background-color: var(--color-bg-subtle);
 }
 
+.cardWrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.card {
+  flex: 1;
+}
+
+.cardDeleteBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  padding: 0;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background-color 0.15s;
+}
+
+li:hover .cardDeleteBtn {
+  opacity: 1;
+}
+
+.cardDeleteBtn:hover {
+  background: var(--color-bg-muted);
+  color: #dc2626;
+}
+
 .sessionIcon {
   color: var(--color-text-tertiary);
   flex-shrink: 0;
