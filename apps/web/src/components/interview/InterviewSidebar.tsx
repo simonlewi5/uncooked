@@ -22,6 +22,8 @@ interface InterviewSidebarProps {
   onUpdateNotes: (id: string, notes: string) => void
   canGenerate: boolean
   onBack: () => void
+  cooldownEnd: number | null
+  onCooldownStart: (end: number) => void
 }
 
 export function InterviewSidebar({
@@ -40,6 +42,8 @@ export function InterviewSidebar({
   onUpdateNotes,
   canGenerate,
   onBack,
+  cooldownEnd,
+  onCooldownStart,
 }: InterviewSidebarProps): React.JSX.Element {
   const [questionsOpen, setQuestionsOpen] = useState(true)
   const [jdOpen, setJdOpen] = useState(false)
@@ -82,6 +86,8 @@ export function InterviewSidebar({
                 onToggleBookmark={onToggleBookmark}
                 onUpdateNotes={onUpdateNotes}
                 canGenerate={canGenerate}
+                cooldownEnd={cooldownEnd}
+                onCooldownStart={onCooldownStart}
               />
             </div>
           )}
