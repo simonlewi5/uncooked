@@ -1,5 +1,22 @@
 import { corsHeaders } from '../_shared/cors.ts'
 
+function cleanDomain(input: string): string {
+  if (!input) return '';
+  
+  try {
+    let clean = input.toLowerCase().trim();
+    clean = clean.replace(/^https?:\/\//, '');
+    clean = clean.replace(/^www\./, '');
+
+    clean = clean.split('/')[0];
+    clean = clean.split('?')[0].split('#')[0];
+
+    return clean;
+  } catch {
+    return input.trim();
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -7,15 +24,16 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url)
-    const domain = url.searchParams.get('domain')?.trim()
+    const rawDomain = url.searchParams.get('domain')?.trim()
 
-    if (!domain) {
+    if (!rawDomain) {
       return new Response('Missing domain query parameter', {
         status: 400,
         headers: corsHeaders,
       })
     }
 
+    const domain = cleanDomain(rawDomain);
     const clearbitUrl = `https://logo.clearbit.com/${encodeURIComponent(domain)}`
 
     const logoResponse = await fetch(clearbitUrl, {

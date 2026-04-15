@@ -149,11 +149,15 @@ export default function InterviewPage(): JSX.Element {
     )
   }
 
-  return (
+return (
     <div className={styles.interviewPage}>
       <InterviewSidebar
         companyName={companyName}
+        onCompanyNameChange={handleCompanyNameChange}
+        selectedCompanyId={selectedCompanyId}
         companyProfile={companyProfile}
+        onCompanyProfileSelect={handleCompanyProfileSelect}
+
         style={style ?? 'mixed'}
         jobDescription={jobDescription}
         onJobDescriptionChange={setJobDescription}
