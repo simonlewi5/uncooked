@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
 import { CheckCircle2, RefreshCw, AlertTriangle } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import type { ResumeSuggestionViewModel } from '@/pages/resumeSuggestionTargets'
@@ -11,6 +11,39 @@ interface SuggestionDiffProps {
   onAccept: () => void
   onDecline: () => void
   variant?: 'compact' | 'stacked'
+}
+
+// Internal helper: Action buttons for accept/decline
+interface SuggestionActionsProps {
+  variant: 'compact' | 'stacked'
+  onAccept: () => void
+  onDecline: () => void
+}
+
+const SuggestionActions = ({ variant, onAccept, onDecline }: SuggestionActionsProps) => {
+  const buttonClass = variant === 'stacked' ? styles.diffActionButtonStacked : styles.diffActionButtonCompact
+  return (
+    <div className={variant === 'stacked' ? styles.diffActionButtonsStacked : styles.diffActionButtonsCompact}>
+      <button
+        className={cn(buttonClass, styles.diffActionButtonAccept)}
+        onClick={(event) => {
+          event.stopPropagation()
+          onAccept()
+        }}
+      >
+        Accept
+      </button>
+      <button
+        className={cn(buttonClass, styles.diffActionButtonDecline)}
+        onClick={(event) => {
+          event.stopPropagation()
+          onDecline()
+        }}
+      >
+        Decline
+      </button>
+    </div>
+  )
 }
 
 const SuggestionDiff = ({
@@ -28,118 +61,31 @@ const SuggestionDiff = ({
 
   if (variant === 'stacked') {
     return (
-      <div style={{ borderLeft: '3px solid #4f46e5', paddingLeft: '0.75rem', marginTop: '0.25rem' }}>
-        <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#666', marginBottom: '0.5rem' }}>
-          AI Suggestion
-        </div>
-        <div
-          style={{
-            display: 'grid',
-            gap: '0.75rem',
-            marginBottom: '0.75rem',
-            fontSize: '0.875rem',
-          }}
-        >
-          <div style={{ padding: '0.75rem', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
-            <strong style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.25rem', color: '#999' }}>
-              {currentLabel}
-            </strong>
-            <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {currentDisplayText}
-            </p>
+      <div className={styles.diffStacked}>
+        <div className={styles.diffStackedLabel}>AI Suggestion</div>
+        <div className={styles.diffStackedGrid}>
+          <div className={styles.diffStackedCurrent}>
+            <strong className={styles.diffStackedCurrentLabel}>{currentLabel}</strong>
+            <p className={styles.diffStackedText}>{currentDisplayText}</p>
           </div>
-          <div style={{ padding: '0.75rem', backgroundColor: '#f0f9ff', borderRadius: '4px' }}>
-            <strong style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.25rem', color: '#166534' }}>
-              Proposed
-            </strong>
-            <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{replacementText}</p>
+          <div className={styles.diffStackedProposed}>
+            <strong className={styles.diffStackedProposedLabel}>Proposed</strong>
+            <p className={styles.diffStackedText}>{replacementText}</p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button
-            onClick={(event) => {
-              event.stopPropagation()
-              onAccept()
-            }}
-            style={{
-              padding: '0.375rem 0.75rem',
-              fontSize: '0.75rem',
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            Accept
-          </button>
-          <button
-            onClick={(event) => {
-              event.stopPropagation()
-              onDecline()
-            }}
-            style={{
-              padding: '0.375rem 0.75rem',
-              fontSize: '0.75rem',
-              backgroundColor: '#ef4444',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            Decline
-          </button>
-        </div>
+        <SuggestionActions variant="stacked" onAccept={onAccept} onDecline={onDecline} />
       </div>
     )
   }
 
   return (
-    <div style={{ borderLeft: '3px solid #4f46e5', paddingLeft: '0.75rem', marginTop: '0.25rem', fontSize: '0.8125rem' }}>
-      <div style={{ marginBottom: '0.25rem', color: '#666' }}>
-        <span style={{ textDecoration: 'line-through', color: '#7f1d1d' }}>
-          {currentDisplayText}
-        </span>
-        <span style={{ margin: '0 0.25rem' }}>→</span>
-        <span style={{ color: '#166534' }}>{replacementText}</span>
+    <div className={styles.diffCompact}>
+      <div className={styles.diffCompactLine}>
+        <span className={styles.diffCompactCurrent}>{currentDisplayText}</span>
+        <span className={styles.diffCompactArrow}>→</span>
+        <span className={styles.diffCompactProposed}>{replacementText}</span>
       </div>
-      <div style={{ display: 'flex', gap: '0.375rem' }}>
-        <button
-          onClick={(event) => {
-            event.stopPropagation()
-            onAccept()
-          }}
-          style={{
-            padding: '0.25rem 0.5rem',
-            fontSize: '0.7rem',
-            backgroundColor: '#10b981',
-            color: 'white',
-            border: 'none',
-            borderRadius: '3px',
-            cursor: 'pointer',
-          }}
-        >
-          Accept
-        </button>
-        <button
-          onClick={(event) => {
-            event.stopPropagation()
-            onDecline()
-          }}
-          style={{
-            padding: '0.25rem 0.5rem',
-            fontSize: '0.7rem',
-            backgroundColor: '#ef4444',
-            color: 'white',
-            border: 'none',
-            borderRadius: '3px',
-            cursor: 'pointer',
-          }}
-        >
-          Decline
-        </button>
-      </div>
+      <SuggestionActions variant="compact" onAccept={onAccept} onDecline={onDecline} />
     </div>
   )
 }
@@ -153,6 +99,47 @@ interface ResumeSuggestionsPanelProps {
   onAcceptTarget: (targetId: string) => void
   onDeclineTarget: (targetId: string) => void
   onRetryTailor?: () => void
+}
+
+// Internal helper: Success and warning notices
+interface NoticeCardProps {
+  type: 'success' | 'warning'
+  title: string
+  body: string
+  action?: {
+    label: string
+    onClick: () => void
+  }
+}
+
+const NoticeCard = ({ type, title, body, action }: NoticeCardProps) => {
+  const isSuccess = type === 'success'
+  const Icon = isSuccess ? CheckCircle2 : AlertTriangle
+  const styleClass = isSuccess ? styles.noticeSuccess : styles.noticeWarning
+
+  return (
+    <div className={cn(styles.noticeCard, styleClass)}>
+      <div className={styles.noticeIcon} aria-hidden="true">
+        <Icon size={18} />
+      </div>
+      <div className={styles.noticeContent}>
+        <h4 className={styles.noticeTitle}>{title}</h4>
+        <p className={styles.noticeBody}>{body}</p>
+      </div>
+      {action && (
+        <button
+          className={styles.noticeAction}
+          onClick={(event) => {
+            event.stopPropagation()
+            action.onClick()
+          }}
+        >
+          <RefreshCw size={14} />
+          {action.label}
+        </button>
+      )}
+    </div>
+  )
 }
 
 export function ResumeSuggestionsPanel({
@@ -180,59 +167,31 @@ export function ResumeSuggestionsPanel({
     }))
     .filter((group) => group.items.length > 0)
 
+  let friendlyNotice: ReactNode = null
+  if (panelState === 'complete' && suggestions.length === 0) {
+    friendlyNotice = (
+      <NoticeCard
+        type="success"
+        title="No more edits needed"
+        body="Your resume already looks aligned with this job description. You can export it or try another pass if the role changes."
+      />
+    )
+  } else if (panelState === 'partial') {
+    friendlyNotice = (
+      <NoticeCard
+        type="warning"
+        title="We hit a response limit"
+        body="The AI response may have been cut off before it could finish. Try Auto-Tailor again to see if we can get a fuller pass."
+        action={onRetryTailor ? { label: 'Try Again', onClick: onRetryTailor } : undefined}
+      />
+    )
+  }
+
   const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>, targetId: string) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
       onRevealTarget(targetId)
     }
-  }
-
-  const renderFriendlyNotice = () => {
-    if (panelState === 'complete' && suggestions.length === 0) {
-      return (
-        <div className={cn(styles.noticeCard, styles.noticeSuccess)}>
-          <div className={styles.noticeIcon} aria-hidden="true">
-            <CheckCircle2 size={18} />
-          </div>
-          <div className={styles.noticeContent}>
-            <h4 className={styles.noticeTitle}>No more edits needed</h4>
-            <p className={styles.noticeBody}>
-              Your resume already looks aligned with this job description. You can export it or try another pass if the role changes.
-            </p>
-          </div>
-        </div>
-      )
-    }
-
-    if (panelState === 'partial') {
-      return (
-        <div className={cn(styles.noticeCard, styles.noticeWarning)}>
-          <div className={styles.noticeIcon} aria-hidden="true">
-            <AlertTriangle size={18} />
-          </div>
-          <div className={styles.noticeContent}>
-            <h4 className={styles.noticeTitle}>We hit a response limit</h4>
-            <p className={styles.noticeBody}>
-              The AI response may have been cut off before it could finish. Try Auto-Tailor again to see if we can get a fuller pass.
-            </p>
-          </div>
-          {onRetryTailor && (
-            <button
-              className={styles.noticeAction}
-              onClick={(event) => {
-                event.stopPropagation()
-                onRetryTailor()
-              }}
-            >
-              <RefreshCw size={14} />
-              Try Again
-            </button>
-          )}
-        </div>
-      )
-    }
-
-    return null
   }
 
   if (suggestions.length === 0) {
@@ -246,7 +205,7 @@ export function ResumeSuggestionsPanel({
           </div>
           <span className={styles.count}>0</span>
         </div>
-        {renderFriendlyNotice() ?? (
+        {friendlyNotice ?? (
           <div className={styles.emptyState}>No suggestions yet. Generate a job-tailored resume pass to review edits here.</div>
         )}
       </aside>
@@ -265,7 +224,7 @@ export function ResumeSuggestionsPanel({
       </div>
 
       <div className={styles.list}>
-        {renderFriendlyNotice()}
+        {friendlyNotice}
         {visibleGroups.map(({ groupKey, items }) => (
           <div key={groupKey} className={styles.group}>
             <div className={styles.groupLabel}>{groupKey === 'unmapped' ? 'Unmapped' : groupKey}</div>

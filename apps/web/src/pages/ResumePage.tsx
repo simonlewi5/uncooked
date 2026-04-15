@@ -12,17 +12,31 @@ import {
   type ResumeSuggestionViewModel,
 } from '@/pages/resumeSuggestionTargets'
 import {
+  ID_GENERATORS,
+  addBulletToEntry,
+  addEducationEntry,
+  addExperienceEntry,
+  normalizeResumeDocument,
+  removeBullet,
+  removeSkill,
   updateBullet,
   updateEducationField,
   updateExperienceField,
+  updateProfileField,
+  updateSummary,
 } from '@/lib/resumeMutations'
 import { useResumeTailor } from '@/hooks/useResumeTailor'
 import { useResumeUploadAndParse } from '@/hooks/useResumeUploadAndParse'
 import { useResumePersistence } from '@/hooks/useResumePersistence'
 import { useAuth } from '@/contexts/AuthContext'
-import type { ResumeDocument, ResumeTailorEdit, ResumeTailorRequest } from '@/types'
+import type { ResumeDocument, ResumeTailorEdit } from '@/types'
 import { cn } from '@/utils/cn'
 import styles from './ResumePage.module.css'
+
+// Helper: Extract and trim text from contentEditable element
+const readEditableText = (element: HTMLElement): string => {
+  return (element?.textContent?.trim() || '')
+}
 
 const MOCK_RESUME = {
   name: 'Jane Doe',
@@ -69,21 +83,6 @@ const MOCK_EXPERIENCE = [
 const MOCK_EDUCATION = [
   { id: 'ed1', degree: 'B.S. Computer Science', school: 'UC San Diego', period: '2014 – 2018' },
 ]
-
-// Stable ID generators (single source of truth)
-const ID_GENERATORS = {
-  profileName: () => 'profile/name',
-  profileContact: () => 'profile/contact',
-  summary: () => 'profile/summary',
-  experienceField: (entryId: string, field: 'title' | 'company' | 'period') =>
-    `experience/${entryId}/${field}`,
-  experienceBullet: (entryId: string, bulletId: string) => `experience/${entryId}/bullets/${bulletId}`,
-  educationField: (entryId: string, field: 'degree' | 'school' | 'period') =>
-    `education/${entryId}/${field}`,
-  skillItem: (skillId: string) => `skills/${skillId}`,
-}
-
-const createId = () => crypto.randomUUID().replace(/-/g, '')
 
 const toInitialResumeContent = (): ResumeDocument => ({
   name: { id: ID_GENERATORS.profileName(), text: MOCK_RESUME.name },
@@ -144,68 +143,26 @@ export default function ResumePage() {
 
   const pdfInputRef = useRef<HTMLInputElement>(null)
 
-  const toCanonicalId = useCallback((id: string, fallback: string): string => {
-    const normalized = normalizeTargetId(id)
-    return normalized || fallback
-  }, [])
+  // ── Local helpers for contentEditable field updates ──
+  const handleUpdateProfileField = (field: 'name' | 'contact', text: string) => {
+    setResumeContent((prev) => updateProfileField(prev, field, text))
+  }
 
-  const hydrateFromStructuredContent = useCallback(
-    (content: ResumeDocument) => {
-      setResumeContent({
-        name: {
-          id: toCanonicalId(content.name.id, ID_GENERATORS.profileName()),
-          text: content.name.text,
-        },
-        contact: {
-          id: toCanonicalId(content.contact.id, ID_GENERATORS.profileContact()),
-          text: content.contact.text,
-        },
-        summary: {
-          id: toCanonicalId(content.summary.id, ID_GENERATORS.summary()),
-          text: content.summary.text,
-        },
-        experience: content.experience.map((entry) => ({
-          id: entry.id,
-          title: {
-            id: toCanonicalId(entry.title.id, ID_GENERATORS.experienceField(entry.id, 'title')),
-            text: entry.title.text,
-          },
-          company: {
-            id: toCanonicalId(entry.company.id, ID_GENERATORS.experienceField(entry.id, 'company')),
-            text: entry.company.text,
-          },
-          period: {
-            id: toCanonicalId(entry.period.id, ID_GENERATORS.experienceField(entry.id, 'period')),
-            text: entry.period.text,
-          },
-          bullets: entry.bullets.map((bullet, index) => ({
-            id: toCanonicalId(bullet.id, ID_GENERATORS.experienceBullet(entry.id, `b${index + 1}`)),
-            text: bullet.text,
-          })),
-        })),
-        education: content.education.map((entry) => ({
-          id: entry.id,
-          degree: {
-            id: toCanonicalId(entry.degree.id, ID_GENERATORS.educationField(entry.id, 'degree')),
-            text: entry.degree.text,
-          },
-          school: {
-            id: toCanonicalId(entry.school.id, ID_GENERATORS.educationField(entry.id, 'school')),
-            text: entry.school.text,
-          },
-          period: {
-            id: toCanonicalId(entry.period.id, ID_GENERATORS.educationField(entry.id, 'period')),
-            text: entry.period.text,
-          },
-        })),
-        skills: content.skills.map((skill, index) => ({
-          id: toCanonicalId(skill.id, ID_GENERATORS.skillItem(`s${index + 1}`)),
-          text: skill.text,
-        })),
-      })
-    },
-    [toCanonicalId]
-  )
+  const handleUpdateSummary = (text: string) => {
+    setResumeContent((prev) => updateSummary(prev, text))
+  }
+
+  const handleUpdateExperienceField = (expId: string, field: 'title' | 'company' | 'period', text: string) => {
+    setResumeContent((prev) => updateExperienceField(prev, expId, field, text))
+  }
+
+  const handleUpdateEducationField = (eduId: string, field: 'degree' | 'school' | 'period', text: string) => {
+    setResumeContent((prev) => updateEducationField(prev, eduId, field, text))
+  }
+
+  const handleUpdateBullet = (expId: string, bulletId: string, text: string) => {
+    setResumeContent((prev) => updateBullet(prev, expId, bulletId, text))
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -217,7 +174,7 @@ export default function ResumePage() {
       try {
         const existing = await loadPrimaryResume(user.id)
         if (cancelled || !existing?.structuredContent) return
-        hydrateFromStructuredContent(existing.structuredContent)
+        setResumeContent(normalizeResumeDocument(existing.structuredContent))
         setActiveResumeId(existing.id)
       } catch {
         // error surfaced through persistenceError
@@ -229,7 +186,7 @@ export default function ResumePage() {
     return () => {
       cancelled = true
     }
-  }, [user?.id, loadPrimaryResume, clearPersistenceError, hydrateFromStructuredContent])
+  }, [user?.id, loadPrimaryResume, clearPersistenceError])
 
   async function handlePdfImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -253,7 +210,7 @@ export default function ResumePage() {
     })
 
     if (saved?.structuredContent) {
-      hydrateFromStructuredContent(saved.structuredContent)
+      setResumeContent(normalizeResumeDocument(saved.structuredContent))
       setActiveResumeId(saved.id)
       setPendingEdits([])
       setSubmitError(
@@ -271,25 +228,7 @@ export default function ResumePage() {
   }
 
   function addExperience() {
-    const id = crypto.randomUUID()
-    setResumeContent((prev) => ({
-      ...prev,
-      experience: [
-        ...prev.experience,
-        {
-          id,
-          title: { id: ID_GENERATORS.experienceField(id, 'title'), text: 'Job Title' },
-          company: { id: ID_GENERATORS.experienceField(id, 'company'), text: 'Company Name' },
-          period: { id: ID_GENERATORS.experienceField(id, 'period'), text: 'Year – Year' },
-          bullets: [
-            {
-              id: ID_GENERATORS.experienceBullet(id, `b${createId()}`),
-              text: 'Describe your responsibilities here.',
-            },
-          ],
-        },
-      ],
-    }))
+    setResumeContent((prev) => addExperienceEntry(prev))
   }
 
   function removeExperience(id: string) {
@@ -300,50 +239,11 @@ export default function ResumePage() {
   }
 
   function addBullet(expId: string) {
-    setResumeContent((prev) => ({
-      ...prev,
-      experience: prev.experience.map((entry) =>
-        entry.id === expId
-          ? {
-              ...entry,
-              bullets: [
-                ...entry.bullets,
-                {
-                  id: ID_GENERATORS.experienceBullet(expId, `b${createId()}`),
-                  text: 'New bullet point.',
-                },
-              ],
-            }
-          : entry
-      ),
-    }))
-  }
-
-  function removeBullet(expId: string, bulletId: string) {
-    setResumeContent((prev) => ({
-      ...prev,
-      experience: prev.experience.map((entry) =>
-        entry.id === expId
-          ? { ...entry, bullets: entry.bullets.filter((bullet) => bullet.id !== bulletId) }
-          : entry
-      ),
-    }))
+    setResumeContent((prev) => addBulletToEntry(prev, expId))
   }
 
   function addEducation() {
-    const id = crypto.randomUUID()
-    setResumeContent((prev) => ({
-      ...prev,
-      education: [
-        ...prev.education,
-        {
-          id,
-          degree: { id: ID_GENERATORS.educationField(id, 'degree'), text: 'Degree / Certification' },
-          school: { id: ID_GENERATORS.educationField(id, 'school'), text: 'Institution Name' },
-          period: { id: ID_GENERATORS.educationField(id, 'period'), text: 'Year – Year' },
-        },
-      ],
-    }))
+    setResumeContent((prev) => addEducationEntry(prev))
   }
 
   function removeEducation(id: string) {
@@ -363,18 +263,11 @@ export default function ResumePage() {
       ) {
         setResumeContent((prev) => ({
           ...prev,
-          skills: [...prev.skills, { id: ID_GENERATORS.skillItem(`s${createId()}`), text: trimmed }],
+          skills: [...prev.skills, { id: ID_GENERATORS.skillItem(crypto.randomUUID().replace(/-/g, '')), text: trimmed }],
         }))
       }
       setSkillInput('')
     }
-  }
-
-  function removeSkill(skillId: string) {
-    setResumeContent((prev) => ({
-      ...prev,
-      skills: prev.skills.filter((skill) => skill.id !== skillId),
-    }))
   }
 
   const applyEditByTargetId = (targetId: string) => {
@@ -398,39 +291,6 @@ export default function ResumePage() {
     return applied
   }
 
-  const handleDeclineEditByTargetId = (targetId: string) => {
-    const normalizedTargetId = normalizeTargetId(targetId)
-    setPendingEdits((prev) => removeSuggestionByTargetId(prev, normalizedTargetId))
-  }
-
-  function buildResumeContent(): ResumeDocument {
-    return {
-      name: resumeContent.name,
-      contact: resumeContent.contact,
-      summary: resumeContent.summary,
-      experience: resumeContent.experience.map((entry) => ({
-        id: entry.id,
-        title: entry.title,
-        company: entry.company,
-        period: entry.period,
-        bullets: entry.bullets.map((bullet) => ({
-          id: bullet.id,
-          text: bullet.text,
-        })),
-      })),
-      education: resumeContent.education.map((entry) => ({
-        id: entry.id,
-        degree: entry.degree,
-        school: entry.school,
-        period: entry.period,
-      })),
-      skills: resumeContent.skills.map((skill) => ({
-        id: skill.id,
-        text: skill.text,
-      })),
-    }
-  }
-
   async function handleAutoTailor() {
     clearError()
     setSubmitError(null)
@@ -440,20 +300,12 @@ export default function ResumePage() {
       return
     }
 
-    const payload: ResumeTailorRequest = {
-      jobDescription,
-      resumeContent: buildResumeContent(),
-      mode: 'delta_only',
-    }
+    const result = await runTailor({ jobDescription, resumeContent, mode: 'delta_only' })
 
-    try {
-      const result = await runTailor(payload)
-      setPendingEdits(result.edits ?? [])
-      setTailorRunState(result.isPartial ? 'partial' : 'complete')
-    } catch {
-      setTailorRunState('idle')
-      // error already set by hook
-    }
+    if (result.status === 'error') return
+
+    setPendingEdits(result.edits)
+    setTailorRunState(result.status === 'partial' ? 'partial' : 'complete')
   }
 
   async function handleExportPDF() {
@@ -480,7 +332,7 @@ export default function ResumePage() {
     }
 
     try {
-      await saveResume(activeResumeId, buildResumeContent(), 'edited')
+      await saveResume(activeResumeId, resumeContent, 'edited')
     } catch {
       // error surfaced through persistenceError
     }
@@ -507,7 +359,7 @@ export default function ResumePage() {
 
   const handleDeclineTarget = (targetId: string) => {
     const normalizedTargetId = normalizeTargetId(targetId)
-    handleDeclineEditByTargetId(normalizedTargetId)
+    setPendingEdits((prev) => removeSuggestionByTargetId(prev, normalizedTargetId))
     setActiveTargetId((current) => (current === normalizedTargetId ? null : current))
   }
 
@@ -598,7 +450,7 @@ export default function ResumePage() {
                   {skill.text}
                   <button
                     className={styles.skillChipRemove}
-                    onClick={() => removeSkill(skill.id)}
+                    onClick={() => setResumeContent((prev) => removeSkill(prev, skill.id))}
                     aria-label={`Remove ${skill.text}`}
                   >
                     <X size={10} />
@@ -624,11 +476,7 @@ export default function ResumePage() {
                   contentEditable={editable}
                   suppressContentEditableWarning
                   onBlur={(e) => {
-                    const value = e.currentTarget?.textContent?.trim() || ''
-                    setResumeContent((prev) => ({
-                      ...prev,
-                      name: { ...prev.name, text: value },
-                    }))
+                    handleUpdateProfileField('name', readEditableText(e.currentTarget))
                   }}
                 >
                   {resumeContent.name.text}
@@ -639,11 +487,7 @@ export default function ResumePage() {
                   contentEditable={editable}
                   suppressContentEditableWarning
                   onBlur={(e) => {
-                    const value = e.currentTarget?.textContent?.trim() || ''
-                    setResumeContent((prev) => ({
-                      ...prev,
-                      contact: { ...prev.contact, text: value },
-                    }))
+                    handleUpdateProfileField('contact', readEditableText(e.currentTarget))
                   }}
                 >
                   {resumeContent.contact.text}
@@ -658,11 +502,7 @@ export default function ResumePage() {
                   contentEditable={editable}
                   suppressContentEditableWarning
                   onBlur={(e) => {
-                    const value = e.currentTarget?.textContent?.trim() || ''
-                    setResumeContent((prev) => ({
-                      ...prev,
-                      summary: { ...prev.summary, text: value },
-                    }))
+                    handleUpdateSummary(readEditableText(e.currentTarget))
                   }}
                 >
                   {resumeContent.summary.text}
@@ -684,8 +524,7 @@ export default function ResumePage() {
                           contentEditable={editable}
                           suppressContentEditableWarning
                           onBlur={(e) => {
-                            const value = e.currentTarget?.textContent?.trim() || ''
-                            setResumeContent((prev) => updateExperienceField(prev, job.id, 'title', value))
+                            handleUpdateExperienceField(job.id, 'title', readEditableText(e.currentTarget))
                           }}
                         >
                           {job.title.text}
@@ -707,8 +546,7 @@ export default function ResumePage() {
                         contentEditable={editable}
                         suppressContentEditableWarning
                         onBlur={(e) => {
-                          const value = e.currentTarget?.textContent?.trim() || ''
-                          setResumeContent((prev) => updateExperienceField(prev, job.id, 'period', value))
+                          handleUpdateExperienceField(job.id, 'period', readEditableText(e.currentTarget))
                         }}
                       >
                         {job.period.text}
@@ -723,8 +561,7 @@ export default function ResumePage() {
                       contentEditable={editable}
                       suppressContentEditableWarning
                       onBlur={(e) => {
-                        const value = e.currentTarget?.textContent?.trim() || ''
-                        setResumeContent((prev) => updateExperienceField(prev, job.id, 'company', value))
+                        handleUpdateExperienceField(job.id, 'company', readEditableText(e.currentTarget))
                       }}
                     >
                       {job.company.text}
@@ -738,15 +575,14 @@ export default function ResumePage() {
                             contentEditable={editable}
                             suppressContentEditableWarning
                             onBlur={(e) => {
-                              const value = e.currentTarget?.textContent?.trim() || ''
-                              setResumeContent((prev) => updateBullet(prev, job.id, bullet.id, value))
+                              handleUpdateBullet(job.id, bullet.id, readEditableText(e.currentTarget))
                             }}
                           >
                             {bullet.text}
                           </span>
                           <button
                             className={cn(styles.bulletRemoveBtn, !editable && styles.btnHidden)}
-                            onClick={() => removeBullet(job.id, bullet.id)}
+                            onClick={() => setResumeContent((prev) => removeBullet(prev, job.id, bullet.id))}
                             aria-label="Remove bullet"
                           >
                             <X size={10} />
@@ -783,8 +619,7 @@ export default function ResumePage() {
                           contentEditable={editable}
                           suppressContentEditableWarning
                           onBlur={(e) => {
-                            const value = e.currentTarget?.textContent?.trim() || ''
-                            setResumeContent((prev) => updateEducationField(prev, edu.id, 'degree', value))
+                            handleUpdateEducationField(edu.id, 'degree', readEditableText(e.currentTarget))
                           }}
                         >
                           {edu.degree.text}
@@ -806,8 +641,7 @@ export default function ResumePage() {
                         contentEditable={editable}
                         suppressContentEditableWarning
                         onBlur={(e) => {
-                          const value = e.currentTarget?.textContent?.trim() || ''
-                          setResumeContent((prev) => updateEducationField(prev, edu.id, 'period', value))
+                          handleUpdateEducationField(edu.id, 'period', readEditableText(e.currentTarget))
                         }}
                       >
                         {edu.period.text}
@@ -822,8 +656,7 @@ export default function ResumePage() {
                       contentEditable={editable}
                       suppressContentEditableWarning
                       onBlur={(e) => {
-                        const value = e.currentTarget?.textContent?.trim() || ''
-                        setResumeContent((prev) => updateEducationField(prev, edu.id, 'school', value))
+                        handleUpdateEducationField(edu.id, 'school', readEditableText(e.currentTarget))
                       }}
                     >
                       {edu.school.text}

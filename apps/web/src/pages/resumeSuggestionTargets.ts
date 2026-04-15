@@ -327,118 +327,54 @@ export const applySuggestion = (
   }
 
   const { operation, replacement } = edit
+  const ok = (nextContent: ResumeDocument) => ({ nextContent, applied: true, targetResolution })
 
   if (targetResolution.kind === 'profile-name') {
-    if (operation === 'replace') return { nextContent: { ...resumeContent, name: updateTextNode(resumeContent.name, replacement) }, applied: true, targetResolution }
-    if (operation === 'insert') return { nextContent: { ...resumeContent, name: updateTextNode(resumeContent.name, `${resumeContent.name.text} ${replacement}`.trim()) }, applied: true, targetResolution }
-    return { nextContent: { ...resumeContent, name: updateTextNode(resumeContent.name, '') }, applied: true, targetResolution }
+    if (operation === 'replace') return ok({ ...resumeContent, name: updateTextNode(resumeContent.name, replacement) })
+    if (operation === 'insert') return ok({ ...resumeContent, name: updateTextNode(resumeContent.name, `${resumeContent.name.text} ${replacement}`.trim()) })
+    return ok({ ...resumeContent, name: updateTextNode(resumeContent.name, '') })
   }
 
   if (targetResolution.kind === 'profile-contact') {
-    if (operation === 'replace') return { nextContent: { ...resumeContent, contact: updateTextNode(resumeContent.contact, replacement) }, applied: true, targetResolution }
-    if (operation === 'insert') return { nextContent: { ...resumeContent, contact: updateTextNode(resumeContent.contact, `${resumeContent.contact.text} ${replacement}`.trim()) }, applied: true, targetResolution }
-    return { nextContent: { ...resumeContent, contact: updateTextNode(resumeContent.contact, '') }, applied: true, targetResolution }
+    if (operation === 'replace') return ok({ ...resumeContent, contact: updateTextNode(resumeContent.contact, replacement) })
+    if (operation === 'insert') return ok({ ...resumeContent, contact: updateTextNode(resumeContent.contact, `${resumeContent.contact.text} ${replacement}`.trim()) })
+    return ok({ ...resumeContent, contact: updateTextNode(resumeContent.contact, '') })
   }
 
   if (targetResolution.kind === 'profile-summary') {
-    if (operation === 'replace') return { nextContent: { ...resumeContent, summary: updateTextNode(resumeContent.summary, replacement) }, applied: true, targetResolution }
-    if (operation === 'insert') return { nextContent: { ...resumeContent, summary: updateTextNode(resumeContent.summary, `${resumeContent.summary.text}\n${replacement}`.trim()) }, applied: true, targetResolution }
-    return { nextContent: { ...resumeContent, summary: updateTextNode(resumeContent.summary, '') }, applied: true, targetResolution }
+    if (operation === 'replace') return ok({ ...resumeContent, summary: updateTextNode(resumeContent.summary, replacement) })
+    if (operation === 'insert') return ok({ ...resumeContent, summary: updateTextNode(resumeContent.summary, `${resumeContent.summary.text}\n${replacement}`.trim()) })
+    return ok({ ...resumeContent, summary: updateTextNode(resumeContent.summary, '') })
   }
 
   if (targetResolution.kind === 'experience-field' && targetResolution.entryId && targetResolution.field) {
     const fieldKey = targetResolution.field as 'title' | 'company' | 'period'
     const currentText = targetResolution.currentText
-    if (operation === 'replace') {
-      return {
-        nextContent: updateExperienceField(resumeContent, targetResolution.entryId, fieldKey, replacement),
-        applied: true,
-        targetResolution,
-      }
-    }
-    if (operation === 'insert') {
-      return {
-        nextContent: updateExperienceField(
-          resumeContent,
-          targetResolution.entryId,
-          fieldKey,
-          `${currentText} ${replacement}`.trim()
-        ),
-        applied: true,
-        targetResolution,
-      }
-    }
-    return {
-      nextContent: updateExperienceField(resumeContent, targetResolution.entryId, fieldKey, ''),
-      applied: true,
-      targetResolution,
-    }
+    if (operation === 'replace') return ok(updateExperienceField(resumeContent, targetResolution.entryId, fieldKey, replacement))
+    if (operation === 'insert') return ok(updateExperienceField(resumeContent, targetResolution.entryId, fieldKey, `${currentText} ${replacement}`.trim()))
+    return ok(updateExperienceField(resumeContent, targetResolution.entryId, fieldKey, ''))
   }
 
   if (targetResolution.kind === 'experience-bullet' && targetResolution.entryId && targetResolution.bulletId) {
-    if (operation === 'replace') {
-      return {
-        nextContent: updateBullet(resumeContent, targetResolution.entryId, targetResolution.bulletId, replacement),
-        applied: true,
-        targetResolution,
-      }
-    }
-    if (operation === 'insert') {
-      return {
-        nextContent: insertBulletAfter(resumeContent, targetResolution.entryId, targetResolution.bulletId, replacement),
-        applied: true,
-        targetResolution,
-      }
-    }
-    return {
-      nextContent: removeBullet(resumeContent, targetResolution.entryId, targetResolution.bulletId),
-      applied: true,
-      targetResolution,
-    }
+    if (operation === 'replace') return ok(updateBullet(resumeContent, targetResolution.entryId, targetResolution.bulletId, replacement))
+    if (operation === 'insert') return ok(insertBulletAfter(resumeContent, targetResolution.entryId, targetResolution.bulletId, replacement))
+    return ok(removeBullet(resumeContent, targetResolution.entryId, targetResolution.bulletId))
   }
 
   if (targetResolution.kind === 'education-field' && targetResolution.entryId && targetResolution.field) {
     const fieldKey = targetResolution.field as 'degree' | 'school' | 'period'
     const currentText = targetResolution.currentText
-    if (operation === 'replace') {
-      return {
-        nextContent: updateEducationField(resumeContent, targetResolution.entryId, fieldKey, replacement),
-        applied: true,
-        targetResolution,
-      }
-    }
-    if (operation === 'insert') {
-      return {
-        nextContent: updateEducationField(
-          resumeContent,
-          targetResolution.entryId,
-          fieldKey,
-          `${currentText} ${replacement}`.trim()
-        ),
-        applied: true,
-        targetResolution,
-      }
-    }
-    return {
-      nextContent: updateEducationField(resumeContent, targetResolution.entryId, fieldKey, ''),
-      applied: true,
-      targetResolution,
-    }
+    if (operation === 'replace') return ok(updateEducationField(resumeContent, targetResolution.entryId, fieldKey, replacement))
+    if (operation === 'insert') return ok(updateEducationField(resumeContent, targetResolution.entryId, fieldKey, `${currentText} ${replacement}`.trim()))
+    return ok(updateEducationField(resumeContent, targetResolution.entryId, fieldKey, ''))
   }
 
   if (targetResolution.kind === 'skill' && targetResolution.skillId) {
     const index = resumeContent.skills.findIndex((skill) => skill.id === targetResolution.skillId)
-    if (index === -1) {
-      return { nextContent: resumeContent, applied: false, targetResolution: null }
-    }
-
-    if (operation === 'replace') {
-      return { nextContent: updateSkill(resumeContent, targetResolution.skillId, replacement), applied: true, targetResolution }
-    }
-    if (operation === 'insert') {
-      return { nextContent: insertSkillAfter(resumeContent, targetResolution.skillId, replacement), applied: true, targetResolution }
-    }
-    return { nextContent: removeSkill(resumeContent, targetResolution.skillId), applied: true, targetResolution }
+    if (index === -1) return { nextContent: resumeContent, applied: false, targetResolution: null }
+    if (operation === 'replace') return ok(updateSkill(resumeContent, targetResolution.skillId, replacement))
+    if (operation === 'insert') return ok(insertSkillAfter(resumeContent, targetResolution.skillId, replacement))
+    return ok(removeSkill(resumeContent, targetResolution.skillId))
   }
 
   return { nextContent: resumeContent, applied: false, targetResolution: null }

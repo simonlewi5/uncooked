@@ -208,6 +208,140 @@
   width: 100%;
 }
 
+/* Suggestion diff display styles */
+.diffWrapper {
+  border-left: 3px solid var(--color-primary);
+  padding-left: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.diffStacked {
+  composes: diffWrapper;
+}
+
+.diffStackedLabel {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.diffStackedGrid {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.diffStackedBox {
+  padding: 0.75rem;
+  border-radius: 4px;
+}
+
+.diffStackedCurrent {
+  composes: diffStackedBox;
+  background-color: var(--color-bg-muted, #f5f5f5);
+}
+
+.diffStackedCurrentLabel {
+  display: block;
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+  color: var(--color-text-tertiary);
+}
+
+.diffStackedProposed {
+  composes: diffStackedBox;
+  background-color: var(--color-info-subtle, #f0f9ff);
+}
+
+.diffStackedProposedLabel {
+  display: block;
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+  color: var(--color-success-text, #166534);
+}
+
+.diffStackedText {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.diffCompact {
+  border-left: 3px solid var(--color-primary);
+  padding-left: 0.75rem;
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+}
+
+.diffCompactLine {
+  margin-bottom: 0.25rem;
+  color: var(--color-text-secondary);
+}
+
+.diffCompactCurrent {
+  text-decoration: line-through;
+  color: var(--color-danger-text, #7f1d1d);
+}
+
+.diffCompactArrow {
+  margin: 0 0.25rem;
+}
+
+.diffCompactProposed {
+  color: var(--color-success-text, #166534);
+}
+
+.diffActionButtons {
+  display: flex;
+}
+
+.diffActionButtonsStacked {
+  composes: diffActionButtons;
+  gap: 0.5rem;
+}
+
+.diffActionButtonsCompact {
+  composes: diffActionButtons;
+  gap: 0.375rem;
+}
+
+.diffActionButton {
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.diffActionButton:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.diffActionButtonStacked {
+  composes: diffActionButton;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  border-radius: 4px;
+}
+
+.diffActionButtonCompact {
+  composes: diffActionButton;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  border-radius: 3px;
+}
+
+.diffActionButtonAccept {
+  background-color: var(--color-success, #10b981);
+}
+
+.diffActionButtonDecline {
+  background-color: var(--color-danger, #ef4444);
+}
+
 .emptyState {
   padding: var(--space-4);
   border: 1px dashed var(--color-border);
