@@ -1,8 +1,10 @@
-import { useState, useRef } from 'react'
-import { Plus, Search, Send, GripVertical, X, Paperclip, Star } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Plus, Search, Send, GripVertical, X, Paperclip, Star, Trash2 } from 'lucide-react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui'
 import { useAuth } from '@/contexts/AuthContext'
 import { useResearchChat } from '@/hooks/useResearchChat'
+import { useResearchCompanies } from '@/hooks/useResearchCompanies'
 import { cn } from '@/utils/cn'
 import styles from './ResearchPage.module.css'
 
@@ -11,29 +13,63 @@ interface CompanyProfile {
   name: string
   category: string
   isFavorite: boolean
+  company_website?: string
 }
 
 
-const MOCK_COMPANIES: CompanyProfile[] = [
-  { id: '1', name: 'Stripe', category: 'Fintech', isFavorite: false },
-  { id: '2', name: 'Vercel', category: 'DevTools', isFavorite: false },
-  { id: '3', name: 'OpenAI', category: 'AI/ML', isFavorite: false },
-]
-
 const CATEGORY_STYLE: Record<string, string> = {
+  Technology: styles.categoryTechnology,
   Fintech: styles.categoryFintech,
   DevTools: styles.categoryDevtools,
   'AI/ML': styles.categoryAiml,
+  Healthcare: styles.categoryHealthcare,
+  'E-commerce': styles.categoryEcommerce,
+  SaaS: styles.categorySaas,
+}
+
+function CompanyLogo({ company, styles }: { company: CompanyProfile, styles: Record<string, string> }) {
+  const [hasError, setHasError] = useState(false);
+  if (!company.company_website || hasError) {
+    return (
+      <div className={styles.logoFallback}>
+        {company.name.charAt(0).toUpperCase()}
+      </div>
+    );
+  }
+  return (
+    <img 
+      src={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/company-logo?domain=${encodeURIComponent(company.company_website)}`} 
+      alt={`${company.name} logo`}
+      className={styles.logoImage}
+      onError={() => setHasError(true)}
+    />
+  );
 }
 
 export default function ResearchPage() {
-  const [searchQuery, setSearchQuery] = useState('')
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [searchQuery, setSearchQuery] = useState(() => {
+    return location.state?.companyName || '';
+  });
   const [activeContext, setActiveContext] = useState<CompanyProfile[]>([])
   const [input, setInput] = useState('')
-  const [companies, setCompanies] = useState<CompanyProfile[]>(MOCK_COMPANIES)
+  // const [companies, setCompanies] = useState<CompanyProfile[]>(MOCK_COMPANIES)
   const [isDragOver, setIsDragOver] = useState(false)
   const draggingCompany = useRef<CompanyProfile | null>(null)
   const { user } = useAuth()
+  const { companies: dbCompanies, isLoading, toggleFavorite, deleteCompany } = useResearchCompanies()
+  useEffect(() => {
+    if (location.state?.newCompanyId && dbCompanies.length > 0) {
+      const newCompany = dbCompanies.find((c) => c.id === location.state.newCompanyId)
+      if (newCompany && !searchQuery) {
+        setSearchQuery(newCompany.name)
+        const newState = { ...location.state }
+        delete newState.newCompanyId
+        navigate(location.pathname, { replace: true, state: newState });
+      }
+    }
+  }, [location.state, dbCompanies, navigate, location.pathname, searchQuery])
   const userInitial = user?.email?.[0].toUpperCase() ?? '?'
 
   const companyNames = activeContext.map((c) => c.name)
@@ -42,14 +78,21 @@ export default function ResearchPage() {
     jobDescription: undefined,
   })
 
-  const filteredCompanies = companies
+  const filteredCompanies = dbCompanies
     .filter((c) => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
     .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite))
-
-  function toggleFavorite(id: string) {
-    setCompanies((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, isFavorite: !c.isFavorite } : c)),
-    )
+  const handleToggleFavorite = (id: string) => {
+    toggleFavorite(id)
+  }
+  // function toggleFavorite(id: string) {
+  //   setCompanies((prev) =>
+  //     prev.map((c) => (c.id === id ? { ...c, isFavorite: !c.isFavorite } : c)),
+  //   )
+  // }
+  const handleDeleteCompany = async (id: string, name: string) => {
+  if (confirm(`Delete "${name}" from your saved companies?`)) {
+    await deleteCompany(id)
+    }
   }
 
   function handleDragStart(company: CompanyProfile) {
@@ -141,6 +184,7 @@ export default function ResearchPage() {
                 onDragStart={() => handleDragStart(company)}
               >
                 <GripVertical size={14} className={styles.dragHandle} />
+                <CompanyLogo company={company} styles={styles} />
                 <div className={styles.companyInfo}>
                   <span className={styles.companyName}>{company.name}</span>
                   <span
@@ -154,15 +198,39 @@ export default function ResearchPage() {
                 </div>
                 <button
                   className={cn(styles.starBtn, company.isFavorite && styles.starBtnActive)}
-                  onClick={(e) => { e.stopPropagation(); toggleFavorite(company.id) }}
+                  onClick={(e) => { e.stopPropagation(); handleToggleFavorite(company.id) }}
                   aria-label={company.isFavorite ? 'Unfavorite' : 'Favorite'}
                 >
                   <Star size={13} />
                 </button>
+                <button
+                  className={styles.deleteBtn}
+                  onClick={(e) => { e.stopPropagation(); handleDeleteCompany(company.id, company.name) }}
+                  aria-label={`Delete ${company.name}`}
+                >
+                  <Trash2 size={13} />
+                </button>
               </div>
             ))}
-            {filteredCompanies.length === 0 && (
-              <p className={styles.noResults}>No companies found.</p>
+            {isLoading && filteredCompanies.length === 0 && (
+              <p className={styles.noResults}>Loading companies...</p>
+            )}
+
+            {filteredCompanies.length === 0 && !isLoading && (
+              <div className={styles.noResultsContainer}>
+                <p className={styles.noResults}>No companies found.</p>
+              </div>
+            )}
+
+            {searchQuery.trim() && (
+              <div className={styles.persistentAddContainer}>
+                <button
+                  className={styles.addCompanyBtn}
+                  onClick={() => navigate('/add-company', { state: { companyName: searchQuery } })}
+                >
+                  + Add "{searchQuery}" as new company
+                </button>
+              </div>
             )}
           </div>
         </aside>
