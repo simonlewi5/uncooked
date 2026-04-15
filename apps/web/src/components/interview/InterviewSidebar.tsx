@@ -11,7 +11,6 @@ interface InterviewSidebarProps {
   onCompanyNameChange: (name: string) => void
   selectedCompanyId: string | null
   onCompanyProfileSelect: (profile: CompanyProfile) => void
-  onCreateCompany: (name: string) => void
   companyProfile: CompanyProfile | null
   style: InterviewStyle
   jobDescription: string
@@ -30,7 +29,6 @@ export function InterviewSidebar({
   onCompanyNameChange,
   selectedCompanyId,
   onCompanyProfileSelect,
-  onCreateCompany,
   companyProfile,
   style,
   jobDescription,
@@ -104,7 +102,6 @@ export function InterviewSidebar({
                 onCompanyNameChange={onCompanyNameChange}
                 selectedCompanyId={selectedCompanyId}
                 onCompanyProfileSelect={onCompanyProfileSelect}
-                onCreateCompany={onCreateCompany}
                 jobDescription={jobDescription}
                 onJobDescriptionChange={onJobDescriptionChange}
               />

@@ -8,7 +8,6 @@ interface JobDescriptionFormProps {
   onCompanyNameChange: (value: string) => void
   selectedCompanyId: string | null
   onCompanyProfileSelect: (profile: CompanyProfile) => void
-  onCreateCompany: (companyName: string) => void
   jobDescription: string
   onJobDescriptionChange: (value: string) => void
 }
@@ -18,22 +17,17 @@ export function JobDescriptionForm({
   onCompanyNameChange,
   selectedCompanyId,
   onCompanyProfileSelect,
-  onCreateCompany,
   jobDescription,
   onJobDescriptionChange,
 }: JobDescriptionFormProps): React.JSX.Element {
   const { jobs } = usePastJobDescriptions(selectedCompanyId)
 
-  const handleCreateCompany = (companyName: string) => {
-    onCreateCompany(companyName)
-  }
   return (
     <div className={styles.form}>
       <CompanyAutocomplete
         value={companyName}
         onChange={onCompanyNameChange}
         onProfileSelect={onCompanyProfileSelect}
-        onCreateCompany={handleCreateCompany}
       />
 
       {jobs.length > 0 && (

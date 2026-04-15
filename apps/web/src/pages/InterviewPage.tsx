@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
 import { SetupForm } from '@/components/interview/SetupForm'
 import { InterviewSidebar } from '@/components/interview/InterviewSidebar'
 import { ChatBox } from '@/components/interview/ChatBox'
@@ -72,37 +71,6 @@ export default function InterviewPage(): JSX.Element {
     setCompanyProfile(null)
   }
 
-  const { user } = useAuth()
-
-  async function handleCreateCompany(companyName: string): Promise<void> {
-    if (!user) return
-    const trimmedName = companyName.trim()
-    if (!trimmedName) return
-
-    const { data, error } = await supabase
-      .from('company_profiles')
-      .insert({
-        user_id: user.id,
-        company_name: trimmedName,
-      }) 
-      .select('id, company_name, company_website, industry, company_size')
-      .single()
-    if (error) {
-      console.error('InterviewPage: failed to create company profile', error)
-      return
-    }
-
-    if (data) {
-      handleCompanyProfileSelect({
-        id: data.id,
-        companyName: data.company_name,
-        companyWebsite: data.company_website,
-        industry: data.industry,
-        companySize: data.company_size,
-      })
-    }
-  }
-
   function handleStart(): void {
     setPhase('interview')
   }
@@ -167,7 +135,6 @@ export default function InterviewPage(): JSX.Element {
         </div>
         <SetupForm
           companyName={companyName}
-          onCreateCompany={handleCreateCompany}
           onCompanyNameChange={handleCompanyNameChange}
           selectedCompanyId={selectedCompanyId}
           onCompanyProfileSelect={handleCompanyProfileSelect}
@@ -190,8 +157,7 @@ return (
         selectedCompanyId={selectedCompanyId}
         companyProfile={companyProfile}
         onCompanyProfileSelect={handleCompanyProfileSelect}
-        onCreateCompany={handleCreateCompany}
-        
+
         style={style ?? 'mixed'}
         jobDescription={jobDescription}
         onJobDescriptionChange={setJobDescription}

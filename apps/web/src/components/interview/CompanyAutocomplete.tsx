@@ -9,14 +9,12 @@ interface CompanyAutocompleteProps {
   value: string
   onChange: (value: string) => void
   onProfileSelect: (profile: CompanyProfile) => void
-  onCreateCompany: (companyName: string) => void
 }
 
 export function CompanyAutocomplete({
   value,
   onChange,
   onProfileSelect,
-  onCreateCompany,
 }: CompanyAutocompleteProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(0)
@@ -24,10 +22,7 @@ export function CompanyAutocomplete({
   const inputId = useId()
   const { results, isLoading } = useCompanySearch(value)
 
-  const hasTypedValue = value.trim().length > 0
-  const shouldShowDropdown = isOpen && (results.length > 0 || isLoading || hasTypedValue)
-  // check company is not in db and valid string before showing create option
-  const shouldShowCreateOption = !isLoading && results.length === 0 && hasTypedValue  
+  const shouldShowDropdown = isOpen && (results.length > 0 || isLoading)
 
   useEffect(() => {
     setHighlightedIndex(0)
@@ -109,20 +104,6 @@ export function CompanyAutocomplete({
               </div>
             </li>
           ))}
-          {shouldShowCreateOption && (
-            <li
-              className={styles.dropdownItem}
-              role="option"
-              aria-selected={false}
-              onMouseDown={() => onCreateCompany(value.trim())}
-            >
-              <div className={styles.dropdownItemText}>
-                <span className={styles.dropdownItemName}>
-                  "{value.trim()}" - Save company
-                </span>
-              </div>
-            </li>
-          )}
         </ul>
       )}
     </div>

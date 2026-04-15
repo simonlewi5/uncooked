@@ -26,10 +26,11 @@ export function useCompanySearch(query: string): { results: CompanyProfile[]; is
   useEffect(() => {
     if (query.trim().length < 1) {
       setResults([])
+      setIsLoading(false)
       return
     }
+    setIsLoading(true)
     const timeout = setTimeout(async () => {
-      setIsLoading(true)
       const { data, error } = await supabase
         .from('company_profiles')
         .select('id, company_name, company_website, industry, company_size')
