@@ -11,6 +11,11 @@ import {
   removeSuggestionByTargetId,
   type ResumeSuggestionViewModel,
 } from '@/pages/resumeSuggestionTargets'
+import {
+  updateBullet,
+  updateEducationField,
+  updateExperienceField,
+} from '@/lib/resumeMutations'
 import { useResumeTailor } from '@/hooks/useResumeTailor'
 import { useResumeUploadAndParse } from '@/hooks/useResumeUploadAndParse'
 import { useResumePersistence } from '@/hooks/useResumePersistence'
@@ -117,6 +122,7 @@ export default function ResumePage() {
   const [jobDescription, setJobDescription] = useState('')
   const [skillInput, setSkillInput] = useState('')
   const [pendingEdits, setPendingEdits] = useState<ResumeTailorEdit[]>([])
+  const [tailorRunState, setTailorRunState] = useState<'idle' | 'complete' | 'partial'>('idle')
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
   const [activeResumeId, setActiveResumeId] = useState<string | null>(null)
@@ -262,40 +268,6 @@ export default function ResumePage() {
     if (inputElement) {
       inputElement.value = ''
     }
-  }
-
-  function updateExperienceField(id: string, field: 'title' | 'company' | 'period', value: string) {
-    setResumeContent((prev) => ({
-      ...prev,
-      experience: prev.experience.map((entry) =>
-        entry.id === id ? { ...entry, [field]: { ...entry[field], text: value } } : entry
-      ),
-    }))
-  }
-
-  function updateEducationField(id: string, field: 'degree' | 'school' | 'period', value: string) {
-    setResumeContent((prev) => ({
-      ...prev,
-      education: prev.education.map((entry) =>
-        entry.id === id ? { ...entry, [field]: { ...entry[field], text: value } } : entry
-      ),
-    }))
-  }
-
-  function updateBullet(expId: string, bulletId: string, value: string) {
-    setResumeContent((prev) => ({
-      ...prev,
-      experience: prev.experience.map((entry) =>
-        entry.id === expId
-          ? {
-              ...entry,
-              bullets: entry.bullets.map((bullet) =>
-                bullet.id === bulletId ? { ...bullet, text: value } : bullet
-              ),
-            }
-          : entry
-      ),
-    }))
   }
 
   function addExperience() {
@@ -477,7 +449,9 @@ export default function ResumePage() {
     try {
       const result = await runTailor(payload)
       setPendingEdits(result.edits ?? [])
+      setTailorRunState(result.isPartial ? 'partial' : 'complete')
     } catch {
+      setTailorRunState('idle')
       // error already set by hook
     }
   }
@@ -514,6 +488,8 @@ export default function ResumePage() {
 
   const editable = !isPreviewMode
   const suggestionItems: ResumeSuggestionViewModel[] = buildResumeSuggestionViewModels(resumeContent, pendingEdits)
+  const suggestionPanelState = tailorRunState === 'idle' ? 'idle' : tailorRunState
+  const pageError = submitError ?? uploadError ?? persistenceError ?? tailorError
 
   const handleRevealTarget = useCallback((targetId: string) => {
     const normalizedTargetId = normalizeTargetId(targetId)
@@ -634,9 +610,9 @@ export default function ResumePage() {
         </aside>
 
         <div className={styles.resumePanel}>
-          {(submitError || tailorError || uploadError || persistenceError) && (
+          {pageError && (
             <div className={styles.errorBanner} role="alert">
-              {submitError ?? uploadError ?? persistenceError ?? tailorError}
+              {pageError}
             </div>
           )}
           <div className={styles.resumeWorkspace}>
@@ -709,7 +685,7 @@ export default function ResumePage() {
                           suppressContentEditableWarning
                           onBlur={(e) => {
                             const value = e.currentTarget?.textContent?.trim() || ''
-                            updateExperienceField(job.id, 'title', value)
+                            setResumeContent((prev) => updateExperienceField(prev, job.id, 'title', value))
                           }}
                         >
                           {job.title.text}
@@ -732,7 +708,7 @@ export default function ResumePage() {
                         suppressContentEditableWarning
                         onBlur={(e) => {
                           const value = e.currentTarget?.textContent?.trim() || ''
-                          updateExperienceField(job.id, 'period', value)
+                          setResumeContent((prev) => updateExperienceField(prev, job.id, 'period', value))
                         }}
                       >
                         {job.period.text}
@@ -748,7 +724,7 @@ export default function ResumePage() {
                       suppressContentEditableWarning
                       onBlur={(e) => {
                         const value = e.currentTarget?.textContent?.trim() || ''
-                        updateExperienceField(job.id, 'company', value)
+                        setResumeContent((prev) => updateExperienceField(prev, job.id, 'company', value))
                       }}
                     >
                       {job.company.text}
@@ -763,7 +739,7 @@ export default function ResumePage() {
                             suppressContentEditableWarning
                             onBlur={(e) => {
                               const value = e.currentTarget?.textContent?.trim() || ''
-                              updateBullet(job.id, bullet.id, value)
+                              setResumeContent((prev) => updateBullet(prev, job.id, bullet.id, value))
                             }}
                           >
                             {bullet.text}
@@ -808,7 +784,7 @@ export default function ResumePage() {
                           suppressContentEditableWarning
                           onBlur={(e) => {
                             const value = e.currentTarget?.textContent?.trim() || ''
-                            updateEducationField(edu.id, 'degree', value)
+                            setResumeContent((prev) => updateEducationField(prev, edu.id, 'degree', value))
                           }}
                         >
                           {edu.degree.text}
@@ -831,7 +807,7 @@ export default function ResumePage() {
                         suppressContentEditableWarning
                         onBlur={(e) => {
                           const value = e.currentTarget?.textContent?.trim() || ''
-                          updateEducationField(edu.id, 'period', value)
+                          setResumeContent((prev) => updateEducationField(prev, edu.id, 'period', value))
                         }}
                       >
                         {edu.period.text}
@@ -847,7 +823,7 @@ export default function ResumePage() {
                       suppressContentEditableWarning
                       onBlur={(e) => {
                         const value = e.currentTarget?.textContent?.trim() || ''
-                        updateEducationField(edu.id, 'school', value)
+                        setResumeContent((prev) => updateEducationField(prev, edu.id, 'school', value))
                       }}
                     >
                       {edu.school.text}
@@ -864,11 +840,13 @@ export default function ResumePage() {
 
             <ResumeSuggestionsPanel
               suggestions={suggestionItems}
+              panelState={suggestionPanelState}
               activeTargetId={activeTargetId}
               onActivateTarget={setActiveTargetId}
               onRevealTarget={handleRevealTarget}
               onAcceptTarget={handleAcceptTarget}
               onDeclineTarget={handleDeclineTarget}
+              onRetryTailor={handleAutoTailor}
             />
           </div>
         </div>

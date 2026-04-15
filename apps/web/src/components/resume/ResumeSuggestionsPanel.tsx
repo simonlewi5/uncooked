@@ -1,4 +1,5 @@
 import type { KeyboardEvent } from 'react'
+import { CheckCircle2, RefreshCw, AlertTriangle } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import type { ResumeSuggestionViewModel } from '@/pages/resumeSuggestionTargets'
 import styles from './ResumeSuggestionsPanel.module.css'
@@ -145,20 +146,24 @@ const SuggestionDiff = ({
 
 interface ResumeSuggestionsPanelProps {
   suggestions: ResumeSuggestionViewModel[]
+  panelState?: 'idle' | 'complete' | 'partial'
   activeTargetId: string | null
   onActivateTarget: (targetId: string | null) => void
   onRevealTarget: (targetId: string) => void
   onAcceptTarget: (targetId: string) => void
   onDeclineTarget: (targetId: string) => void
+  onRetryTailor?: () => void
 }
 
 export function ResumeSuggestionsPanel({
   suggestions,
+  panelState = 'idle',
   activeTargetId,
   onActivateTarget,
   onRevealTarget,
   onAcceptTarget,
   onDeclineTarget,
+  onRetryTailor,
 }: ResumeSuggestionsPanelProps): JSX.Element {
   const groupedSuggestions = suggestions.reduce<Record<string, ResumeSuggestionViewModel[]>>((groups, suggestion) => {
     const groupKey = suggestion.targetExists ? suggestion.edit.section : 'unmapped'
@@ -182,6 +187,54 @@ export function ResumeSuggestionsPanel({
     }
   }
 
+  const renderFriendlyNotice = () => {
+    if (panelState === 'complete' && suggestions.length === 0) {
+      return (
+        <div className={cn(styles.noticeCard, styles.noticeSuccess)}>
+          <div className={styles.noticeIcon} aria-hidden="true">
+            <CheckCircle2 size={18} />
+          </div>
+          <div className={styles.noticeContent}>
+            <h4 className={styles.noticeTitle}>No more edits needed</h4>
+            <p className={styles.noticeBody}>
+              Your resume already looks aligned with this job description. You can export it or try another pass if the role changes.
+            </p>
+          </div>
+        </div>
+      )
+    }
+
+    if (panelState === 'partial') {
+      return (
+        <div className={cn(styles.noticeCard, styles.noticeWarning)}>
+          <div className={styles.noticeIcon} aria-hidden="true">
+            <AlertTriangle size={18} />
+          </div>
+          <div className={styles.noticeContent}>
+            <h4 className={styles.noticeTitle}>We hit a response limit</h4>
+            <p className={styles.noticeBody}>
+              The AI response may have been cut off before it could finish. Try Auto-Tailor again to see if we can get a fuller pass.
+            </p>
+          </div>
+          {onRetryTailor && (
+            <button
+              className={styles.noticeAction}
+              onClick={(event) => {
+                event.stopPropagation()
+                onRetryTailor()
+              }}
+            >
+              <RefreshCw size={14} />
+              Try Again
+            </button>
+          )}
+        </div>
+      )
+    }
+
+    return null
+  }
+
   if (suggestions.length === 0) {
     return (
       <aside className={styles.panel} aria-label="AI suggestions">
@@ -193,7 +246,9 @@ export function ResumeSuggestionsPanel({
           </div>
           <span className={styles.count}>0</span>
         </div>
-        <div className={styles.emptyState}>No suggestions yet. Generate a job-tailored resume pass to review edits here.</div>
+        {renderFriendlyNotice() ?? (
+          <div className={styles.emptyState}>No suggestions yet. Generate a job-tailored resume pass to review edits here.</div>
+        )}
       </aside>
     )
   }
@@ -210,6 +265,7 @@ export function ResumeSuggestionsPanel({
       </div>
 
       <div className={styles.list}>
+        {renderFriendlyNotice()}
         {visibleGroups.map(({ groupKey, items }) => (
           <div key={groupKey} className={styles.group}>
             <div className={styles.groupLabel}>{groupKey === 'unmapped' ? 'Unmapped' : groupKey}</div>

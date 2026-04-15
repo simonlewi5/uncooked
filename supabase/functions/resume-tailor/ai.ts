@@ -1,5 +1,15 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { DEBUG_ENABLED, DEBUG_VERBOSE, isRecord, toDebugPreview } from './utils.ts'
+import {
+  DELTA_ONLY_BASE_OUTPUT_TOKENS,
+  DELTA_ONLY_MAX_OUTPUT_TOKENS,
+  MAX_BULLETS_PER_EXPERIENCE,
+  MAX_EDITS,
+  MAX_EXPERIENCE_ENTRIES,
+  MAX_RETRIES,
+  MAX_SKILL_ITEMS,
+  TIMEOUT_MS,
+} from './constants.ts'
 
 declare const Deno: {
   env: {
@@ -44,14 +54,7 @@ type ParseGeminiResult =
 
 const GEMINI_MODEL = 'gemini-2.5-flash'
 const GEMINI_API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
-const MAX_RETRIES = 2
-const TIMEOUT_MS = 35_000
-const DELTA_ONLY_BASE_OUTPUT_TOKENS = 6000
-const DELTA_ONLY_MAX_OUTPUT_TOKENS = 12000
 const ALLOWED_EDIT_SECTIONS = new Set<ResumeTailorEdit['section']>(['summary', 'experience', 'skills'])
-const MAX_EXPERIENCE_ENTRIES = 5
-const MAX_BULLETS_PER_EXPERIENCE = 4
-const MAX_SKILL_ITEMS = 20
 
 type TailorRunOptions = {
   requestId?: string
@@ -143,7 +146,7 @@ const RESPONSE_SCHEMA = {
     edits: {
       type: 'ARRAY',
       minItems: 0,
-      maxItems: 5,
+      maxItems: MAX_EDITS,
       items: {
         type: 'OBJECT',
         required: ['section', 'targetId', 'operation', 'replacement'],

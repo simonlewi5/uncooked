@@ -1,5 +1,11 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { corsHeaders } from '../_shared/cors.ts'
+import {
+  MAX_BODY_BYTES,
+  MAX_JOB_DESCRIPTION_CHARS,
+  MAX_RESUME_OBJECT_CHARS,
+  MIN_JOB_DESCRIPTION_CHARS,
+} from './constants.ts'
 import { tailorResumeWithAI, type ResumeTailorEdit, type ResumeTailorPayload } from './ai.ts'
 import { DEBUG_ENABLED, DEBUG_VERBOSE, isRecord, toDebugPreview } from './utils.ts'
 
@@ -9,11 +15,6 @@ declare const Deno: {
   }
   serve: (handler: (req: Request) => Response | Promise<Response>) => void
 }
-
-const MAX_BODY_BYTES = 120_000
-const MIN_JOB_DESCRIPTION_CHARS = 200
-const MAX_JOB_DESCRIPTION_CHARS = 12_000
-const MAX_RESUME_OBJECT_CHARS = 45_000
 
 const debugLog = (requestId: string, event: string, data?: Record<string, unknown>) => {
   if (!DEBUG_ENABLED) return

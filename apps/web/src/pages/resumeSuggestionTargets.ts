@@ -1,4 +1,15 @@
 import type { ResumeDocument, ResumeTailorEdit } from '@/types'
+import {
+  insertBulletAfter,
+  insertSkillAfter,
+  removeBullet,
+  removeSkill,
+  updateBullet,
+  updateEducationField,
+  updateExperienceField,
+  updateSkill,
+  updateTextNode,
+} from '@/lib/resumeMutations'
 
 export type ResumeTargetSource = 'exact' | 'fallback'
 
@@ -266,12 +277,6 @@ export const resolveTarget = (
   return resolveExactTarget(resumeContent, targetId) ?? resolveFallbackTarget(resumeContent, targetId)
 }
 
-export const resolveResumeTarget = resolveTarget
-
-export const getCurrentValue = (resumeContent: ResumeDocument, targetId: string): string | null => {
-  return resolveTarget(resumeContent, targetId)?.currentText ?? null
-}
-
 export const findSuggestionByTargetId = (
   edits: ResumeTailorEdit[],
   targetId: string
@@ -285,6 +290,14 @@ export const removeSuggestionByTargetId = (edits: ResumeTailorEdit[], targetId: 
   return edits.filter((edit) => normalizeTargetId(edit.targetId) !== normalizedTargetId)
 }
 
+const sectionLabelFromEdit = (
+  section: ResumeTailorEdit['section']
+): ResumeSuggestionViewModel['sectionLabel'] => {
+  if (section === 'summary') return 'Summary'
+  if (section === 'skills') return 'Skills'
+  return 'Experience'
+}
+
 export const buildResumeSuggestionViewModels = (
   resumeContent: ResumeDocument,
   edits: ResumeTailorEdit[]
@@ -294,114 +307,15 @@ export const buildResumeSuggestionViewModels = (
     return {
       edit,
       targetId: normalizeTargetId(edit.targetId),
-      currentText: getCurrentValue(resumeContent, edit.targetId),
+      currentText: resolution?.currentText ?? null,
       replacementText: edit.replacement,
       targetExists: Boolean(resolution),
       targetLabel: resolution?.label ?? 'Removed target',
-      sectionLabel: resolution?.sectionLabel ?? (edit.section === 'summary' ? 'Summary' : edit.section === 'skills' ? 'Skills' : 'Experience'),
+      sectionLabel: resolution?.sectionLabel ?? sectionLabelFromEdit(edit.section),
       source: resolution?.source ?? null,
     }
   })
 }
-
-const updateTextNode = <T extends { text: string }>(node: T, text: string): T => ({
-  ...node,
-  text,
-})
-
-const updateExperienceField = (
-  resumeContent: ResumeDocument,
-  entryId: string,
-  field: 'title' | 'company' | 'period',
-  text: string
-): ResumeDocument => ({
-  ...resumeContent,
-  experience: resumeContent.experience.map((entry) =>
-    entry.id === entryId ? { ...entry, [field]: updateTextNode(entry[field], text) } : entry
-  ),
-})
-
-const updateEducationField = (
-  resumeContent: ResumeDocument,
-  entryId: string,
-  field: 'degree' | 'school' | 'period',
-  text: string
-): ResumeDocument => ({
-  ...resumeContent,
-  education: resumeContent.education.map((entry) =>
-    entry.id === entryId ? { ...entry, [field]: updateTextNode(entry[field], text) } : entry
-  ),
-})
-
-const updateBullet = (
-  resumeContent: ResumeDocument,
-  entryId: string,
-  bulletId: string,
-  text: string
-): ResumeDocument => ({
-  ...resumeContent,
-  experience: resumeContent.experience.map((entry) =>
-    entry.id === entryId
-      ? {
-          ...entry,
-          bullets: entry.bullets.map((bullet) => (bullet.id === bulletId ? updateTextNode(bullet, text) : bullet)),
-        }
-      : entry
-  ),
-})
-
-const insertBulletAfter = (
-  resumeContent: ResumeDocument,
-  entryId: string,
-  bulletId: string,
-  text: string
-): ResumeDocument => ({
-  ...resumeContent,
-  experience: resumeContent.experience.map((entry) => {
-    if (entry.id !== entryId) return entry
-
-    const insertIndex = entry.bullets.findIndex((bullet) => bullet.id === bulletId)
-    if (insertIndex === -1) return entry
-
-    const nextBullets = [...entry.bullets]
-    nextBullets.splice(insertIndex + 1, 0, {
-      id: `experience/${entryId}/bullets/${crypto.randomUUID().replace(/-/g, '')}`,
-      text,
-    })
-
-    return { ...entry, bullets: nextBullets }
-  }),
-})
-
-const removeBullet = (resumeContent: ResumeDocument, entryId: string, bulletId: string): ResumeDocument => ({
-  ...resumeContent,
-  experience: resumeContent.experience.map((entry) =>
-    entry.id === entryId ? { ...entry, bullets: entry.bullets.filter((bullet) => bullet.id !== bulletId) } : entry
-  ),
-})
-
-const updateSkill = (resumeContent: ResumeDocument, skillId: string, text: string): ResumeDocument => ({
-  ...resumeContent,
-  skills: resumeContent.skills.map((skill) => (skill.id === skillId ? updateTextNode(skill, text) : skill)),
-})
-
-const insertSkillAfter = (resumeContent: ResumeDocument, skillId: string, text: string): ResumeDocument => {
-  const index = resumeContent.skills.findIndex((skill) => skill.id === skillId)
-  if (index === -1) return resumeContent
-
-  const nextSkills = [
-    ...resumeContent.skills.slice(0, index + 1),
-    { id: `skills/${crypto.randomUUID().replace(/-/g, '')}`, text },
-    ...resumeContent.skills.slice(index + 1),
-  ]
-
-  return { ...resumeContent, skills: nextSkills }
-}
-
-const removeSkill = (resumeContent: ResumeDocument, skillId: string): ResumeDocument => ({
-  ...resumeContent,
-  skills: resumeContent.skills.filter((skill) => skill.id !== skillId),
-})
 
 export const applySuggestion = (
   resumeContent: ResumeDocument,
@@ -529,5 +443,3 @@ export const applySuggestion = (
 
   return { nextContent: resumeContent, applied: false, targetResolution: null }
 }
-
-export const applyResumeTailorEdit = applySuggestion
