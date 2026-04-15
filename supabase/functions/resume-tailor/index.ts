@@ -210,18 +210,24 @@ Deno.serve(async (req: Request) => {
   })
 
   if (req.method !== 'POST') {
-    return json(405, { error: 'Method Not Allowed' })
+    return json(405, { error: 'Method Not Allowed', code: 'method_not_allowed' })
   }
 
-  const contentLengthHeader = req.headers.get('content-length')
-  if (contentLengthHeader) {
-    const contentLength = Number(contentLengthHeader)
-    if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
-      return json(413, {
-        error: 'Payload Too Large',
-        details: `request body exceeds ${MAX_BODY_BYTES} bytes`,
-      })
-    }
+  // Read body up-front as a buffer so we can enforce a hard byte-limit regardless
+  // of whether the client sends a Content-Length header.
+  let bodyBuffer: ArrayBuffer
+  try {
+    bodyBuffer = await req.arrayBuffer()
+  } catch {
+    return json(400, { error: 'Failed to read request body', code: 'invalid_body' })
+  }
+
+  if (bodyBuffer.byteLength > MAX_BODY_BYTES) {
+    return json(413, {
+      error: 'Payload Too Large',
+      code: 'payload_too_large',
+      details: `request body exceeds ${MAX_BODY_BYTES} bytes`,
+    })
   }
 
   let userId: string | null = null
@@ -242,7 +248,8 @@ Deno.serve(async (req: Request) => {
 
   let parsedBody: unknown
   try {
-    parsedBody = await req.json()
+    const bodyText = new TextDecoder().decode(bodyBuffer)
+    parsedBody = JSON.parse(bodyText)
   } catch {
     debugLog(requestId, 'invalid_json_body')
     return json(400, { error: 'Invalid JSON body' })

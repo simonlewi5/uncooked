@@ -120,7 +120,7 @@ export default function ResumePage() {
   const { user } = useAuth()
   const resumeRef = useRef<HTMLDivElement>(null)
   const [activeTargetId, setActiveTargetId] = useState<string | null>(null)
-  const [resumeContent, setResumeContent] = useState<ResumeDocument>(toInitialResumeContent)
+  const [resumeContent, setResumeContent] = useState<ResumeDocument>(toInitialResumeContent())
   const [jobDescription, setJobDescription] = useState('')
   const [skillInput, setSkillInput] = useState('')
   const [pendingEdits, setPendingEdits] = useState<ResumeTailorEdit[]>([])
@@ -287,7 +287,10 @@ export default function ResumePage() {
 
   async function handleAutoTailor() {
     clearError()
+    clearUploadError()
+    clearPersistenceError()
     setSubmitError(null)
+    setTailorRunState('idle')
 
     if (jobDescription.trim().length < 200) {
       setSubmitError('Please paste a longer job description (minimum 200 characters).')
