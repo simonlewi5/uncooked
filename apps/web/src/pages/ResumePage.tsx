@@ -4,9 +4,11 @@ import { Download, Sparkles, Search, X, Plus, FileUp } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { ResumeSuggestionsPanel } from '@/components/resume/ResumeSuggestionsPanel'
 import {
-  applyResumeTailorEdit,
+  applySuggestion,
   buildResumeSuggestionViewModels,
+  findSuggestionByTargetId,
   normalizeTargetId,
+  removeSuggestionByTargetId,
   type ResumeSuggestionViewModel,
 } from '@/pages/resumeSuggestionTargets'
 import { useResumeTailor } from '@/hooks/useResumeTailor'
@@ -405,10 +407,10 @@ export default function ResumePage() {
 
   const applyEditByTargetId = (targetId: string) => {
     const normalizedTargetId = normalizeTargetId(targetId)
-    const edit = pendingEdits.find((candidate) => normalizeTargetId(candidate.targetId) === normalizedTargetId)
+    const edit = findSuggestionByTargetId(pendingEdits, normalizedTargetId)
     if (!edit) return false
 
-    const { nextContent, applied, targetResolution } = applyResumeTailorEdit(resumeContent, edit)
+    const { nextContent, applied, targetResolution } = applySuggestion(resumeContent, edit)
     if (targetResolution?.source === 'fallback') {
       console.warn('resume-tailor target resolved through fallback path', {
         requestedTargetId: normalizedTargetId,
@@ -420,13 +422,13 @@ export default function ResumePage() {
       setResumeContent(nextContent)
     }
 
-    setPendingEdits((prev) => prev.filter((candidate) => normalizeTargetId(candidate.targetId) !== normalizedTargetId))
+    setPendingEdits((prev) => removeSuggestionByTargetId(prev, normalizedTargetId))
     return applied
   }
 
   const handleDeclineEditByTargetId = (targetId: string) => {
     const normalizedTargetId = normalizeTargetId(targetId)
-    setPendingEdits((prev) => prev.filter((candidate) => normalizeTargetId(candidate.targetId) !== normalizedTargetId))
+    setPendingEdits((prev) => removeSuggestionByTargetId(prev, normalizedTargetId))
   }
 
   function buildResumeContent(): ResumeDocument {

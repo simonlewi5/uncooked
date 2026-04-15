@@ -117,16 +117,16 @@ const resolveExactTarget = (resumeContent: ResumeDocument, targetId: string): Re
 
   const experienceBulletMatch = normalizedTargetId.match(/^experience\/(.+?)\/bullets\/(.+)$/)
   if (experienceBulletMatch) {
-    const [, entryId, bulletId] = experienceBulletMatch
+    const [, entryId] = experienceBulletMatch
     const entry = resumeContent.experience.find((candidate) => candidate.id === entryId)
-    const bullet = entry?.bullets.find((candidate) => candidate.id === bulletId)
+    const bullet = entry?.bullets.find((candidate) => candidate.id === normalizedTargetId)
     if (!entry || !bullet) return null
     return {
       targetId: normalizedTargetId,
       kind: 'experience-bullet',
       source: 'exact',
       entryId,
-      bulletId,
+      bulletId: normalizedTargetId,
       currentText: bullet.text,
       label: getTextLabel('experience-bullet'),
       sectionLabel: 'Experience',
@@ -259,11 +259,30 @@ const resolveFallbackTarget = (resumeContent: ResumeDocument, targetId: string):
   return null
 }
 
-export const resolveResumeTarget = (
+export const resolveTarget = (
   resumeContent: ResumeDocument,
   targetId: string
 ): ResumeTargetResolution | null => {
   return resolveExactTarget(resumeContent, targetId) ?? resolveFallbackTarget(resumeContent, targetId)
+}
+
+export const resolveResumeTarget = resolveTarget
+
+export const getCurrentValue = (resumeContent: ResumeDocument, targetId: string): string | null => {
+  return resolveTarget(resumeContent, targetId)?.currentText ?? null
+}
+
+export const findSuggestionByTargetId = (
+  edits: ResumeTailorEdit[],
+  targetId: string
+): ResumeTailorEdit | undefined => {
+  const normalizedTargetId = normalizeTargetId(targetId)
+  return edits.find((edit) => normalizeTargetId(edit.targetId) === normalizedTargetId)
+}
+
+export const removeSuggestionByTargetId = (edits: ResumeTailorEdit[], targetId: string): ResumeTailorEdit[] => {
+  const normalizedTargetId = normalizeTargetId(targetId)
+  return edits.filter((edit) => normalizeTargetId(edit.targetId) !== normalizedTargetId)
 }
 
 export const buildResumeSuggestionViewModels = (
@@ -271,11 +290,11 @@ export const buildResumeSuggestionViewModels = (
   edits: ResumeTailorEdit[]
 ): ResumeSuggestionViewModel[] => {
   return edits.map((edit) => {
-    const resolution = resolveResumeTarget(resumeContent, edit.targetId)
+    const resolution = resolveTarget(resumeContent, edit.targetId)
     return {
       edit,
       targetId: normalizeTargetId(edit.targetId),
-      currentText: resolution?.currentText ?? null,
+      currentText: getCurrentValue(resumeContent, edit.targetId),
       replacementText: edit.replacement,
       targetExists: Boolean(resolution),
       targetLabel: resolution?.label ?? 'Removed target',
@@ -384,11 +403,11 @@ const removeSkill = (resumeContent: ResumeDocument, skillId: string): ResumeDocu
   skills: resumeContent.skills.filter((skill) => skill.id !== skillId),
 })
 
-export const applyResumeTailorEdit = (
+export const applySuggestion = (
   resumeContent: ResumeDocument,
   edit: ResumeTailorEdit
 ): { nextContent: ResumeDocument; applied: boolean; targetResolution: ResumeTargetResolution | null } => {
-  const targetResolution = resolveResumeTarget(resumeContent, edit.targetId)
+  const targetResolution = resolveTarget(resumeContent, edit.targetId)
   if (!targetResolution) {
     return { nextContent: resumeContent, applied: false, targetResolution: null }
   }
@@ -413,7 +432,7 @@ export const applyResumeTailorEdit = (
     return { nextContent: { ...resumeContent, summary: updateTextNode(resumeContent.summary, '') }, applied: true, targetResolution }
   }
 
-    if (targetResolution.kind === 'experience-field' && targetResolution.entryId && targetResolution.field) {
+  if (targetResolution.kind === 'experience-field' && targetResolution.entryId && targetResolution.field) {
     const fieldKey = targetResolution.field as 'title' | 'company' | 'period'
     const currentText = targetResolution.currentText
     if (operation === 'replace') {
@@ -510,3 +529,5 @@ export const applyResumeTailorEdit = (
 
   return { nextContent: resumeContent, applied: false, targetResolution: null }
 }
+
+export const applyResumeTailorEdit = applySuggestion
