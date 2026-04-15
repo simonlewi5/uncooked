@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Star, FileText, ChevronDown, ChevronRight, Sparkles, Loader2 } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Star, FileText, ChevronDown, ChevronRight, Sparkles, Loader2, Clock } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import type { InterviewQuestion } from '@/types'
 import styles from './QuestionList.module.css'
@@ -13,6 +13,8 @@ interface QuestionListProps {
   onToggleBookmark: (id: string) => void
   onUpdateNotes: (id: string, notes: string) => void
   canGenerate: boolean
+  cooldownEnd: number | null
+  onCooldownStart: (end: number) => void
 }
 
 function QuestionCard({
@@ -64,6 +66,15 @@ function QuestionCard({
   )
 }
 
+const COOLDOWN_MS = 5 * 60 * 1000
+
+function formatRemaining(ms: number): string {
+  const totalSec = Math.ceil(ms / 1000)
+  const min = Math.floor(totalSec / 60)
+  const sec = totalSec % 60
+  return `${min}:${sec.toString().padStart(2, '0')}`
+}
+
 export function QuestionList({
   questions,
   isGenerating,
@@ -71,8 +82,35 @@ export function QuestionList({
   onToggleBookmark,
   onUpdateNotes,
   canGenerate,
+  cooldownEnd,
+  onCooldownStart,
 }: QuestionListProps): React.JSX.Element {
   const [filter, setFilter] = useState<Filter>('all')
+  const [remaining, setRemaining] = useState(0)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const onCooldown = cooldownEnd !== null && remaining > 0
+
+  useEffect(() => {
+    if (!cooldownEnd) return
+    const tick = () => {
+      const left = cooldownEnd - Date.now()
+      if (left <= 0) {
+        setRemaining(0)
+        if (timerRef.current) clearInterval(timerRef.current)
+      } else {
+        setRemaining(left)
+      }
+    }
+    tick()
+    timerRef.current = setInterval(tick, 1000)
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [cooldownEnd])
+
+  const handleGenerate = useCallback(() => {
+    onGenerate()
+    onCooldownStart(Date.now() + COOLDOWN_MS)
+  }, [onGenerate, onCooldownStart])
 
   const filtered =
     filter === 'bookmarked'
@@ -105,11 +143,20 @@ export function QuestionList({
         {canGenerate && (
           <button
             className={styles.generateBtn}
-            onClick={onGenerate}
-            disabled={isGenerating}
+            onClick={handleGenerate}
+            disabled={isGenerating || onCooldown}
           >
-            <Sparkles size={14} />
-            Generate Questions
+            {onCooldown ? (
+              <>
+                <Clock size={14} />
+                {formatRemaining(remaining)}
+              </>
+            ) : (
+              <>
+                <Sparkles size={14} />
+                Generate Questions
+              </>
+            )}
           </button>
         )}
       </div>
@@ -142,7 +189,7 @@ export function QuestionList({
         <div className={styles.empty}>
           <FileText size={24} className={styles.emptyIcon} />
           <p className={styles.emptyText}>
-            Click "Generate Questions" to get tailored interview questions, or start chatting and questions will be extracted automatically.
+            Click "Generate Questions" to get tailored interview questions!
           </p>
         </div>
       ) : (

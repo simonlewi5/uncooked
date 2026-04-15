@@ -27,11 +27,22 @@
 
 .interviewPage {
   display: grid;
-  grid-template-columns: 340px 1fr;
-  height: calc(100vh - 64px);
+  /* grid-template-columns set via inline style for resizable sidebar */
+  height: calc(100vh - 60px);
   min-height: 500px;
-  max-width: 1400px;
-  margin: 0 auto;
+  margin: -2rem -1.5rem;
+  overflow: hidden;
+}
+
+.resizeHandle {
+  cursor: col-resize;
+  background-color: var(--color-border);
+  width: 6px;
+  transition: background-color 0.15s;
+}
+
+.resizeHandle:hover {
+  background-color: var(--color-primary);
 }
 
 .chatPanel {
@@ -39,13 +50,18 @@
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  border-left: 1px solid var(--color-border);
 }
 
 @media (max-width: 768px) {
   .interviewPage {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
     height: auto;
+    margin: 0;
+    overflow: visible;
+  }
+
+  .resizeHandle {
+    display: none;
   }
 
   .chatPanel {

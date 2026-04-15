@@ -62,6 +62,38 @@ export function SetupForm({
 
   return (
     <div className={styles.wrapper}>
+      <div className={styles.cardContainer}>
+        {/* Sketch annotation: Step 1 — Company input */}
+        <div className={styles.sketchLeft} style={{ top: 85 }}>
+          <span className={styles.sketchText}>1. Add the company name</span>
+          <svg width="48" height="20" viewBox="0 0 48 20" fill="none">
+            <path d="M2 16 C14 14, 28 10, 40 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+            <path d="M34 1 L42 4 L36 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          </svg>
+        </div>
+
+        {/* Sketch annotation: Step 2 — Job Description textarea */}
+        <div className={styles.sketchRight} style={{ top: 200 }}>
+          <svg width="48" height="20" viewBox="0 0 48 20" fill="none">
+            <path d="M46 16 C34 14, 20 10, 8 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+            <path d="M14 1 L6 4 L12 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          </svg>
+          <span className={styles.sketchText}>2. Paste the job description</span>
+        </div>
+
+        {/* Sketch annotation: Step 3 — Interview Style selector */}
+        <div className={styles.sketchLeft} style={{ bottom: 35 }}>
+          <span className={styles.sketchTextMulti}>
+            3. Pick an interview style
+            <br />
+            <span className={styles.sketchTextSub}>(Mixed by default)</span>
+          </span>
+          <svg width="48" height="20" viewBox="0 0 48 20" fill="none">
+            <path d="M2 16 C14 14, 28 10, 40 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+            <path d="M34 1 L42 4 L36 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          </svg>
+        </div>
+
       <div className={styles.card}>
         <div className={styles.field}>
           <span className={styles.label}>Company</span>
@@ -106,6 +138,7 @@ export function SetupForm({
         >
           Start Interview <ArrowRight size={16} />
         </button>
+      </div>
       </div>
 
       {pastSessions.length > 0 && (
