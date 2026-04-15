@@ -17,6 +17,8 @@ export default function InterviewPage(): JSX.Element {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null)
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null)
   const [style, setStyle] = useState<InterviewStyle | null>('mixed')
+  const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null)
+  const [activeResume, setActiveResume] = useState<any | null>(null)
 
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
 
@@ -32,6 +34,7 @@ export default function InterviewPage(): JSX.Element {
     useInterviewChat(
       { jobDescription, companyName, companyContext: '' },
       style ?? 'mixed',
+      activeResume,
     )
 
   // Keep activeSessionId in sync
@@ -71,7 +74,10 @@ export default function InterviewPage(): JSX.Element {
     setCompanyProfile(null)
   }
 
-  function handleStart(): void {
+  function handleStart(resumeObject?: any): void {
+    if (resumeObject) {
+      setActiveResume(resumeObject)
+    }
     setPhase('interview')
   }
 
@@ -83,6 +89,7 @@ export default function InterviewPage(): JSX.Element {
     setSelectedCompanyId(null)
     setCompanyProfile(null)
     setStyle('mixed')
+    setActiveResume(null)
     setPhase('setup')
   }
 
@@ -144,6 +151,8 @@ export default function InterviewPage(): JSX.Element {
           onStyleChange={setStyle}
           onStart={handleStart}
           onLoadSession={handleLoadSession}
+          selectedResumeId={selectedResumeId}
+          onResumeSelect={setSelectedResumeId}
         />
       </div>
     )
@@ -168,6 +177,7 @@ return (
         onUpdateNotes={updateNotes}
         canGenerate={jobDescription.trim().length > 0 && companyName.trim().length > 0}
         onBack={handleBack}
+        resume={activeResume}
       />
       <div className={styles.chatPanel}>
         <ChatBox

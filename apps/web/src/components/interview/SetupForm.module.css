@@ -1,10 +1,37 @@
+
+/* ── Split ──────────────────────────────────────────────────────────── */
+
+.pageLayout {
+  display: flex;
+  gap: var(--space-6);
+  width: 100%;
+  max-width: 1000px; 
+  margin: 0 auto;
+  align-items: flex-start;
+}
+
+.leftPanel {
+  flex: 0 0 300px; 
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.rightPanel {
+  flex: 1; 
+  min-width: 0;
+}
+
+
+/* ── Setup Form ──────────────────────────────────────────────────────────── */
+
 .wrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-6);
   width: 100%;
-  max-width: 600px;
+  max-width: 600px; /* Keeps the form from stretching too wide */
   margin: 0 auto;
 }
 
@@ -174,4 +201,305 @@
   border-color: var(--color-primary);
   color: var(--color-primary);
   background-color: var(--color-primary-subtle);
+}
+
+/* ── Resume Selector ──────────────────────────────────────────────────────────── */
+
+.panelTitle {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+  padding-bottom: var(--space-2);
+}
+
+.resumeList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* ── Resume Card ──────────────────────────────────────────────────────────── */
+
+.resumeCardWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.glowBlurLayer {
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(45deg, #ff595e, #ffca3a, #8ac926, #1982c4, #6a4c93, #ff6700);
+  background-size: 400% 150%;
+  animation: glowBg 20s linear infinite;
+  
+  filter: blur(15px);
+  z-index: 0; 
+  border-radius: calc(var(--radius-md) + 3px);
+  transform: translate3d(0, 0, 0);
+}
+
+.glowBorderLayer {
+  position: absolute;
+  inset: -1.2px;
+  background: linear-gradient(45deg, #ff595e, #ffca3a, #8ac926, #1982c4, #6a4c93, #ff6700);
+  background-size: 800% 800%;
+  animation: glowBg 20s linear infinite;
+  z-index: 1; 
+  border-radius: calc(var(--radius-md) + 5px);
+}
+
+.resumeCard {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  height: 120px;
+  border: 2px solid #10b981;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  overflow: hidden;
+  background-color: var(--color-bg); 
+}
+
+.resumeCardWrapper:hover .resumeCard:not(.resumeCardActive) {
+  border-color: #10b981;
+  background-color: var(--color-bg-subtle);
+}
+
+.resumeCardActive {
+  border-color: transparent;
+  transform: scale(1.02);
+}
+
+@keyframes glowBg {
+  0% { background-position: 0 0; }
+  50% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
+}
+/**/
+
+.resumeCardHeader {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: var(--space-2);
+}
+
+.resumeIcon {
+  color: var(--color-text-tertiary);
+}
+
+.resumeCardActive .resumeIcon {
+  color: var(--color-primary);
+}
+
+.activeIcon {
+  color: var(--color-primary);
+  margin-left: auto;
+}
+
+.resumeTitle {
+  font-weight: 500;
+  color: var(--color-text);
+  font-size: var(--font-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.primaryBadge {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  background-color: var(--color-primary);
+  color: white;
+  padding: 2px 6px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+}
+
+.resumeDate {
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
+}
+
+.emptyState {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  padding: var(--space-4);
+  text-align: center;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+
+
+/* ── BLURRY CARDS & ZOOM MODAL ──────────────────────────────────────────────────────────── */
+
+.resumeCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 120px; 
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  overflow: hidden; 
+  background-color: var(--color-bg);
+}
+
+.resumePreviewBg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: var(--space-2);
+  font-size: 6px;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+  opacity: 0.4;             
+  filter: blur(2px);        
+  user-select: none;
+  pointer-events: none;
+  white-space: pre-wrap;
+  overflow: hidden;
+}
+
+.resumeCardForeground {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  padding: var(--space-3);
+  background: linear-gradient(to bottom, var(--color-bg) 0%, transparent 40%, var(--color-bg) 100%);
+}
+
+.resumeCardFooter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.zoomBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.zoomBtn:hover {
+  background: var(--color-bg-subtle);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+
+.modalContent {
+  width: 100%;
+  max-width: 800px;
+  height: 90vh;
+  background-color: var(--color-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalFadeIn 0.2s ease-out forwards;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modalHeader h3 {
+  margin: 0;
+  font-size: var(--font-lg);
+  color: var(--color-text);
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  display: flex;
+}
+
+.closeBtn:hover {
+  background-color: var(--color-bg-subtle);
+  color: var(--color-text);
+}
+
+.modalBody {
+  flex: 1;
+  background-color: var(--color-bg-subtle);
+  padding: var(--space-6);
+  overflow-y: auto;
+}
+
+.resumeIframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: var(--radius-md);
+  background-color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.resumeTextPreview {
+  width: 100%;
+  max-width: 650px;
+  margin: 0 auto;
+  min-height: 100%;
+  background-color: white;
+  padding: var(--space-8);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: var(--font-sm);
+  line-height: 1.6;
+  color: var(--color-text);
 }
