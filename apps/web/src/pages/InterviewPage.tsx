@@ -1,8 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { Mic, Briefcase, FileText, Building2 } from 'lucide-react'
-import { JobDescriptionForm } from '@/components/interview/JobDescriptionForm'
-import { InterviewStyleSelector } from '@/components/interview/InterviewStyleSelector'
 import { SetupForm } from '@/components/interview/SetupForm'
 import { InterviewSidebar } from '@/components/interview/InterviewSidebar'
 import { ChatBox } from '@/components/interview/ChatBox'
