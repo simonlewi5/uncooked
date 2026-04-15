@@ -167,6 +167,7 @@ export default function InterviewPage(): JSX.Element {
         </div>
         <SetupForm
           companyName={companyName}
+          onCreateCompany={handleCreateCompany}
           onCompanyNameChange={handleCompanyNameChange}
           selectedCompanyId={selectedCompanyId}
           onCompanyProfileSelect={handleCompanyProfileSelect}
@@ -207,7 +208,7 @@ return (
           messages={messages}
           isTyping={isTyping}
           onSend={sendMessage}
-          disabled={!isChatEnabled}
+          disabled={false}
         />
       </div>
     </div>

@@ -9,6 +9,7 @@ import styles from './SetupForm.module.css'
 
 interface SetupFormProps {
   companyName: string
+  onCreateCompany: (name: string) => void
   onCompanyNameChange: (value: string) => void
   selectedCompanyId: string | null
   onCompanyProfileSelect: (profile: CompanyProfile) => void
@@ -22,6 +23,7 @@ interface SetupFormProps {
 
 export function SetupForm({
   companyName,
+  onCreateCompany,
   onCompanyNameChange,
   selectedCompanyId,
   onCompanyProfileSelect,
@@ -69,6 +71,7 @@ export function SetupForm({
             value={companyName}
             onChange={onCompanyNameChange}
             onProfileSelect={onCompanyProfileSelect}
+            onCreateCompany={onCreateCompany}
           />
         </div>
 
