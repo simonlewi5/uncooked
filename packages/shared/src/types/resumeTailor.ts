@@ -27,4 +27,6 @@ export interface ResumeTailorResponse {
 	edits?: ResumeTailorEdit[]
 	appliedMode?: ResumeTailorMode
 	isPartial?: boolean
+	/** Human-readable reason set when isPartial is true (e.g. 'truncated', 'safety_filtered'). */
+	warning?: string
 }

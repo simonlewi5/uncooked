@@ -154,6 +154,21 @@ export const removeSkill = (resumeContent: ResumeDocument, skillId: string): Res
 
 // ── Entry constructors ──────────────────────────────────────────────────────
 
+export const removeExperienceEntry = (resumeContent: ResumeDocument, entryId: string): ResumeDocument => ({
+  ...resumeContent,
+  experience: resumeContent.experience.filter((entry) => entry.id !== entryId),
+})
+
+export const removeEducationEntry = (resumeContent: ResumeDocument, entryId: string): ResumeDocument => ({
+  ...resumeContent,
+  education: resumeContent.education.filter((entry) => entry.id !== entryId),
+})
+
+export const addSkillItem = (resumeContent: ResumeDocument, text: string): ResumeDocument => ({
+  ...resumeContent,
+  skills: [...resumeContent.skills, { id: ID_GENERATORS.skillItem(createId()), text }],
+})
+
 export const addExperienceEntry = (resumeContent: ResumeDocument): ResumeDocument => {
   const id = crypto.randomUUID()
   return {

@@ -104,31 +104,6 @@ async function mapErrorMessage(error: unknown): Promise<string> {
   return details || maybeError.message || fallback
 }
 
-/** Determine if an error is retryable (transient) or permanent. */
-function isRetryableError(error: unknown): boolean {
-  if (!error || typeof error !== 'object') return true // Unknown errors: retry
-
-  const maybeError = error as ErrorWithContext
-  const response = maybeError.context
-
-  if (!response) {
-    // Network errors are retryable
-    return true
-  }
-
-  // Permanent errors: auth, validation, method not allowed
-  if (response.status === 401 || response.status === 400 || response.status === 405) {
-    return false
-  }
-
-  // Transient errors: rate limit, server errors
-  if (response.status === 429 || response.status === 413 || response.status >= 500) {
-    return true
-  }
-
-  return true // Default to retryable
-}
-
 /**
  * Normalize raw backend response and hook state to a single unified response type.
  * This is the single source of truth for interpreting all tailor outcomes.
@@ -138,79 +113,23 @@ function normalizeBackendResponse(
   error: unknown | null,
   errorMessage: string | null
 ): ResumeTailorNormalizedResponse {
-  // Error case: always comes first
   if (error || errorMessage) {
-    const message = errorMessage || 'Unable to tailor resume right now. Please try again.'
-    return {
-      status: 'error',
-      edits: [],
-      editCount: 0,
-      appliedMode: null,
-      retryable: isRetryableError(error),
-      messages: {
-        error: message,
-        warning: null,
-      },
-    }
+    return { status: 'error', edits: [], appliedMode: null }
   }
 
-  // No response from backend
-  if (!backendResponse) {
-    return {
-      status: 'error',
-      edits: [],
-      editCount: 0,
-      appliedMode: null,
-      retryable: true,
-      messages: {
-        error: 'No response from AI service. Please retry.',
-        warning: null,
-      },
-    }
+  // backendResponse is non-null on the success path — error path returns above
+  const response = backendResponse!
+  const edits = response.edits ?? []
+
+  if (response.isPartial) {
+    return { status: 'partial', edits, appliedMode: response.appliedMode ?? 'delta_only' }
   }
 
-  // Partial response (AI truncated or fallback)
-  const edits = backendResponse.edits ?? []
-  if (backendResponse.isPartial) {
-    return {
-      status: 'partial',
-      edits,
-      editCount: edits.length,
-      appliedMode: backendResponse.appliedMode || 'delta_only',
-      retryable: true,
-      messages: {
-        error: null,
-        warning: 'AI response was incomplete. Review the suggestions below or try again to get more edits.',
-      },
-    }
-  }
-
-  // Complete success
   if (edits.length === 0) {
-    return {
-      status: 'success_empty',
-      edits: [],
-      editCount: 0,
-      appliedMode: backendResponse.appliedMode || 'delta_only',
-      retryable: false,
-      messages: {
-        error: null,
-        warning: null,
-      },
-    }
+    return { status: 'success_empty', edits: [], appliedMode: response.appliedMode ?? 'delta_only' }
   }
 
-  return {
-    status: 'success',
-    edits,
-    editCount: edits.length,
-    appliedMode: backendResponse.appliedMode || 'delta_only',
-    retryable: false,
-    messages: {
-      error: null,
-      warning: null,
-    },
-  }
+  return { status: 'success', edits, appliedMode: response.appliedMode ?? 'delta_only' }
 }
 
 export function useResumeTailor(): UseResumeTailorReturn {

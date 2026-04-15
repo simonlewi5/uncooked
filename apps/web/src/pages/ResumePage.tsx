@@ -16,8 +16,11 @@ import {
   addBulletToEntry,
   addEducationEntry,
   addExperienceEntry,
+  addSkillItem,
   normalizeResumeDocument,
   removeBullet,
+  removeEducationEntry,
+  removeExperienceEntry,
   removeSkill,
   updateBullet,
   updateEducationField,
@@ -232,10 +235,7 @@ export default function ResumePage() {
   }
 
   function removeExperience(id: string) {
-    setResumeContent((prev) => ({
-      ...prev,
-      experience: prev.experience.filter((entry) => entry.id !== id),
-    }))
+    setResumeContent((prev) => removeExperienceEntry(prev, id))
   }
 
   function addBullet(expId: string) {
@@ -247,24 +247,18 @@ export default function ResumePage() {
   }
 
   function removeEducation(id: string) {
-    setResumeContent((prev) => ({
-      ...prev,
-      education: prev.education.filter((entry) => entry.id !== id),
-    }))
+    setResumeContent((prev) => removeEducationEntry(prev, id))
   }
 
   function handleSkillKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       e.preventDefault()
       const trimmed = skillInput.trim()
-      if (
-        trimmed &&
-        !resumeContent.skills.some((skill) => skill.text.toLowerCase() === trimmed.toLowerCase())
-      ) {
-        setResumeContent((prev) => ({
-          ...prev,
-          skills: [...prev.skills, { id: ID_GENERATORS.skillItem(crypto.randomUUID().replace(/-/g, '')), text: trimmed }],
-        }))
+      const isDuplicate = resumeContent.skills.some(
+        (skill) => skill.text.toLowerCase() === trimmed.toLowerCase()
+      )
+      if (trimmed && !isDuplicate) {
+        setResumeContent((prev) => addSkillItem(prev, trimmed))
       }
       setSkillInput('')
     }

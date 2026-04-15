@@ -52,6 +52,8 @@ const EXACT_PROFILE_IDS = new Map<string, ResumeTargetKind>([
   ['profile/summary', 'profile-summary'],
 ])
 
+// Normalization is intentionally minimal — only whitespace trimming.
+// Do not expand this to case-folding or slug transforms without updating all ID comparisons.
 export const normalizeTargetId = (id: string): string => id.trim()
 
 const getTextLabel = (kind: ResumeTargetKind, field?: string): string => {
@@ -183,7 +185,12 @@ const resolveExactTarget = (resumeContent: ResumeDocument, targetId: string): Re
 
 const resolveFallbackTarget = (resumeContent: ResumeDocument, targetId: string): ResumeTargetResolution | null => {
   const normalizedTargetId = normalizeTargetId(targetId)
-  const leafId = normalizedTargetId.split('/').pop() ?? normalizedTargetId
+  const segments = normalizedTargetId.split('/')
+  const leafId = segments[segments.length - 1] ?? normalizedTargetId
+  // The second path segment typically encodes the entry ID (e.g. 'e1' from 'experience/e1/title').
+  // Used as a hint in the two-pass search below to avoid false positives when the leaf alone is
+  // ambiguous — structural field names like 'title' and 'period' appear in every entry.
+  const entryIdHint = segments[1] ?? ''
 
   const allProfileTargets = [
     { id: 'profile/name', kind: 'profile-name' as const, text: resumeContent.name.text, label: 'Name' },
@@ -203,52 +210,69 @@ const resolveFallbackTarget = (resumeContent: ResumeDocument, targetId: string):
     }
   }
 
-  for (const entry of resumeContent.experience) {
-    for (const field of ['title', 'company', 'period'] as const) {
-      const fieldNode = entry[field]
-      if (fieldNode.id === normalizedTargetId || fieldNode.id.endsWith(`/${leafId}`)) {
-        return {
-          targetId: fieldNode.id,
-          kind: 'experience-field',
-          source: 'fallback',
-          entryId: entry.id,
-          field,
-          currentText: fieldNode.text,
-          label: getTextLabel('experience-field', field),
-          sectionLabel: 'Experience',
+  // Returns true when entry.id loosely matches the hint extracted from the original targetId.
+  const hintMatches = (entryId: string) =>
+    !entryIdHint || entryId === entryIdHint || entryId.includes(entryIdHint) || entryIdHint.includes(entryId)
+
+  // Two-pass search for experience entries:
+  // Pass 1 (requireHint=true): only consider entries whose ID matches the hint.
+  //   Prevents 'title' from matching the first entry when the AI targeted a later one.
+  // Pass 2 (requireHint=false): accept any entry. Runs only if pass 1 found nothing.
+  for (const requireHint of [true, false]) {
+    for (const entry of resumeContent.experience) {
+      if (requireHint && !hintMatches(entry.id)) continue
+
+      for (const field of ['title', 'company', 'period'] as const) {
+        const fieldNode = entry[field]
+        if (fieldNode.id === normalizedTargetId || fieldNode.id.endsWith(`/${leafId}`)) {
+          return {
+            targetId: fieldNode.id,
+            kind: 'experience-field',
+            source: 'fallback',
+            entryId: entry.id,
+            field,
+            currentText: fieldNode.text,
+            label: getTextLabel('experience-field', field),
+            sectionLabel: 'Experience',
+          }
         }
       }
-    }
 
-    for (const bullet of entry.bullets) {
-      if (bullet.id === normalizedTargetId || bullet.id.endsWith(`/${leafId}`)) {
-        return {
-          targetId: bullet.id,
-          kind: 'experience-bullet',
-          source: 'fallback',
-          entryId: entry.id,
-          bulletId: bullet.id,
-          currentText: bullet.text,
-          label: getTextLabel('experience-bullet'),
-          sectionLabel: 'Experience',
+      for (const bullet of entry.bullets) {
+        if (bullet.id === normalizedTargetId || bullet.id.endsWith(`/${leafId}`)) {
+          return {
+            targetId: bullet.id,
+            kind: 'experience-bullet',
+            source: 'fallback',
+            entryId: entry.id,
+            bulletId: bullet.id,
+            currentText: bullet.text,
+            label: getTextLabel('experience-bullet'),
+            sectionLabel: 'Experience',
+          }
         }
       }
     }
   }
 
-  for (const entry of resumeContent.education) {
-    for (const field of ['degree', 'school', 'period'] as const) {
-      const fieldNode = entry[field]
-      if (fieldNode.id === normalizedTargetId || fieldNode.id.endsWith(`/${leafId}`)) {
-        return {
-          targetId: fieldNode.id,
-          kind: 'education-field',
-          source: 'fallback',
-          entryId: entry.id,
-          field,
-          currentText: fieldNode.text,
-          label: getTextLabel('education-field', field),
-          sectionLabel: 'Unmapped',
+  // Same two-pass approach for education entries.
+  for (const requireHint of [true, false]) {
+    for (const entry of resumeContent.education) {
+      if (requireHint && !hintMatches(entry.id)) continue
+
+      for (const field of ['degree', 'school', 'period'] as const) {
+        const fieldNode = entry[field]
+        if (fieldNode.id === normalizedTargetId || fieldNode.id.endsWith(`/${leafId}`)) {
+          return {
+            targetId: fieldNode.id,
+            kind: 'education-field',
+            source: 'fallback',
+            entryId: entry.id,
+            field,
+            currentText: fieldNode.text,
+            label: getTextLabel('education-field', field),
+            sectionLabel: 'Unmapped',
+          }
         }
       }
     }
@@ -290,6 +314,9 @@ export const removeSuggestionByTargetId = (edits: ResumeTailorEdit[], targetId: 
   return edits.filter((edit) => normalizeTargetId(edit.targetId) !== normalizedTargetId)
 }
 
+// Fallback label used when resolveTarget returns null (target not found in document).
+// Note: ResumeTailorEditSection has no 'education' value — education edits are filed
+// under 'experience' by the backend, so 'Experience' is the correct default fallback.
 const sectionLabelFromEdit = (
   section: ResumeTailorEdit['section']
 ): ResumeSuggestionViewModel['sectionLabel'] => {

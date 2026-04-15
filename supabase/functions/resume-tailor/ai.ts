@@ -3,6 +3,8 @@ import { DEBUG_ENABLED, DEBUG_VERBOSE, isRecord, toDebugPreview } from './utils.
 import {
   DELTA_ONLY_BASE_OUTPUT_TOKENS,
   DELTA_ONLY_MAX_OUTPUT_TOKENS,
+  GEMINI_API_ENDPOINT,
+  GEMINI_MODEL,
   MAX_BULLETS_PER_EXPERIENCE,
   MAX_EDITS,
   MAX_EXPERIENCE_ENTRIES,
@@ -52,8 +54,6 @@ type ParseGeminiResult =
   | { ok: true; value: ResumeTailorResult }
   | { ok: false; reason: ParseFailureReason; details?: string }
 
-const GEMINI_MODEL = 'gemini-2.5-flash'
-const GEMINI_API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
 const ALLOWED_EDIT_SECTIONS = new Set<ResumeTailorEdit['section']>(['summary', 'experience', 'skills'])
 
 type TailorRunOptions = {

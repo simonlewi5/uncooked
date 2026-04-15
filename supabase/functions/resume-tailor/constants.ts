@@ -12,3 +12,6 @@ export const MAX_EXPERIENCE_ENTRIES = 5
 export const MAX_BULLETS_PER_EXPERIENCE = 4
 export const MAX_SKILL_ITEMS = 20
 export const MAX_EDITS = 5
+
+export const GEMINI_MODEL = 'gemini-2.5-flash'
+export const GEMINI_API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
