@@ -43,6 +43,7 @@ function mapRow(row: Record<string, unknown>): InterviewQuestion {
 
 export function useInterviewQuestions(
   sessionId: string | null,
+  companyName?: string,
 ): UseInterviewQuestionsReturn {
   const { user } = useAuth()
   const [questions, setQuestions] = useState<InterviewQuestion[]>([])
@@ -61,6 +62,9 @@ export function useInterviewQuestions(
 
     if (sessionId) {
       query = query.eq('interview_session_id', sessionId)
+    } else if (companyName?.trim()) {
+      // No DB session yet — fetch questions generated for this company without a session
+      query = query.is('interview_session_id', null).eq('company_name', companyName.trim())
     } else {
       // No active session — show bookmarked questions as a question bank
       query = query.eq('is_bookmarked', true)
@@ -73,7 +77,7 @@ export function useInterviewQuestions(
       }
       setQuestions((data ?? []).map(mapRow))
     })
-  }, [sessionId, user])
+  }, [sessionId, companyName, user])
 
   const generateQuestions = useCallback(
     async (

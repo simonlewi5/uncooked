@@ -135,12 +135,13 @@ export function SetupForm({
       })
   }, [])
 
-const handleStartInterview = () => {
+  // 1. Keep our helper function to pass the object
+  const handleStartInterview = () => {
     const selectedResumeObj = resumes.find(r => r.id === selectedResumeId)
     onStart(selectedResumeObj)
   }
 
-return (
+  return (
     <>
       <div className={styles.pageLayout}>
         <div className={styles.leftPanel}>
@@ -155,7 +156,6 @@ return (
                   className={styles.resumeCardWrapper}
                   onClick={() => onResumeSelect(selectedResumeId === resume.id ? null : resume.id)}
                 >
-                  
                   {selectedResumeId === resume.id && (
                     <>
                       <div className={styles.glowBlurLayer} />
@@ -202,51 +202,81 @@ return (
 
         <div className={styles.rightPanel}>
           <div className={styles.wrapper}>
-            <div className={styles.card}>
-              <div className={styles.field}>
-                <span className={styles.label}>Company</span>
-                <CompanyAutocomplete
-                  value={companyName}
-                  onChange={onCompanyNameChange}
-                  onProfileSelect={onCompanyProfileSelect}
-                />
+            <div className={styles.cardContainer}>
+              <div className={styles.sketchLeft} style={{ top: 85 }}>
+                <span className={styles.sketchText}>1. Add the company name</span>
+                <svg width="48" height="20" viewBox="0 0 48 20" fill="none">
+                  <path d="M2 16 C14 14, 28 10, 40 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+                  <path d="M34 1 L42 4 L36 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                </svg>
               </div>
 
-              <div className={styles.field}>
-                <span className={styles.label}>Job Description</span>
-                {jobs.length > 0 && (
-                  <div className={styles.pastJobs}>
-                    {jobs.map((job) => (
-                      <button
-                        key={job.id}
-                        className={styles.pastJobBtn}
-                        onClick={() => onJobDescriptionChange(job.jobDescription)}
-                      >
-                        Use: {job.jobTitle}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <textarea
-                  className={styles.textarea}
-                  placeholder="Paste the job description here. The AI will generate tailored questions based on these requirements."
-                  value={jobDescription}
-                  onChange={(e) => onJobDescriptionChange(e.target.value)}
-                />
+              <div className={styles.sketchRight} style={{ top: 200 }}>
+                <svg width="48" height="20" viewBox="0 0 48 20" fill="none">
+                  <path d="M46 16 C34 14, 20 10, 8 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+                  <path d="M14 1 L6 4 L12 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                </svg>
+                <span className={styles.sketchText}>2. Paste the job description</span>
               </div>
 
-              <div className={styles.field}>
-                <InterviewStyleSelector value={style} onChange={onStyleChange} />
+              <div className={styles.sketchLeft} style={{ bottom: 35 }}>
+                <span className={styles.sketchTextMulti}>
+                  3. Pick an interview style
+                  <br />
+                  <span className={styles.sketchTextSub}>(Mixed by default)</span>
+                </span>
+                <svg width="48" height="20" viewBox="0 0 48 20" fill="none">
+                  <path d="M2 16 C14 14, 28 10, 40 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+                  <path d="M34 1 L42 4 L36 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                </svg>
               </div>
 
-              <button
-                className={styles.startBtn}
-                disabled={!canStart}
-                onClick={handleStartInterview}
-              >
-                Start Interview <ArrowRight size={16} />
-              </button>
-            </div>
+              <div className={styles.card}>
+                <div className={styles.field}>
+                  <span className={styles.label}>Company</span>
+                  <CompanyAutocomplete
+                    value={companyName}
+                    onChange={onCompanyNameChange}
+                    onProfileSelect={onCompanyProfileSelect}
+                  />
+                </div>
+
+                <div className={styles.field}>
+                  <span className={styles.label}>Job Description</span>
+                  {jobs.length > 0 && (
+                    <div className={styles.pastJobs}>
+                      {jobs.map((job) => (
+                        <button
+                          key={job.id}
+                          className={styles.pastJobBtn}
+                          onClick={() => onJobDescriptionChange(job.jobDescription)}
+                        >
+                          Use: {job.jobTitle}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <textarea
+                    className={styles.textarea}
+                    placeholder="Paste the job description here. The AI will generate tailored questions based on these requirements."
+                    value={jobDescription}
+                    onChange={(e) => onJobDescriptionChange(e.target.value)}
+                  />
+                </div>
+
+                <div className={styles.field}>
+                  <InterviewStyleSelector value={style} onChange={onStyleChange} />
+                </div>
+
+                <button
+                  className={styles.startBtn}
+                  disabled={!canStart}
+                  onClick={handleStartInterview}
+                >
+                  Start Interview <ArrowRight size={16} />
+                </button>
+              </div>
+            </div> {/* Closes cardContainer */}
 
             {pastSessions.length > 0 && (
               <div className={styles.pastSessions}>
@@ -287,10 +317,6 @@ return (
             </div>
             
             <div className={styles.modalBody}>
-              {/* If you have a file URL, show an iframe/PDF. Otherwise, show the parsed text */}
-              {/*{zoomedResume.source_file_path ? (
-                <iframe src={zoomedResume.source_file_path} className={styles.resumeIframe} title="Resume Preview" />
-              ) : (*/}
                 <div className={styles.resumeTextPreview}>
                   {formatResumeText(zoomedResume.structured_content) || "No text content available for this resume."}
                 </div>
