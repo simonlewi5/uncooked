@@ -213,21 +213,57 @@ Deno.serve(async (req: Request) => {
     return json(405, { error: 'Method Not Allowed', code: 'method_not_allowed' })
   }
 
-  // Read body up-front as a buffer so we can enforce a hard byte-limit regardless
-  // of whether the client sends a Content-Length header.
-  let bodyBuffer: ArrayBuffer
-  try {
-    bodyBuffer = await req.arrayBuffer()
-  } catch {
-    return json(400, { error: 'Failed to read request body', code: 'invalid_body' })
+  // Fast-path: Check Content-Length header for well-behaved clients.
+  const contentLength = req.headers.get('content-length')
+  if (contentLength) {
+    const size = parseInt(contentLength, 10)
+    if (isNaN(size) || size > MAX_BODY_BYTES) {
+      return json(413, {
+        error: 'Payload Too Large',
+        code: 'payload_too_large',
+        details: `request body exceeds ${MAX_BODY_BYTES} bytes`,
+      })
+    }
   }
 
-  if (bodyBuffer.byteLength > MAX_BODY_BYTES) {
-    return json(413, {
-      error: 'Payload Too Large',
-      code: 'payload_too_large',
-      details: `request body exceeds ${MAX_BODY_BYTES} bytes`,
-    })
+  // Read body with size enforcement to prevent memory exhaustion from malicious clients.
+  let bodyBuffer: ArrayBuffer
+  try {
+    const reader = req.body?.getReader()
+    if (!reader) {
+      return json(400, { error: 'Failed to read request body', code: 'invalid_body' })
+    }
+
+    const chunks: Uint8Array[] = []
+    let totalBytes = 0
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      totalBytes += value.length
+      if (totalBytes > MAX_BODY_BYTES) {
+        reader.cancel()
+        return json(413, {
+          error: 'Payload Too Large',
+          code: 'payload_too_large',
+          details: `request body exceeds ${MAX_BODY_BYTES} bytes`,
+        })
+      }
+
+      chunks.push(value)
+    }
+
+    // Concatenate chunks into single buffer
+    const combined = new Uint8Array(totalBytes)
+    let offset = 0
+    for (const chunk of chunks) {
+      combined.set(chunk, offset)
+      offset += chunk.length
+    }
+    bodyBuffer = combined.buffer
+  } catch {
+    return json(400, { error: 'Failed to read request body', code: 'invalid_body' })
   }
 
   let userId: string | null = null
@@ -350,7 +386,6 @@ Deno.serve(async (req: Request) => {
       ? toDebugPreview({
           edits: resolvedEdits,
           appliedMode: tailorResult.appliedMode,
-          isPartial: tailorResult.isPartial,
         })
       : undefined,
   })
@@ -358,6 +393,5 @@ Deno.serve(async (req: Request) => {
   return json(200, {
     edits: resolvedEdits,
     appliedMode: tailorResult.appliedMode,
-    isPartial: tailorResult.isPartial,
   })
 })

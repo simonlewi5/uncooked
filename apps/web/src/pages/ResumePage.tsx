@@ -124,7 +124,7 @@ export default function ResumePage() {
   const [jobDescription, setJobDescription] = useState('')
   const [skillInput, setSkillInput] = useState('')
   const [pendingEdits, setPendingEdits] = useState<ResumeTailorEdit[]>([])
-  const [tailorRunState, setTailorRunState] = useState<'idle' | 'complete' | 'partial'>('idle')
+  const [tailorRunState, setTailorRunState] = useState<'idle' | 'complete'>('idle')
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
   const [activeResumeId, setActiveResumeId] = useState<string | null>(null)
@@ -302,7 +302,7 @@ export default function ResumePage() {
     if (result.status === 'error') return
 
     setPendingEdits(result.edits)
-    setTailorRunState(result.status === 'partial' ? 'partial' : 'complete')
+    setTailorRunState('complete')
   }
 
   async function handleExportPDF() {
@@ -676,7 +676,6 @@ export default function ResumePage() {
               onRevealTarget={handleRevealTarget}
               onAcceptTarget={handleAcceptTarget}
               onDeclineTarget={handleDeclineTarget}
-              onRetryTailor={handleAutoTailor}
             />
           </div>
         </div>

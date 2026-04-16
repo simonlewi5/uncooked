@@ -599,6 +599,5 @@ export const tailorResumeWithAI = async (
   return {
     ...result,
     appliedMode: 'delta_only',
-    isPartial: false,
   }
 }

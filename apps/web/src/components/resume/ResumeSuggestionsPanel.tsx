@@ -92,13 +92,12 @@ const SuggestionDiff = ({
 
 interface ResumeSuggestionsPanelProps {
   suggestions: ResumeSuggestionViewModel[]
-  panelState?: 'idle' | 'complete' | 'partial'
+  panelState?: 'idle' | 'complete'
   activeTargetId: string | null
   onActivateTarget: (targetId: string | null) => void
   onRevealTarget: (targetId: string) => void
   onAcceptTarget: (targetId: string) => void
   onDeclineTarget: (targetId: string) => void
-  onRetryTailor?: () => void
 }
 
 // Internal helper: Success and warning notices
@@ -150,7 +149,6 @@ export function ResumeSuggestionsPanel({
   onRevealTarget,
   onAcceptTarget,
   onDeclineTarget,
-  onRetryTailor,
 }: ResumeSuggestionsPanelProps): JSX.Element {
   const groupedSuggestions = suggestions.reduce<Record<string, ResumeSuggestionViewModel[]>>((groups, suggestion) => {
     const groupKey = suggestion.targetExists ? suggestion.edit.section : 'unmapped'
@@ -174,15 +172,6 @@ export function ResumeSuggestionsPanel({
         type="success"
         title="No more edits needed"
         body="Your resume already looks aligned with this job description. You can export it or try another pass if the role changes."
-      />
-    )
-  } else if (panelState === 'partial') {
-    friendlyNotice = (
-      <NoticeCard
-        type="warning"
-        title="Oops We Encountered an Issue"
-        body="The AI response may have been cut off before it could finish. Try Auto-Tailor again!."
-        action={onRetryTailor ? { label: 'Try Again', onClick: onRetryTailor } : undefined}
       />
     )
   }
