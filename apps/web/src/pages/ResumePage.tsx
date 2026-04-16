@@ -2,13 +2,44 @@ import { useState, useEffect, useRef, KeyboardEvent, useCallback } from 'react'
 import html2pdf from 'html2pdf.js'
 import { Download, Sparkles, Search, X, Plus, FileUp } from 'lucide-react'
 import { Button } from '@/components/ui'
+import { ResumeSuggestionsPanel } from '@/components/resume/ResumeSuggestionsPanel'
+import {
+  applySuggestion,
+  buildResumeSuggestionViewModels,
+  findSuggestionByTargetId,
+  normalizeTargetId,
+  removeSuggestionByTargetId,
+  type ResumeSuggestionViewModel,
+} from '@/pages/resumeSuggestionTargets'
+import {
+  ID_GENERATORS,
+  addBulletToEntry,
+  addEducationEntry,
+  addExperienceEntry,
+  addSkillItem,
+  normalizeResumeDocument,
+  removeBullet,
+  removeEducationEntry,
+  removeExperienceEntry,
+  removeSkill,
+  updateBullet,
+  updateEducationField,
+  updateExperienceField,
+  updateProfileField,
+  updateSummary,
+} from '@/lib/resumeMutations'
 import { useResumeTailor } from '@/hooks/useResumeTailor'
 import { useResumeUploadAndParse } from '@/hooks/useResumeUploadAndParse'
 import { useResumePersistence } from '@/hooks/useResumePersistence'
 import { useAuth } from '@/contexts/AuthContext'
-import type { ResumeDocument, ResumeTailorEdit, ResumeTailorRequest } from '@/types'
+import type { ResumeDocument, ResumeTailorEdit } from '@/types'
 import { cn } from '@/utils/cn'
 import styles from './ResumePage.module.css'
+
+// Helper: Extract and trim text from contentEditable element
+const readEditableText = (element: HTMLElement): string => {
+  return (element?.textContent?.trim() || '')
+}
 
 const MOCK_RESUME = {
   name: 'Jane Doe',
@@ -56,25 +87,6 @@ const MOCK_EDUCATION = [
   { id: 'ed1', degree: 'B.S. Computer Science', school: 'UC San Diego', period: '2014 – 2018' },
 ]
 
-// Stable ID generators (single source of truth)
-const ID_GENERATORS = {
-  profileName: () => 'profile/name',
-  profileContact: () => 'profile/contact',
-  summary: () => 'profile/summary',
-  experienceField: (entryId: string, field: 'title' | 'company' | 'period') =>
-    `experience/${entryId}/${field}`,
-  experienceBullet: (entryId: string, bulletId: string) => `experience/${entryId}/bullets/${bulletId}`,
-  educationField: (entryId: string, field: 'degree' | 'school' | 'period') =>
-    `education/${entryId}/${field}`,
-  skillItem: (skillId: string) => `skills/${skillId}`,
-}
-
-const createId = () => crypto.randomUUID().replace(/-/g, '')
-
-const normalizeTargetId = (id: string): string => {
-  return id.trim()
-}
-
 const toInitialResumeContent = (): ResumeDocument => ({
   name: { id: ID_GENERATORS.profileName(), text: MOCK_RESUME.name },
   contact: { id: ID_GENERATORS.profileContact(), text: MOCK_RESUME.contact },
@@ -104,137 +116,15 @@ const toInitialResumeContent = (): ResumeDocument => ({
   ],
 })
 
-// Inline suggestion renderer: minimal diff block with accept/decline
-interface SuggestionDiffProps {
-  edit: ResumeTailorEdit
-  currentValue: string | null
-  onAccept: () => void
-  onDecline: () => void
-  variant?: 'compact' | 'stacked'
-}
-
-const SuggestionDiff = ({ edit, currentValue, onAccept, onDecline, variant = 'compact' }: SuggestionDiffProps) => {
-  if (variant === 'stacked') {
-    return (
-      <div style={{ borderLeft: '3px solid #4f46e5', paddingLeft: '0.75rem', marginTop: '0.5rem' }}>
-        <div style={{ fontSize: '0.75rem', fontWeight: 500, color: '#666', marginBottom: '0.5rem' }}>
-          AI Suggestion:
-        </div>
-        <div
-          style={{
-            display: 'grid',
-            gap: '0.75rem',
-            marginBottom: '0.75rem',
-            fontSize: '0.875rem',
-          }}
-        >
-          <div style={{ padding: '0.75rem', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
-            <strong style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.25rem', color: '#999' }}>
-              Current
-            </strong>
-            <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {currentValue ?? '(not found)'}
-            </p>
-          </div>
-          <div style={{ padding: '0.75rem', backgroundColor: '#f0f9ff', borderRadius: '4px' }}>
-            <strong style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.25rem', color: '#166534' }}>
-              Proposed
-            </strong>
-            <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {edit.replacement}
-            </p>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button
-            onClick={onAccept}
-            style={{
-              padding: '0.375rem 0.75rem',
-              fontSize: '0.75rem',
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            Accept
-          </button>
-          <button
-            onClick={onDecline}
-            style={{
-              padding: '0.375rem 0.75rem',
-              fontSize: '0.75rem',
-              backgroundColor: '#ef4444',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            Decline
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // compact variant for bullets: single line current → proposed
-  return (
-    <div style={{ borderLeft: '3px solid #4f46e5', paddingLeft: '0.75rem', marginTop: '0.25rem', fontSize: '0.8125rem' }}>
-      <div style={{ marginBottom: '0.25rem', color: '#666' }}>
-        <span style={{ textDecoration: 'line-through', color: '#7f1d1d' }}>
-          {currentValue ?? 'Current value unavailable (target may have been removed)'}
-        </span>
-        <span style={{ margin: '0 0.25rem' }}>→</span>
-        <span style={{ color: '#166534' }}>{edit.replacement}</span>
-      </div>
-      <div style={{ display: 'flex', gap: '0.375rem' }}>
-        <button
-          onClick={onAccept}
-          style={{
-            padding: '0.25rem 0.5rem',
-            fontSize: '0.7rem',
-            backgroundColor: '#10b981',
-            color: 'white',
-            border: 'none',
-            borderRadius: '3px',
-            cursor: 'pointer',
-          }}
-        >
-          Accept
-        </button>
-        <button
-          onClick={onDecline}
-          style={{
-            padding: '0.25rem 0.5rem',
-            fontSize: '0.7rem',
-            backgroundColor: '#ef4444',
-            color: 'white',
-            border: 'none',
-            borderRadius: '3px',
-            cursor: 'pointer',
-          }}
-        >
-          Decline
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// Get suggestion for a specific targetId
-const getEditForTarget = (targetId: string, edits: ResumeTailorEdit[]): ResumeTailorEdit | null => {
-  return edits.find((e) => normalizeTargetId(e.targetId) === targetId) ?? null
-}
-
 export default function ResumePage() {
   const { user } = useAuth()
   const resumeRef = useRef<HTMLDivElement>(null)
-  const [resumeContent, setResumeContent] = useState<ResumeDocument>(toInitialResumeContent)
+  const [activeTargetId, setActiveTargetId] = useState<string | null>(null)
+  const [resumeContent, setResumeContent] = useState<ResumeDocument>(toInitialResumeContent())
   const [jobDescription, setJobDescription] = useState('')
   const [skillInput, setSkillInput] = useState('')
   const [pendingEdits, setPendingEdits] = useState<ResumeTailorEdit[]>([])
+  const [tailorRunState, setTailorRunState] = useState<'idle' | 'complete'>('idle')
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
   const [activeResumeId, setActiveResumeId] = useState<string | null>(null)
@@ -256,68 +146,26 @@ export default function ResumePage() {
 
   const pdfInputRef = useRef<HTMLInputElement>(null)
 
-  const toCanonicalId = useCallback((id: string, fallback: string): string => {
-    const normalized = normalizeTargetId(id)
-    return normalized || fallback
-  }, [])
+  // ── Local helpers for contentEditable field updates ──
+  const handleUpdateProfileField = (field: 'name' | 'contact', text: string) => {
+    setResumeContent((prev) => updateProfileField(prev, field, text))
+  }
 
-  const hydrateFromStructuredContent = useCallback(
-    (content: ResumeDocument) => {
-      setResumeContent({
-        name: {
-          id: toCanonicalId(content.name.id, ID_GENERATORS.profileName()),
-          text: content.name.text,
-        },
-        contact: {
-          id: toCanonicalId(content.contact.id, ID_GENERATORS.profileContact()),
-          text: content.contact.text,
-        },
-        summary: {
-          id: toCanonicalId(content.summary.id, ID_GENERATORS.summary()),
-          text: content.summary.text,
-        },
-        experience: content.experience.map((entry) => ({
-          id: entry.id,
-          title: {
-            id: toCanonicalId(entry.title.id, ID_GENERATORS.experienceField(entry.id, 'title')),
-            text: entry.title.text,
-          },
-          company: {
-            id: toCanonicalId(entry.company.id, ID_GENERATORS.experienceField(entry.id, 'company')),
-            text: entry.company.text,
-          },
-          period: {
-            id: toCanonicalId(entry.period.id, ID_GENERATORS.experienceField(entry.id, 'period')),
-            text: entry.period.text,
-          },
-          bullets: entry.bullets.map((bullet, index) => ({
-            id: toCanonicalId(bullet.id, ID_GENERATORS.experienceBullet(entry.id, `b${index + 1}`)),
-            text: bullet.text,
-          })),
-        })),
-        education: content.education.map((entry) => ({
-          id: entry.id,
-          degree: {
-            id: toCanonicalId(entry.degree.id, ID_GENERATORS.educationField(entry.id, 'degree')),
-            text: entry.degree.text,
-          },
-          school: {
-            id: toCanonicalId(entry.school.id, ID_GENERATORS.educationField(entry.id, 'school')),
-            text: entry.school.text,
-          },
-          period: {
-            id: toCanonicalId(entry.period.id, ID_GENERATORS.educationField(entry.id, 'period')),
-            text: entry.period.text,
-          },
-        })),
-        skills: content.skills.map((skill, index) => ({
-          id: toCanonicalId(skill.id, ID_GENERATORS.skillItem(`s${index + 1}`)),
-          text: skill.text,
-        })),
-      })
-    },
-    [toCanonicalId]
-  )
+  const handleUpdateSummary = (text: string) => {
+    setResumeContent((prev) => updateSummary(prev, text))
+  }
+
+  const handleUpdateExperienceField = (expId: string, field: 'title' | 'company' | 'period', text: string) => {
+    setResumeContent((prev) => updateExperienceField(prev, expId, field, text))
+  }
+
+  const handleUpdateEducationField = (eduId: string, field: 'degree' | 'school' | 'period', text: string) => {
+    setResumeContent((prev) => updateEducationField(prev, eduId, field, text))
+  }
+
+  const handleUpdateBullet = (expId: string, bulletId: string, text: string) => {
+    setResumeContent((prev) => updateBullet(prev, expId, bulletId, text))
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -329,7 +177,7 @@ export default function ResumePage() {
       try {
         const existing = await loadPrimaryResume(user.id)
         if (cancelled || !existing?.structuredContent) return
-        hydrateFromStructuredContent(existing.structuredContent)
+        setResumeContent(normalizeResumeDocument(existing.structuredContent))
         setActiveResumeId(existing.id)
       } catch {
         // error surfaced through persistenceError
@@ -341,7 +189,7 @@ export default function ResumePage() {
     return () => {
       cancelled = true
     }
-  }, [user?.id, loadPrimaryResume, clearPersistenceError, hydrateFromStructuredContent])
+  }, [user?.id, loadPrimaryResume, clearPersistenceError])
 
   async function handlePdfImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -365,7 +213,7 @@ export default function ResumePage() {
     })
 
     if (saved?.structuredContent) {
-      hydrateFromStructuredContent(saved.structuredContent)
+      setResumeContent(normalizeResumeDocument(saved.structuredContent))
       setActiveResumeId(saved.id)
       setPendingEdits([])
       setSubmitError(
@@ -382,426 +230,79 @@ export default function ResumePage() {
     }
   }
 
-  function updateExperienceField(id: string, field: 'title' | 'company' | 'period', value: string) {
-    setResumeContent((prev) => ({
-      ...prev,
-      experience: prev.experience.map((entry) =>
-        entry.id === id ? { ...entry, [field]: { ...entry[field], text: value } } : entry
-      ),
-    }))
-  }
-
-  function updateEducationField(id: string, field: 'degree' | 'school' | 'period', value: string) {
-    setResumeContent((prev) => ({
-      ...prev,
-      education: prev.education.map((entry) =>
-        entry.id === id ? { ...entry, [field]: { ...entry[field], text: value } } : entry
-      ),
-    }))
-  }
-
-  function updateBullet(expId: string, bulletId: string, value: string) {
-    setResumeContent((prev) => ({
-      ...prev,
-      experience: prev.experience.map((entry) =>
-        entry.id === expId
-          ? {
-              ...entry,
-              bullets: entry.bullets.map((bullet) =>
-                bullet.id === bulletId ? { ...bullet, text: value } : bullet
-              ),
-            }
-          : entry
-      ),
-    }))
-  }
-
   function addExperience() {
-    const id = crypto.randomUUID()
-    setResumeContent((prev) => ({
-      ...prev,
-      experience: [
-        ...prev.experience,
-        {
-          id,
-          title: { id: ID_GENERATORS.experienceField(id, 'title'), text: 'Job Title' },
-          company: { id: ID_GENERATORS.experienceField(id, 'company'), text: 'Company Name' },
-          period: { id: ID_GENERATORS.experienceField(id, 'period'), text: 'Year – Year' },
-          bullets: [
-            {
-              id: ID_GENERATORS.experienceBullet(id, `b${createId()}`),
-              text: 'Describe your responsibilities here.',
-            },
-          ],
-        },
-      ],
-    }))
+    setResumeContent((prev) => addExperienceEntry(prev))
   }
 
   function removeExperience(id: string) {
-    setResumeContent((prev) => ({
-      ...prev,
-      experience: prev.experience.filter((entry) => entry.id !== id),
-    }))
+    setResumeContent((prev) => removeExperienceEntry(prev, id))
   }
 
   function addBullet(expId: string) {
-    setResumeContent((prev) => ({
-      ...prev,
-      experience: prev.experience.map((entry) =>
-        entry.id === expId
-          ? {
-              ...entry,
-              bullets: [
-                ...entry.bullets,
-                {
-                  id: ID_GENERATORS.experienceBullet(expId, `b${createId()}`),
-                  text: 'New bullet point.',
-                },
-              ],
-            }
-          : entry
-      ),
-    }))
-  }
-
-  function removeBullet(expId: string, bulletId: string) {
-    setResumeContent((prev) => ({
-      ...prev,
-      experience: prev.experience.map((entry) =>
-        entry.id === expId
-          ? { ...entry, bullets: entry.bullets.filter((bullet) => bullet.id !== bulletId) }
-          : entry
-      ),
-    }))
+    setResumeContent((prev) => addBulletToEntry(prev, expId))
   }
 
   function addEducation() {
-    const id = crypto.randomUUID()
-    setResumeContent((prev) => ({
-      ...prev,
-      education: [
-        ...prev.education,
-        {
-          id,
-          degree: { id: ID_GENERATORS.educationField(id, 'degree'), text: 'Degree / Certification' },
-          school: { id: ID_GENERATORS.educationField(id, 'school'), text: 'Institution Name' },
-          period: { id: ID_GENERATORS.educationField(id, 'period'), text: 'Year – Year' },
-        },
-      ],
-    }))
+    setResumeContent((prev) => addEducationEntry(prev))
   }
 
   function removeEducation(id: string) {
-    setResumeContent((prev) => ({
-      ...prev,
-      education: prev.education.filter((entry) => entry.id !== id),
-    }))
+    setResumeContent((prev) => removeEducationEntry(prev, id))
   }
 
   function handleSkillKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       e.preventDefault()
       const trimmed = skillInput.trim()
-      if (
-        trimmed &&
-        !resumeContent.skills.some((skill) => skill.text.toLowerCase() === trimmed.toLowerCase())
-      ) {
-        setResumeContent((prev) => ({
-          ...prev,
-          skills: [...prev.skills, { id: ID_GENERATORS.skillItem(`s${createId()}`), text: trimmed }],
-        }))
+      const isDuplicate = resumeContent.skills.some(
+        (skill) => skill.text.toLowerCase() === trimmed.toLowerCase()
+      )
+      if (trimmed && !isDuplicate) {
+        setResumeContent((prev) => addSkillItem(prev, trimmed))
       }
       setSkillInput('')
     }
   }
 
-  function removeSkill(skillId: string) {
-    setResumeContent((prev) => ({
-      ...prev,
-      skills: prev.skills.filter((skill) => skill.id !== skillId),
-    }))
-  }
-
-  function getCurrentValueForTarget(targetId: string): string | null {
+  const applyEditByTargetId = (targetId: string) => {
     const normalizedTargetId = normalizeTargetId(targetId)
-    if (normalizedTargetId === ID_GENERATORS.profileName()) return resumeContent.name.text
-    if (normalizedTargetId === ID_GENERATORS.profileContact()) return resumeContent.contact.text
-    if (normalizedTargetId === ID_GENERATORS.summary()) return resumeContent.summary.text
+    const edit = findSuggestionByTargetId(pendingEdits, normalizedTargetId)
+    if (!edit) return false
 
-    const expFieldMatch = normalizedTargetId.match(/^experience\/(.+?)\/(title|company|period)$/)
-    if (expFieldMatch) {
-      const [, entryId, field] = expFieldMatch
-      const entry = resumeContent.experience.find((e) => e.id === entryId)
-      return entry ? entry[field as 'title' | 'company' | 'period'].text : null
+    const { nextContent, applied, targetResolution } = applySuggestion(resumeContent, edit)
+    if (targetResolution?.source === 'fallback') {
+      console.warn('resume-tailor target resolved through fallback path', {
+        requestedTargetId: normalizedTargetId,
+        resolvedTargetId: targetResolution.targetId,
+      })
     }
 
-    const expBulletMatch = normalizedTargetId.match(/^experience\/(.+?)\/bullets\/(.+)$/)
-    if (expBulletMatch) {
-      const [, entryId, bulletId] = expBulletMatch
-      const entry = resumeContent.experience.find((e) => e.id === entryId)
-      return entry?.bullets.find((bullet) => bullet.id === bulletId)?.text ?? null
+    if (applied) {
+      setResumeContent(nextContent)
     }
 
-    const eduFieldMatch = normalizedTargetId.match(/^education\/(.+?)\/(degree|school|period)$/)
-    if (eduFieldMatch) {
-      const [, entryId, field] = eduFieldMatch
-      const entry = resumeContent.education.find((e) => e.id === entryId)
-      return entry ? entry[field as 'degree' | 'school' | 'period'].text : null
-    }
-
-    const skillMatch = normalizedTargetId.match(/^skills\/(.+)$/)
-    if (skillMatch) {
-      const skillId = skillMatch[1]
-      return resumeContent.skills.find((skill) => skill.id === skillId)?.text ?? null
-    }
-
-    return null
-  }
-
-  function applyEdit(edit: ResumeTailorEdit): boolean {
-    const { operation, replacement } = edit
-    const targetId = normalizeTargetId(edit.targetId)
-
-    if (targetId === ID_GENERATORS.profileName()) {
-      if (operation === 'replace') {
-        setResumeContent((prev) => ({
-          ...prev,
-          name: { ...prev.name, text: replacement },
-        }))
-      } else if (operation === 'insert') {
-        setResumeContent((prev) => ({
-          ...prev,
-          name: { ...prev.name, text: `${prev.name.text} ${replacement}`.trim() },
-        }))
-      } else {
-        setResumeContent((prev) => ({
-          ...prev,
-          name: { ...prev.name, text: '' },
-        }))
-      }
-      return true
-    }
-
-    if (targetId === ID_GENERATORS.profileContact()) {
-      if (operation === 'replace') {
-        setResumeContent((prev) => ({
-          ...prev,
-          contact: { ...prev.contact, text: replacement },
-        }))
-      } else if (operation === 'insert') {
-        setResumeContent((prev) => ({
-          ...prev,
-          contact: { ...prev.contact, text: `${prev.contact.text} ${replacement}`.trim() },
-        }))
-      } else {
-        setResumeContent((prev) => ({
-          ...prev,
-          contact: { ...prev.contact, text: '' },
-        }))
-      }
-      return true
-    }
-
-    if (targetId === ID_GENERATORS.summary()) {
-      if (operation === 'replace') {
-        setResumeContent((prev) => ({
-          ...prev,
-          summary: { ...prev.summary, text: replacement },
-        }))
-      } else if (operation === 'insert') {
-        setResumeContent((prev) => ({
-          ...prev,
-          summary: { ...prev.summary, text: `${prev.summary.text}\n${replacement}`.trim() },
-        }))
-      } else {
-        setResumeContent((prev) => ({
-          ...prev,
-          summary: { ...prev.summary, text: '' },
-        }))
-      }
-      return true
-    }
-
-    const expFieldMatch = targetId.match(/^experience\/(.+?)\/(title|company|period)$/)
-    if (expFieldMatch) {
-      const [, entryId, field] = expFieldMatch
-      const exists = resumeContent.experience.some((e) => e.id === entryId)
-      if (!exists) return false
-      const fieldKey = field as 'title' | 'company' | 'period'
-      if (operation === 'replace') updateExperienceField(entryId, fieldKey, replacement)
-      else if (operation === 'insert') {
-        const current = getCurrentValueForTarget(targetId)
-        updateExperienceField(entryId, fieldKey, `${current ?? ''} ${replacement}`.trim())
-      } else updateExperienceField(entryId, fieldKey, '')
-      return true
-    }
-
-    const expBulletMatch = targetId.match(/^experience\/(.+?)\/bullets\/(.+)$/)
-    if (expBulletMatch) {
-      const [, entryId, bulletId] = expBulletMatch
-      const entry = resumeContent.experience.find((e) => e.id === entryId)
-      if (!entry) return false
-      if (operation === 'replace') {
-        updateBullet(entryId, bulletId, replacement)
-      } else if (operation === 'insert') {
-        setResumeContent((prev) => ({
-          ...prev,
-          experience: prev.experience.map((entryItem) =>
-            entryItem.id === entryId
-              ? {
-                  ...entryItem,
-                  bullets: (() => {
-                    const idx = entryItem.bullets.findIndex((bullet) => bullet.id === bulletId)
-                    if (idx === -1) return entryItem.bullets
-                    const next = [...entryItem.bullets]
-                    next.splice(idx + 1, 0, {
-                      id: ID_GENERATORS.experienceBullet(entryId, `b${createId()}`),
-                      text: replacement,
-                    })
-                    return next
-                  })(),
-                }
-              : entryItem
-          ),
-        }))
-      } else {
-        setResumeContent((prev) => ({
-          ...prev,
-          experience: prev.experience.map((entryItem) =>
-            entryItem.id === entryId
-              ? {
-                  ...entryItem,
-                  bullets: entryItem.bullets.filter((bullet) => bullet.id !== bulletId),
-                }
-              : entryItem
-          ),
-        }))
-      }
-      return true
-    }
-
-    const eduFieldMatch = targetId.match(/^education\/(.+?)\/(degree|school|period)$/)
-    if (eduFieldMatch) {
-      const [, entryId, field] = eduFieldMatch
-      const exists = resumeContent.education.some((e) => e.id === entryId)
-      if (!exists) return false
-      const fieldKey = field as 'degree' | 'school' | 'period'
-      if (operation === 'replace') updateEducationField(entryId, fieldKey, replacement)
-      else if (operation === 'insert') {
-        const current = getCurrentValueForTarget(targetId)
-        updateEducationField(entryId, fieldKey, `${current ?? ''} ${replacement}`.trim())
-      } else updateEducationField(entryId, fieldKey, '')
-      return true
-    }
-
-    const skillMatch = targetId.match(/^skills\/(.+)$/)
-    if (skillMatch) {
-      const skillId = skillMatch[1]
-      const idx = resumeContent.skills.findIndex((skill) => skill.id === skillId)
-      if (idx === -1) return false
-      if (operation === 'replace') {
-        setResumeContent((prev) => ({
-          ...prev,
-          skills: prev.skills.map((skill) =>
-            skill.id === skillId ? { ...skill, text: replacement } : skill
-          ),
-        }))
-      } else if (operation === 'insert') {
-        setResumeContent((prev) => ({
-          ...prev,
-          skills: [
-            ...prev.skills.slice(0, idx + 1),
-            { id: ID_GENERATORS.skillItem(`s${createId()}`), text: replacement },
-            ...prev.skills.slice(idx + 1),
-          ],
-        }))
-      } else {
-        setResumeContent((prev) => ({
-          ...prev,
-          skills: prev.skills.filter((skill) => skill.id !== skillId),
-        }))
-      }
-      return true
-    }
-
-    return false
-  }
-
-  function acceptEdit(index: number) {
-    const edit = pendingEdits[index]
-    if (edit && applyEdit(edit)) {
-      // suggestion applied
-    }
-    setPendingEdits((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  function declineEdit(index: number) {
-    setPendingEdits((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  const getPendingEditIndex = (targetId: string) =>
-    pendingEdits.findIndex((edit) => normalizeTargetId(edit.targetId) === targetId)
-
-  const handleAcceptEditByTargetId = (targetId: string) => {
-    const idx = getPendingEditIndex(targetId)
-    if (idx !== -1) acceptEdit(idx)
-  }
-
-  const handleDeclineEditByTargetId = (targetId: string) => {
-    const idx = getPendingEditIndex(targetId)
-    if (idx !== -1) declineEdit(idx)
-  }
-
-  function buildResumeContent(): ResumeDocument {
-    return {
-      name: resumeContent.name,
-      contact: resumeContent.contact,
-      summary: resumeContent.summary,
-      experience: resumeContent.experience.map((entry) => ({
-        id: entry.id,
-        title: entry.title,
-        company: entry.company,
-        period: entry.period,
-        bullets: entry.bullets.map((bullet) => ({
-          id: bullet.id,
-          text: bullet.text,
-        })),
-      })),
-      education: resumeContent.education.map((entry) => ({
-        id: entry.id,
-        degree: entry.degree,
-        school: entry.school,
-        period: entry.period,
-      })),
-      skills: resumeContent.skills.map((skill) => ({
-        id: skill.id,
-        text: skill.text,
-      })),
-    }
+    setPendingEdits((prev) => removeSuggestionByTargetId(prev, normalizedTargetId))
+    return applied
   }
 
   async function handleAutoTailor() {
     clearError()
+    clearUploadError()
+    clearPersistenceError()
     setSubmitError(null)
+    setTailorRunState('idle')
 
     if (jobDescription.trim().length < 200) {
       setSubmitError('Please paste a longer job description (minimum 200 characters).')
       return
     }
 
-    const payload: ResumeTailorRequest = {
-      jobDescription,
-      resumeContent: buildResumeContent(),
-      mode: 'delta_only',
-    }
+    const result = await runTailor({ jobDescription, resumeContent, mode: 'delta_only' })
 
-    try {
-      const result = await runTailor(payload)
-      setPendingEdits(result.edits ?? [])
-    } catch {
-      // error already set by hook
-    }
+    if (result.status === 'error') return
+
+    setPendingEdits(result.edits)
+    setTailorRunState('complete')
   }
 
   async function handleExportPDF() {
@@ -828,24 +329,36 @@ export default function ResumePage() {
     }
 
     try {
-      await saveResume(activeResumeId, buildResumeContent(), 'edited')
+      await saveResume(activeResumeId, resumeContent, 'edited')
     } catch {
       // error surfaced through persistenceError
     }
   }
 
   const editable = !isPreviewMode
-  const mappedSummaryTargetId = ID_GENERATORS.summary()
-  const mappedBulletTargetIds = new Set(
-    resumeContent.experience.flatMap((job) => job.bullets.map((bullet) => bullet.id))
-  )
-  const mappedSkillTargetIds = new Set(resumeContent.skills.map((skill) => skill.id))
-  const mappedTargetIds = new Set<string>([
-    mappedSummaryTargetId,
-    ...Array.from(mappedBulletTargetIds),
-    ...Array.from(mappedSkillTargetIds),
-  ])
-  const unmappedEdits = pendingEdits.filter((edit) => !mappedTargetIds.has(normalizeTargetId(edit.targetId)))
+  const suggestionItems: ResumeSuggestionViewModel[] = buildResumeSuggestionViewModels(resumeContent, pendingEdits)
+  const suggestionPanelState = tailorRunState === 'idle' ? 'idle' : tailorRunState
+  const pageError = submitError ?? uploadError ?? persistenceError ?? tailorError
+
+  const handleRevealTarget = useCallback((targetId: string) => {
+    const normalizedTargetId = normalizeTargetId(targetId)
+    setActiveTargetId(normalizedTargetId)
+
+    const targetElement = resumeRef.current?.querySelector<HTMLElement>(`[data-target-id="${normalizedTargetId}"]`)
+    targetElement?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+  }, [])
+
+  const handleAcceptTarget = (targetId: string) => {
+    const normalizedTargetId = normalizeTargetId(targetId)
+    applyEditByTargetId(normalizedTargetId)
+    setActiveTargetId((current) => (current === normalizedTargetId ? null : current))
+  }
+
+  const handleDeclineTarget = (targetId: string) => {
+    const normalizedTargetId = normalizeTargetId(targetId)
+    setPendingEdits((prev) => removeSuggestionByTargetId(prev, normalizedTargetId))
+    setActiveTargetId((current) => (current === normalizedTargetId ? null : current))
+  }
 
   return (
     <div className={styles.page}>
@@ -934,7 +447,7 @@ export default function ResumePage() {
                   {skill.text}
                   <button
                     className={styles.skillChipRemove}
-                    onClick={() => removeSkill(skill.id)}
+                    onClick={() => setResumeContent((prev) => removeSkill(prev, skill.id))}
                     aria-label={`Remove ${skill.text}`}
                   >
                     <X size={10} />
@@ -946,275 +459,224 @@ export default function ResumePage() {
         </aside>
 
         <div className={styles.resumePanel}>
-          {(submitError || tailorError || uploadError || persistenceError) && (
+          {pageError && (
             <div className={styles.errorBanner} role="alert">
-              {submitError ?? uploadError ?? persistenceError ?? tailorError}
+              {pageError}
             </div>
           )}
+          <div className={styles.resumeWorkspace}>
+            <div ref={resumeRef} className={styles.resumeDocument}>
+              <div className={styles.resumeHeader}>
+                <h2
+                  className={cn(styles.resumeName, activeTargetId === ID_GENERATORS.profileName() && styles.targetActive)}
+                  data-target-id={ID_GENERATORS.profileName()}
+                  contentEditable={editable}
+                  suppressContentEditableWarning
+                  onBlur={(e) => {
+                    handleUpdateProfileField('name', readEditableText(e.currentTarget))
+                  }}
+                >
+                  {resumeContent.name.text}
+                </h2>
+                <p
+                  className={cn(styles.resumeContact, activeTargetId === ID_GENERATORS.profileContact() && styles.targetActive)}
+                  data-target-id={ID_GENERATORS.profileContact()}
+                  contentEditable={editable}
+                  suppressContentEditableWarning
+                  onBlur={(e) => {
+                    handleUpdateProfileField('contact', readEditableText(e.currentTarget))
+                  }}
+                >
+                  {resumeContent.contact.text}
+                </p>
+              </div>
 
+              <div className={styles.resumeSection}>
+                <h3 className={styles.sectionHeading}>Summary</h3>
+                <p
+                  className={cn(styles.resumeText, activeTargetId === ID_GENERATORS.summary() && styles.targetActive)}
+                  data-target-id={ID_GENERATORS.summary()}
+                  contentEditable={editable}
+                  suppressContentEditableWarning
+                  onBlur={(e) => {
+                    handleUpdateSummary(readEditableText(e.currentTarget))
+                  }}
+                >
+                  {resumeContent.summary.text}
+                </p>
+              </div>
 
-
-          <div ref={resumeRef} className={styles.resumeDocument}>
-            <div className={styles.resumeHeader}>
-              <h2
-                className={styles.resumeName}
-                contentEditable={editable}
-                suppressContentEditableWarning
-                onBlur={(e) => {
-                  const value = e.currentTarget?.textContent?.trim() || ''
-                  setResumeContent((prev) => ({
-                    ...prev,
-                    name: { ...prev.name, text: value },
-                  }))
-                }}
-              >
-                {resumeContent.name.text}
-              </h2>
-              <p
-                className={styles.resumeContact}
-                contentEditable={editable}
-                suppressContentEditableWarning
-                onBlur={(e) => {
-                  const value = e.currentTarget?.textContent?.trim() || ''
-                  setResumeContent((prev) => ({
-                    ...prev,
-                    contact: { ...prev.contact, text: value },
-                  }))
-                }}
-              >
-                {resumeContent.contact.text}
-              </p>
-            </div>
-
-            <div className={styles.resumeSection}>
-              <h3 className={styles.sectionHeading}>Summary</h3>
-              <p
-                className={styles.resumeText}
-                contentEditable={editable}
-                suppressContentEditableWarning
-                onBlur={(e) => {
-                  const value = e.currentTarget?.textContent?.trim() || ''
-                  setResumeContent((prev) => ({
-                    ...prev,
-                    summary: { ...prev.summary, text: value },
-                  }))
-                }}
-              >
-                {resumeContent.summary.text}
-              </p>
-              {(() => {
-                const summaryEdit = getEditForTarget(mappedSummaryTargetId, pendingEdits)
-                if (summaryEdit) {
-                  return (
-                    <SuggestionDiff
-                      edit={summaryEdit}
-                      currentValue={resumeContent.summary.text}
-                      onAccept={() => handleAcceptEditByTargetId(summaryEdit.targetId)}
-                      onDecline={() => handleDeclineEditByTargetId(summaryEdit.targetId)}
-                      variant="stacked"
-                    />
-                  )
-                }
-                return null
-              })()}
-            </div>
-
-            <div className={styles.resumeSection}>
-              <h3 className={styles.sectionHeading}>Experience</h3>
-              {resumeContent.experience.map((job) => (
-                <div key={job.id} className={styles.resumeEntry}>
-                  <div className={styles.entryHeader}>
-                    <div className={styles.entryTitleWrapper}>
+              <div className={styles.resumeSection}>
+                <h3 className={styles.sectionHeading}>Experience</h3>
+                {resumeContent.experience.map((job) => (
+                  <div key={job.id} className={styles.resumeEntry}>
+                    <div className={styles.entryHeader}>
+                      <div className={styles.entryTitleWrapper}>
+                        <span
+                          className={cn(
+                            styles.entryTitle,
+                            activeTargetId === ID_GENERATORS.experienceField(job.id, 'title') && styles.targetActive
+                          )}
+                          data-target-id={ID_GENERATORS.experienceField(job.id, 'title')}
+                          contentEditable={editable}
+                          suppressContentEditableWarning
+                          onBlur={(e) => {
+                            handleUpdateExperienceField(job.id, 'title', readEditableText(e.currentTarget))
+                          }}
+                        >
+                          {job.title.text}
+                        </span>
+                        <button
+                          className={cn(styles.entryRemoveBtn, !editable && styles.btnHidden)}
+                          onClick={() => removeExperience(job.id)}
+                          aria-label="Remove entry"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
                       <span
-                        className={styles.entryTitle}
+                        className={cn(
+                          styles.entryPeriod,
+                          activeTargetId === ID_GENERATORS.experienceField(job.id, 'period') && styles.targetActive
+                        )}
+                        data-target-id={ID_GENERATORS.experienceField(job.id, 'period')}
                         contentEditable={editable}
                         suppressContentEditableWarning
                         onBlur={(e) => {
-                          const value = e.currentTarget?.textContent?.trim() || ''
-                          updateExperienceField(job.id, 'title', value)
+                          handleUpdateExperienceField(job.id, 'period', readEditableText(e.currentTarget))
                         }}
                       >
-                        {job.title.text}
+                        {job.period.text}
                       </span>
-                      <button
-                        className={cn(styles.entryRemoveBtn, !editable && styles.btnHidden)}
-                        onClick={() => removeExperience(job.id)}
-                        aria-label="Remove entry"
-                      >
-                        <X size={12} />
-                      </button>
                     </div>
                     <span
-                      className={styles.entryPeriod}
+                      className={cn(
+                        styles.entryCompany,
+                        activeTargetId === ID_GENERATORS.experienceField(job.id, 'company') && styles.targetActive
+                      )}
+                      data-target-id={ID_GENERATORS.experienceField(job.id, 'company')}
                       contentEditable={editable}
                       suppressContentEditableWarning
                       onBlur={(e) => {
-                        const value = e.currentTarget?.textContent?.trim() || ''
-                        updateExperienceField(job.id, 'period', value)
+                        handleUpdateExperienceField(job.id, 'company', readEditableText(e.currentTarget))
                       }}
                     >
-                      {job.period.text}
+                      {job.company.text}
                     </span>
-                  </div>
-                  <span
-                    className={styles.entryCompany}
-                    contentEditable={editable}
-                    suppressContentEditableWarning
-                    onBlur={(e) => {
-                      const value = e.currentTarget?.textContent?.trim() || ''
-                      updateExperienceField(job.id, 'company', value)
-                    }}
-                  >
-                    {job.company.text}
-                  </span>
-                  <ul className={styles.entryBullets}>
-                    {job.bullets.map((bullet) => {
-                      const bulletTargetId = bullet.id
-                      const bulletEdit = getEditForTarget(bulletTargetId, pendingEdits)
-                      return (
+                    <ul className={styles.entryBullets}>
+                      {job.bullets.map((bullet) => (
                         <li key={bullet.id} className={styles.bulletItem}>
                           <span
+                            className={cn(activeTargetId === bullet.id && styles.targetActive, styles.bulletText)}
+                            data-target-id={bullet.id}
                             contentEditable={editable}
                             suppressContentEditableWarning
                             onBlur={(e) => {
-                              const value = e.currentTarget?.textContent?.trim() || ''
-                              updateBullet(job.id, bullet.id, value)
+                              handleUpdateBullet(job.id, bullet.id, readEditableText(e.currentTarget))
                             }}
                           >
                             {bullet.text}
                           </span>
                           <button
                             className={cn(styles.bulletRemoveBtn, !editable && styles.btnHidden)}
-                            onClick={() => removeBullet(job.id, bullet.id)}
+                            onClick={() => setResumeContent((prev) => removeBullet(prev, job.id, bullet.id))}
                             aria-label="Remove bullet"
                           >
                             <X size={10} />
                           </button>
-                          {bulletEdit && (
-                            <SuggestionDiff
-                              edit={bulletEdit}
-                              currentValue={bullet.text}
-                              onAccept={() => handleAcceptEditByTargetId(bulletEdit.targetId)}
-                              onDecline={() => handleDeclineEditByTargetId(bulletEdit.targetId)}
-                              variant="compact"
-                            />
-                          )}
                         </li>
-                      )
-                    })}
-                    {editable && (
-                      <button className={styles.addBulletBtn} onClick={() => addBullet(job.id)}>
-                        <Plus size={11} /> Add bullet
-                      </button>
-                    )}
-                  </ul>
-                </div>
-              ))}
-              {editable && (
-                <button className={styles.addEntryBtn} onClick={addExperience}>
-                  <Plus size={13} /> Add experience
-                </button>
-              )}
-            </div>
+                      ))}
+                      {editable && (
+                        <button className={styles.addBulletBtn} onClick={() => addBullet(job.id)}>
+                          <Plus size={11} /> Add bullet
+                        </button>
+                      )}
+                    </ul>
+                  </div>
+                ))}
+                {editable && (
+                  <button className={styles.addEntryBtn} onClick={addExperience}>
+                    <Plus size={13} /> Add experience
+                  </button>
+                )}
+              </div>
 
-            <div className={styles.resumeSection}>
-              <h3 className={styles.sectionHeading}>Education</h3>
-              {resumeContent.education.map((edu) => (
-                <div key={edu.id} className={styles.resumeEntry}>
-                  <div className={styles.entryHeader}>
-                    <div className={styles.entryTitleWrapper}>
+              <div className={styles.resumeSection}>
+                <h3 className={styles.sectionHeading}>Education</h3>
+                {resumeContent.education.map((edu) => (
+                  <div key={edu.id} className={styles.resumeEntry}>
+                    <div className={styles.entryHeader}>
+                      <div className={styles.entryTitleWrapper}>
+                        <span
+                          className={cn(
+                            styles.entryTitle,
+                            activeTargetId === ID_GENERATORS.educationField(edu.id, 'degree') && styles.targetActive
+                          )}
+                          data-target-id={ID_GENERATORS.educationField(edu.id, 'degree')}
+                          contentEditable={editable}
+                          suppressContentEditableWarning
+                          onBlur={(e) => {
+                            handleUpdateEducationField(edu.id, 'degree', readEditableText(e.currentTarget))
+                          }}
+                        >
+                          {edu.degree.text}
+                        </span>
+                        <button
+                          className={cn(styles.entryRemoveBtn, !editable && styles.btnHidden)}
+                          onClick={() => removeEducation(edu.id)}
+                          aria-label="Remove entry"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
                       <span
-                        className={styles.entryTitle}
+                        className={cn(
+                          styles.entryPeriod,
+                          activeTargetId === ID_GENERATORS.educationField(edu.id, 'period') && styles.targetActive
+                        )}
+                        data-target-id={ID_GENERATORS.educationField(edu.id, 'period')}
                         contentEditable={editable}
                         suppressContentEditableWarning
                         onBlur={(e) => {
-                          const value = e.currentTarget?.textContent?.trim() || ''
-                          updateEducationField(edu.id, 'degree', value)
+                          handleUpdateEducationField(edu.id, 'period', readEditableText(e.currentTarget))
                         }}
                       >
-                        {edu.degree.text}
+                        {edu.period.text}
                       </span>
-                      <button
-                        className={cn(styles.entryRemoveBtn, !editable && styles.btnHidden)}
-                        onClick={() => removeEducation(edu.id)}
-                        aria-label="Remove entry"
-                      >
-                        <X size={12} />
-                      </button>
                     </div>
                     <span
-                      className={styles.entryPeriod}
+                      className={cn(
+                        styles.entryCompany,
+                        activeTargetId === ID_GENERATORS.educationField(edu.id, 'school') && styles.targetActive
+                      )}
+                      data-target-id={ID_GENERATORS.educationField(edu.id, 'school')}
                       contentEditable={editable}
                       suppressContentEditableWarning
                       onBlur={(e) => {
-                        const value = e.currentTarget?.textContent?.trim() || ''
-                        updateEducationField(edu.id, 'period', value)
+                        handleUpdateEducationField(edu.id, 'school', readEditableText(e.currentTarget))
                       }}
                     >
-                      {edu.period.text}
+                      {edu.school.text}
                     </span>
                   </div>
-                  <span
-                    className={styles.entryCompany}
-                    contentEditable={editable}
-                    suppressContentEditableWarning
-                    onBlur={(e) => {
-                      const value = e.currentTarget?.textContent?.trim() || ''
-                      updateEducationField(edu.id, 'school', value)
-                    }}
-                  >
-                    {edu.school.text}
-                  </span>
-                </div>
-              ))}
-              {editable && (
-                <button className={styles.addEntryBtn} onClick={addEducation}>
-                  <Plus size={13} /> Add education
-                </button>
-              )}
+                ))}
+                {editable && (
+                  <button className={styles.addEntryBtn} onClick={addEducation}>
+                    <Plus size={13} /> Add education
+                  </button>
+                )}
+              </div>
             </div>
 
-            {(() => {
-              const skillEdits = pendingEdits.filter(
-                (e) => e.section === 'skills' && mappedSkillTargetIds.has(e.targetId)
-              )
-              if (skillEdits.length > 0) {
-                return (
-                  <div className={styles.resumeSection}>
-                    <h3 className={styles.sectionHeading}>Suggested Skills</h3>
-                    {skillEdits.map((edit) => (
-                      <SuggestionDiff
-                        key={edit.targetId}
-                        edit={edit}
-                        currentValue={
-                          resumeContent.skills.find((s) => s.id === normalizeTargetId(edit.targetId))?.text ?? null
-                        }
-                        onAccept={() => handleAcceptEditByTargetId(edit.targetId)}
-                        onDecline={() => handleDeclineEditByTargetId(edit.targetId)}
-                        variant="stacked"
-                      />
-                    ))}
-                  </div>
-                )
-              }
-              return null
-            })()}
-
-            {unmappedEdits.length > 0 && (
-              <div className={styles.resumeSection}>
-                <h3 className={styles.sectionHeading}>Unmapped Suggestions</h3>
-                {unmappedEdits.map((edit) => (
-                  <SuggestionDiff
-                    key={edit.targetId}
-                    edit={edit}
-                    currentValue={getCurrentValueForTarget(edit.targetId)}
-                    onAccept={() => handleAcceptEditByTargetId(edit.targetId)}
-                    onDecline={() => handleDeclineEditByTargetId(edit.targetId)}
-                    variant="stacked"
-                  />
-                ))}
-              </div>
-            )}
+            <ResumeSuggestionsPanel
+              suggestions={suggestionItems}
+              panelState={suggestionPanelState}
+              activeTargetId={activeTargetId}
+              onActivateTarget={setActiveTargetId}
+              onRevealTarget={handleRevealTarget}
+              onAcceptTarget={handleAcceptTarget}
+              onDeclineTarget={handleDeclineTarget}
+            />
           </div>
         </div>
       </div>

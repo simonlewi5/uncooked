@@ -1,0 +1,365 @@
+.panel {
+  position: sticky;
+  top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  max-height: calc(100vh - 8rem);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.title {
+  margin-top: var(--space-1);
+  font-size: var(--font-md);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.subtitle {
+  margin-top: 0.25rem;
+  font-size: var(--font-sm);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 0.5rem;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.list {
+  display: grid;
+  gap: var(--space-3);
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.noticeCard {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-3);
+  align-items: start;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+}
+
+.noticeSuccess {
+  border-color: color-mix(in srgb, var(--color-success, #16a34a) 28%, var(--color-border));
+  background: color-mix(in srgb, var(--color-success-subtle, #f0fdf4) 70%, var(--color-bg));
+}
+
+.noticeWarning {
+  border-color: color-mix(in srgb, var(--color-warning, #d97706) 28%, var(--color-border));
+  background: color-mix(in srgb, var(--color-warning-subtle, #fffbeb) 78%, var(--color-bg));
+}
+
+.noticeIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-full);
+  color: var(--color-text);
+  background: var(--color-bg);
+  flex-shrink: 0;
+}
+
+.noticeSuccess .noticeIcon {
+  color: var(--color-success, #16a34a);
+}
+
+.noticeWarning .noticeIcon {
+  color: var(--color-warning, #d97706);
+}
+
+.noticeContent {
+  min-width: 0;
+}
+
+.noticeTitle {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.noticeBody {
+  margin-top: 0.375rem;
+  font-size: var(--font-sm);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.noticeAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.noticeAction:hover,
+.noticeAction:focus-visible {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary-subtle);
+  transform: translateY(-1px);
+}
+
+.group {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.groupLabel {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.card {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+  padding: var(--space-3);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, background-color 0.15s ease;
+  animation: cardEnter 180ms ease both;
+}
+
+.card:hover,
+.card:focus-visible,
+.cardActive {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary-subtle), 0 10px 24px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+  background: var(--color-bg);
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.targetLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.targetBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-full);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  font-size: 0.6875rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.diff {
+  width: 100%;
+}
+
+/* Suggestion diff display styles */
+.diffWrapper {
+  border-left: 3px solid var(--color-primary);
+  padding-left: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.diffStacked {
+  composes: diffWrapper;
+}
+
+.diffStackedLabel {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.diffStackedGrid {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.diffStackedBox {
+  padding: 0.75rem;
+  border-radius: 4px;
+}
+
+.diffStackedCurrent {
+  composes: diffStackedBox;
+  background-color: var(--color-bg-muted, #f5f5f5);
+}
+
+.diffStackedCurrentLabel {
+  display: block;
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+  color: var(--color-text-tertiary);
+}
+
+.diffStackedProposed {
+  composes: diffStackedBox;
+  background-color: var(--color-info-subtle, #f0f9ff);
+}
+
+.diffStackedProposedLabel {
+  display: block;
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+  color: var(--color-success-text, #166534);
+}
+
+.diffStackedText {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.diffCompact {
+  border-left: 3px solid var(--color-primary);
+  padding-left: 0.75rem;
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+}
+
+.diffCompactLine {
+  margin-bottom: 0.25rem;
+  color: var(--color-text-secondary);
+}
+
+.diffCompactCurrent {
+  text-decoration: line-through;
+  color: var(--color-danger-text, #7f1d1d);
+}
+
+.diffCompactArrow {
+  margin: 0 0.25rem;
+}
+
+.diffCompactProposed {
+  color: var(--color-success-text, #166534);
+}
+
+.diffActionButtons {
+  display: flex;
+}
+
+.diffActionButtonsStacked {
+  composes: diffActionButtons;
+  gap: 0.5rem;
+}
+
+.diffActionButtonsCompact {
+  composes: diffActionButtons;
+  gap: 0.375rem;
+}
+
+.diffActionButton {
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.diffActionButton:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.diffActionButtonStacked {
+  composes: diffActionButton;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  border-radius: 4px;
+}
+
+.diffActionButtonCompact {
+  composes: diffActionButton;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  border-radius: 3px;
+}
+
+.diffActionButtonAccept {
+  background-color: var(--color-success, #10b981);
+}
+
+.diffActionButtonDecline {
+  background-color: var(--color-danger, #ef4444);
+}
+
+.emptyState {
+  padding: var(--space-4);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-size: var(--font-sm);
+  line-height: 1.5;
+}
+
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}

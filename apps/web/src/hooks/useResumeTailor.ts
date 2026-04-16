@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { ResumeTailorRequest, ResumeTailorResponse } from '@/types'
+import type { ResumeTailorRequest, ResumeTailorResponse, ResumeTailorNormalizedResponse } from '@/types'
 
 const DEBUG_ENABLED = import.meta.env.VITE_RESUME_TAILOR_DEBUG === 'true'
 const DEBUG_VERBOSE = import.meta.env.VITE_RESUME_TAILOR_DEBUG_VERBOSE === 'true'
@@ -24,9 +24,17 @@ const debugLog = (event: string, data?: Record<string, unknown>) => {
 }
 
 type UseResumeTailorReturn = {
-  runTailor: (payload: ResumeTailorRequest) => Promise<ResumeTailorResponse>
+  /**
+   * Execute a tailor request and return normalized result.
+   * Always resolves to a ResumeTailorNormalizedResponse (never throws).
+   * All error handling, partial detection, and message mapping is done here.
+   */
+  runTailor: (payload: ResumeTailorRequest) => Promise<ResumeTailorNormalizedResponse>
+  /** True while the tailor request is in flight. */
   isLoading: boolean
+  /** Null if no pending tailor. Set when runTailor() encounters an error. Cleared by clearing page error or calling clearError(). */
   error: string | null
+  /** Clear the current error message. */
   clearError: () => void
 }
 
@@ -40,6 +48,11 @@ type ErrorBody = {
   details?: string
 }
 
+/**
+ * Map network or API errors to user-friendly messages.
+ * Handles all failure modes: network errors, HTTP status codes (401, 400, 429, 502, etc), and response parsing errors.
+ * Returns a fallback message if the error cannot be parsed.
+ */
 async function mapErrorMessage(error: unknown): Promise<string> {
   const fallback = 'Unable to tailor resume right now. Please try again.'
 
@@ -91,6 +104,25 @@ async function mapErrorMessage(error: unknown): Promise<string> {
   return details || maybeError.message || fallback
 }
 
+/**
+ * Normalize response: pass through backend's explicit status (200) or error state (4xx/5xx).
+ * Backend now handles status determination on success path.
+ * Hook handles error path when exceptions are thrown.
+ */
+function normalizeBackendResponse(
+  backendResponse: ResumeTailorResponse | null,
+  error: unknown | null,
+  errorMessage: string | null
+): ResumeTailorNormalizedResponse {
+  // Error path: HTTP 4xx/5xx or network failure
+  if (error || errorMessage) {
+    return { status: 'error', edits: [], appliedMode: null }
+  }
+
+  // Success path: backend already set explicit status
+  return backendResponse!
+}
+
 export function useResumeTailor(): UseResumeTailorReturn {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -112,6 +144,7 @@ export function useResumeTailor(): UseResumeTailorReturn {
       payloadPreview: DEBUG_VERBOSE ? toDebugPreview(payload) : undefined,
     })
 
+    let result: ResumeTailorNormalizedResponse
     try {
       const invokeTailor = async () =>
         supabase.functions.invoke<ResumeTailorResponse>('resume-tailor', {
@@ -152,10 +185,12 @@ export function useResumeTailor(): UseResumeTailorReturn {
 
       debugLog('request_success', {
         clientRequestId,
-        editCount: data.edits?.length ?? 0,
+        status: data.status,
+        editCount: data.edits.length,
       })
 
-      return data
+      // Normalize successful response
+      result = normalizeBackendResponse(data, null, null)
     } catch (caughtError) {
       const friendlyMessage = await mapErrorMessage(caughtError)
       setError(friendlyMessage)
@@ -164,10 +199,14 @@ export function useResumeTailor(): UseResumeTailorReturn {
         errorMessage: caughtError instanceof Error ? caughtError.message : String(caughtError),
         friendlyMessage,
       })
-      throw caughtError
+
+      // Normalize error response
+      result = normalizeBackendResponse(null, caughtError, friendlyMessage)
     } finally {
       setIsLoading(false)
     }
+
+    return result
   }, [])
 
   return { runTailor, isLoading, error, clearError }

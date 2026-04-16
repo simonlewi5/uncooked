@@ -1,5 +1,17 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { DEBUG_ENABLED, DEBUG_VERBOSE, isRecord, toDebugPreview } from './utils.ts'
+import {
+  DELTA_ONLY_BASE_OUTPUT_TOKENS,
+  DELTA_ONLY_MAX_OUTPUT_TOKENS,
+  GEMINI_API_ENDPOINT,
+  GEMINI_MODEL,
+  MAX_BULLETS_PER_EXPERIENCE,
+  MAX_EDITS,
+  MAX_EXPERIENCE_ENTRIES,
+  MAX_RETRIES,
+  MAX_SKILL_ITEMS,
+  TIMEOUT_MS,
+} from './constants.ts'
 
 declare const Deno: {
   env: {
@@ -24,9 +36,9 @@ export type ResumeTailorEdit = {
 export type ResumeTailorMode = 'delta_only'
 
 export type ResumeTailorResult = {
-  edits?: ResumeTailorEdit[]
-  appliedMode?: ResumeTailorMode
-  isPartial?: boolean
+	status: 'success' | 'success_empty'
+	edits: ResumeTailorEdit[]
+	appliedMode: ResumeTailorMode
 }
 
 type ParseFailureReason =
@@ -42,16 +54,7 @@ type ParseGeminiResult =
   | { ok: true; value: ResumeTailorResult }
   | { ok: false; reason: ParseFailureReason; details?: string }
 
-const GEMINI_MODEL = 'gemini-2.5-flash'
-const GEMINI_API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
-const MAX_RETRIES = 2
-const TIMEOUT_MS = 25_000
-const DELTA_ONLY_BASE_OUTPUT_TOKENS = 4000
-const DELTA_ONLY_MAX_OUTPUT_TOKENS = 8000
 const ALLOWED_EDIT_SECTIONS = new Set<ResumeTailorEdit['section']>(['summary', 'experience', 'skills'])
-const MAX_EXPERIENCE_ENTRIES = 5
-const MAX_BULLETS_PER_EXPERIENCE = 4
-const MAX_SKILL_ITEMS = 20
 
 type TailorRunOptions = {
   requestId?: string
@@ -142,8 +145,8 @@ const RESPONSE_SCHEMA = {
   properties: {
     edits: {
       type: 'ARRAY',
-      minItems: 1,
-      maxItems: 5,
+      minItems: 0,
+      maxItems: MAX_EDITS,
       items: {
         type: 'OBJECT',
         required: ['section', 'targetId', 'operation', 'replacement'],
@@ -259,6 +262,45 @@ const extractFirstJsonObject = (text: string): string | null => {
   return null
 }
 
+const hasUnterminatedJsonObject = (text: string): boolean => {
+  const start = text.indexOf('{')
+  if (start === -1) return false
+
+  let depth = 0
+  let inString = false
+  let isEscaped = false
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i]
+
+    if (isEscaped) {
+      isEscaped = false
+      continue
+    }
+
+    if (ch === '\\') {
+      isEscaped = true
+      continue
+    }
+
+    if (ch === '"') {
+      inString = !inString
+      continue
+    }
+
+    if (inString) continue
+
+    if (ch === '{') depth++
+    if (ch === '}') depth--
+
+    if (depth === 0) {
+      return false
+    }
+  }
+
+  return depth > 0
+}
+
 const parseJsonObject = (text: string): unknown | null => {
   const cleaned = cleanModelText(text)
 
@@ -276,9 +318,27 @@ const parseJsonObject = (text: string): unknown | null => {
   }
 }
 
-const parseEdits = (value: unknown): ResumeTailorEdit[] | null => {
-  if (!Array.isArray(value)) return null
+type ParseEditsResult =
+  | { ok: true; edits: ResumeTailorEdit[] }
+  | { ok: false; details: string }
 
+const parseEdits = (value: unknown): ParseEditsResult => {
+  // Undefined/null edits field is an error (required).
+  if (value === undefined) {
+    return { ok: false, details: 'delta_only mode requires edits[]' }
+  }
+
+  // Non-array edits is an error.
+  if (!Array.isArray(value)) {
+    return { ok: false, details: 'edits must be an array' }
+  }
+
+  // Empty array is valid (model chose not to suggest edits).
+  if (value.length === 0) {
+    return { ok: true, edits: [] }
+  }
+
+  // Non-empty array: validate each item and filter out invalid ones.
   const edits: ResumeTailorEdit[] = []
   const sectionValues: ResumeTailorEdit['section'][] = ['summary', 'experience', 'skills']
 
@@ -302,7 +362,13 @@ const parseEdits = (value: unknown): ResumeTailorEdit[] | null => {
     edits.push({ section, targetId, operation, replacement, reason })
   }
 
-  return edits.length > 0 ? edits : null
+  // If array had items but none were valid, that's a malformed response.
+  // This triggers a retry rather than silently accepting "0 edits".
+  if (edits.length === 0) {
+    return { ok: false, details: 'edits array contained no valid edit items' }
+  }
+
+  return { ok: true, edits }
 }
 
 const parseGeminiResponse = (response: unknown): ParseGeminiResult => {
@@ -350,6 +416,9 @@ const parseGeminiResponse = (response: unknown): ParseGeminiResult => {
   const parsed = parseJsonObject(text)
 
   if (!parsed || typeof parsed !== 'object') {
+    if (hasUnterminatedJsonObject(cleanModelText(text))) {
+      return { ok: false, reason: 'truncated', details: 'Unterminated JSON object in model output' }
+    }
     return { ok: false, reason: 'invalid_json' }
   }
 
@@ -357,20 +426,22 @@ const parseGeminiResponse = (response: unknown): ParseGeminiResult => {
     edits?: unknown
   }
 
-  const edits = parseEdits(result.edits)
+  const parsedEdits = parseEdits(result.edits)
 
-  if (!edits) {
+  if (!parsedEdits.ok) {
     return {
       ok: false,
       reason: 'invalid_shape',
-      details: 'delta_only mode requires edits[]',
+      details: parsedEdits.details,
     }
   }
 
   return {
     ok: true,
     value: {
-      edits,
+      status: parsedEdits.edits.length > 0 ? 'success' : 'success_empty',
+      edits: parsedEdits.edits,
+      appliedMode: 'delta_only',
     },
   }
 }
@@ -502,10 +573,15 @@ const runTailor = async (
       lastError = error instanceof Error ? error : new Error(String(error))
 
       const message = lastError.message.toLowerCase()
-      const shouldRetry =
-        !message.includes('resource_exhausted') &&
-        !message.includes('gemini api error (429)') &&
-        (!message.includes('failed to parse') || message.includes('[truncated]'))
+      const isRateLimited =
+        message.includes('resource_exhausted') ||
+        message.includes('gemini api error (429)')
+      const isSafetyFiltered = message.includes('[safety_filtered]')
+      const isLikelyClientRequestIssue =
+        message.includes('gemini api error (400)') ||
+        message.includes('gemini api error (401)') ||
+        message.includes('gemini api error (403)')
+      const shouldRetry = !isRateLimited && !isSafetyFiltered && !isLikelyClientRequestIssue
 
       debugLog(requestId, 'attempt_failed', {
         attempt,
@@ -535,6 +611,5 @@ export const tailorResumeWithAI = async (
   return {
     ...result,
     appliedMode: 'delta_only',
-    isPartial: false,
   }
 }

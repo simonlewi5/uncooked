@@ -31,6 +31,8 @@ export type {
   ResumeRecordStatus,
   ResumeTailorRequest,
   ResumeTailorResponse,
+  ResumeTailorNormalizedResponse,
+  ResumeTailorErrorResponse,
 } from '@uncooked/shared'
 
 export interface Message {

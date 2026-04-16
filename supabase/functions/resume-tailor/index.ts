@@ -1,5 +1,11 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { corsHeaders } from '../_shared/cors.ts'
+import {
+  MAX_BODY_BYTES,
+  MAX_JOB_DESCRIPTION_CHARS,
+  MAX_RESUME_OBJECT_CHARS,
+  MIN_JOB_DESCRIPTION_CHARS,
+} from './constants.ts'
 import { tailorResumeWithAI, type ResumeTailorEdit, type ResumeTailorPayload } from './ai.ts'
 import { DEBUG_ENABLED, DEBUG_VERBOSE, isRecord, toDebugPreview } from './utils.ts'
 
@@ -9,11 +15,6 @@ declare const Deno: {
   }
   serve: (handler: (req: Request) => Response | Promise<Response>) => void
 }
-
-const MAX_BODY_BYTES = 80_000
-const MIN_JOB_DESCRIPTION_CHARS = 200
-const MAX_JOB_DESCRIPTION_CHARS = 12_000
-const MAX_RESUME_OBJECT_CHARS = 30_000
 
 const debugLog = (requestId: string, event: string, data?: Record<string, unknown>) => {
   if (!DEBUG_ENABLED) return
@@ -209,18 +210,60 @@ Deno.serve(async (req: Request) => {
   })
 
   if (req.method !== 'POST') {
-    return json(405, { error: 'Method Not Allowed' })
+    return json(405, { error: 'Method Not Allowed', code: 'method_not_allowed' })
   }
 
-  const contentLengthHeader = req.headers.get('content-length')
-  if (contentLengthHeader) {
-    const contentLength = Number(contentLengthHeader)
-    if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
+  // Fast-path: Check Content-Length header for well-behaved clients.
+  const contentLength = req.headers.get('content-length')
+  if (contentLength) {
+    const size = parseInt(contentLength, 10)
+    if (isNaN(size) || size > MAX_BODY_BYTES) {
       return json(413, {
         error: 'Payload Too Large',
+        code: 'payload_too_large',
         details: `request body exceeds ${MAX_BODY_BYTES} bytes`,
       })
     }
+  }
+
+  // Read body with size enforcement to prevent memory exhaustion from malicious clients.
+  let bodyBuffer: ArrayBuffer
+  try {
+    const reader = req.body?.getReader()
+    if (!reader) {
+      return json(400, { error: 'Failed to read request body', code: 'invalid_body' })
+    }
+
+    const chunks: Uint8Array[] = []
+    let totalBytes = 0
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      totalBytes += value.length
+      if (totalBytes > MAX_BODY_BYTES) {
+        reader.cancel()
+        return json(413, {
+          error: 'Payload Too Large',
+          code: 'payload_too_large',
+          details: `request body exceeds ${MAX_BODY_BYTES} bytes`,
+        })
+      }
+
+      chunks.push(value)
+    }
+
+    // Concatenate chunks into single buffer
+    const combined = new Uint8Array(totalBytes)
+    let offset = 0
+    for (const chunk of chunks) {
+      combined.set(chunk, offset)
+      offset += chunk.length
+    }
+    bodyBuffer = combined.buffer
+  } catch {
+    return json(400, { error: 'Failed to read request body', code: 'invalid_body' })
   }
 
   let userId: string | null = null
@@ -241,7 +284,8 @@ Deno.serve(async (req: Request) => {
 
   let parsedBody: unknown
   try {
-    parsedBody = await req.json()
+    const bodyText = new TextDecoder().decode(bodyBuffer)
+    parsedBody = JSON.parse(bodyText)
   } catch {
     debugLog(requestId, 'invalid_json_body')
     return json(400, { error: 'Invalid JSON body' })
@@ -307,31 +351,21 @@ Deno.serve(async (req: Request) => {
     }
 
     if (errorMessage.includes('Failed to parse')) {
-      if (errorMessage.includes('[truncated]')) {
-        return json(502, {
-          error: 'AI Response Truncated',
-          details: 'AI output was truncated before valid JSON could be returned. Please retry.',
-        })
-      }
+      const parseReason = errorMessage.includes('[truncated]')
+        ? 'truncated'
+        : errorMessage.includes('[safety_filtered]')
+          ? 'safety_filtered'
+          : errorMessage.includes('[missing_text]') || errorMessage.includes('[missing_content]')
+            ? 'empty_response'
+            : 'invalid_format'
 
-      if (errorMessage.includes('[safety_filtered]')) {
-        return json(502, {
-          error: 'AI Response Filtered',
-          details:
-            'AI response was filtered by safety settings. Try rephrasing job description or resume wording.',
-        })
-      }
-
-      if (errorMessage.includes('[missing_text]') || errorMessage.includes('[missing_content]')) {
-        return json(502, {
-          error: 'AI Empty Response',
-          details: 'AI returned an empty response shape. Please retry.',
-        })
-      }
+      debugLog(requestId, 'tailor_parse_failed', {
+        parseReason,
+      })
 
       return json(502, {
-        error: 'AI Response Error',
-        details: 'AI service returned invalid response format',
+        error: 'AI Parse Error',
+        details: `AI response was ${parseReason}. Please try again.`,
       })
     }
 
@@ -350,16 +384,16 @@ Deno.serve(async (req: Request) => {
     resolvedEdits: resolvedEdits.length,
     resultPreview: DEBUG_VERBOSE
       ? toDebugPreview({
+          status: tailorResult.status,
           edits: resolvedEdits,
           appliedMode: tailorResult.appliedMode,
-          isPartial: tailorResult.isPartial,
         })
       : undefined,
   })
 
   return json(200, {
+    status: resolvedEdits.length > 0 ? 'success' : 'success_empty',
     edits: resolvedEdits,
     appliedMode: tailorResult.appliedMode,
-    isPartial: tailorResult.isPartial,
   })
 })
