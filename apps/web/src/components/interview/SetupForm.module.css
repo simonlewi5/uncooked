@@ -1,3 +1,5 @@
+/* ── Setup Form ──────────────────────────────────────────────────────────── */
+
 .wrapper {
   display: flex;
   flex-direction: column;
@@ -6,6 +8,12 @@
   width: 100%;
   max-width: 600px;
   margin: 0 auto;
+}
+
+/* Fix: Make the card container relative so the absolute sketch arrows align to it! */
+.cardContainer {
+  position: relative;
+  width: 100%;
 }
 
 .card {
@@ -176,15 +184,268 @@
   background-color: var(--color-primary-subtle);
 }
 
-/* Sketch-style annotations */
+/* ── Resume Selector & Cards ──────────────────────────────────────────────────────────── */
 
-@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap');
+.resumeList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
 
-.cardContainer {
+.emptyState {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  padding: var(--space-4);
+  text-align: center;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.resumeCardWrapper {
   position: relative;
   width: 100%;
 }
 
+.glowBlurLayer {
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(45deg, #ff595e, #ffca3a, #8ac926, #1982c4, #6a4c93, #ff6700);
+  background-size: 400% 150%;
+  animation: glowBg 20s linear infinite;
+  filter: blur(15px);
+  z-index: 0; 
+  border-radius: calc(var(--radius-md) + 3px);
+  transform: translate3d(0, 0, 0);
+}
+
+.glowBorderLayer {
+  position: absolute;
+  inset: -1.2px;
+  background: linear-gradient(45deg, #ff595e, #ffca3a, #8ac926, #1982c4, #6a4c93, #ff6700);
+  background-size: 800% 800%;
+  animation: glowBg 20s linear infinite;
+  z-index: 1; 
+  border-radius: calc(var(--radius-md) + 5px);
+}
+
+@keyframes glowBg {
+  0% { background-position: 0 0; }
+  50% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
+}
+
+/* Consolidated the duplicate .resumeCard declarations! */
+.resumeCard {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  height: 120px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+  background-color: var(--color-bg); 
+}
+
+.resumeCardWrapper:hover .resumeCard:not(.resumeCardActive) {
+  border-color: var(--color-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.resumeCardActive {
+  border-color: transparent;
+  transform: scale(1.02);
+}
+
+.resumePreviewBg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: var(--space-2);
+  font-size: 6px;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+  opacity: 0.4;             
+  filter: blur(2px);        
+  user-select: none;
+  pointer-events: none;
+  white-space: pre-wrap;
+  overflow: hidden;
+}
+
+.resumeCardForeground {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  padding: var(--space-3);
+  background: linear-gradient(to bottom, var(--color-bg) 0%, transparent 40%, var(--color-bg) 100%);
+}
+
+.resumeCardHeader {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: var(--space-2);
+}
+
+.resumeIcon {
+  color: var(--color-text-tertiary);
+}
+
+.resumeCardActive .resumeIcon {
+  color: var(--color-primary);
+}
+
+.resumeTitle {
+  font-weight: 500;
+  color: var(--color-text);
+  font-size: var(--font-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.primaryBadge {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  background-color: var(--color-primary);
+  color: white;
+  padding: 2px 6px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+}
+
+.resumeCardFooter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+.resumeDate {
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.zoomBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.zoomBtn:hover {
+  background: var(--color-bg-subtle);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* ── ZOOM MODAL ──────────────────────────────────────────────────────────── */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+.modalContent {
+  width: 100%;
+  max-width: 800px;
+  height: 90vh;
+  background-color: var(--color-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalFadeIn 0.2s ease-out forwards;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modalHeader h3 {
+  margin: 0;
+  font-size: var(--font-lg);
+  color: var(--color-text);
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  display: flex;
+}
+
+.closeBtn:hover {
+  background-color: var(--color-bg-subtle);
+  color: var(--color-text);
+}
+
+.modalBody {
+  flex: 1;
+  background-color: var(--color-bg-subtle);
+  padding: var(--space-6);
+  overflow-y: auto;
+}
+
+.resumeTextPreview {
+  width: 100%;
+  max-width: 650px;
+  margin: 0 auto;
+  min-height: 100%;
+  background-color: white;
+  padding: var(--space-8);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: var(--font-sm);
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+/* ── Sketch-style annotations ──────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap');
+
+/* Fixed the syntax error here! */
 .sketchLeft,
 .sketchRight {
   position: absolute;
@@ -216,8 +477,15 @@
 
 .sketchTextMulti {
   white-space: normal;
-  text-align: right;
   max-width: 200px;
+}
+
+.sketchLeft .sketchTextMulti {
+  text-align: right;
+}
+
+.sketchRight .sketchTextMulti {
+  text-align: left;
 }
 
 .sketchTextSub {
@@ -240,6 +508,7 @@
 .sketchLeft:nth-child(1) { animation-delay: 0.1s; }
 .sketchRight:nth-child(2) { animation-delay: 0.35s; }
 .sketchLeft:nth-child(3) { animation-delay: 0.6s; }
+.sketchRight:nth-child(4) { animation-delay: 0.85s; }
 
 @media (max-width: 1100px) {
   .sketchLeft,

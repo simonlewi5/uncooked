@@ -5,7 +5,7 @@ import { ChatBox } from '@/components/interview/ChatBox'
 import { useInterviewChat } from '@/hooks/useInterviewChat'
 import { useInterviewQuestions } from '@/hooks/useInterviewQuestions'
 import { supabase } from '@/lib/supabase'
-import type { CompanyProfile, InterviewStyle, InterviewSessionSummary } from '@/types'
+import type { CompanyProfile, InterviewStyle, InterviewSessionSummary, ResumeSummary } from '@/types'
 import styles from './InterviewPage.module.css'
 
 type Phase = 'setup' | 'interview'
@@ -53,6 +53,8 @@ export default function InterviewPage(): JSX.Element {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null)
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null)
   const [style, setStyle] = useState<InterviewStyle | null>(initialState.current?.style ?? 'mixed')
+  const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null)
+  const [activeResume, setActiveResume] = useState<ResumeSummary | null>(null)
 
   const [activeSessionId, setActiveSessionId] = useState<string | null>(
     initialState.current?.sessionId ?? null,
@@ -81,6 +83,7 @@ export default function InterviewPage(): JSX.Element {
     useInterviewChat(
       { jobDescription, companyName, companyContext: '' },
       style ?? 'mixed',
+      activeResume,
     )
 
   // Keep activeSessionId in sync and persist to sessionStorage
@@ -163,13 +166,18 @@ export default function InterviewPage(): JSX.Element {
     setCompanyProfile(null)
   }
 
-  function handleStart(): void {
+function handleStart(resumeObject?: ResumeSummary | null): void {
+    if (resumeObject) {
+      setActiveResume(resumeObject)
+    }
+
     saveSession({
       sessionId: null,
       companyName,
       jobDescription,
       style: style ?? 'mixed',
     })
+
     setPhase('interview')
   }
 
@@ -181,6 +189,7 @@ export default function InterviewPage(): JSX.Element {
     setSelectedCompanyId(null)
     setCompanyProfile(null)
     setStyle('mixed')
+    setActiveResume(null)
     clearSession()
     setPhase('setup')
   }
@@ -188,7 +197,7 @@ export default function InterviewPage(): JSX.Element {
   const handleLoadSession = useCallback(async (session: InterviewSessionSummary) => {
     const { data, error } = await supabase
       .from('interview_sessions')
-      .select('messages, job_description, interview_style, company_name')
+      .select('messages, job_description, interview_style, company_name, resume_id')
       .eq('id', session.id)
       .single()
 
@@ -210,6 +219,24 @@ export default function InterviewPage(): JSX.Element {
     setCompanyName(data.company_name as string)
     if (data.job_description) setJobDescription(data.job_description as string)
     if (data.interview_style) setStyle(data.interview_style as InterviewStyle)
+
+    if (data.resume_id) {
+      const { data: resumeData } = await supabase
+        .from('resumes')
+        .select('id, title, is_primary, updated_at, structured_content, source_file_path')
+        .eq('id', data.resume_id)
+        .single()
+        
+      if (resumeData) {
+        setActiveResume(resumeData)
+        setSelectedResumeId(resumeData.id) 
+      }
+    } else {
+      // Ensure it's cleared if this past session didn't use a resume
+      setActiveResume(null)
+      setSelectedResumeId(null)
+    }
+    
     saveSession({
       sessionId: session.id,
       companyName: data.company_name as string,
@@ -281,6 +308,8 @@ export default function InterviewPage(): JSX.Element {
           onStyleChange={setStyle}
           onStart={handleStart}
           onLoadSession={handleLoadSession}
+          selectedResumeId={selectedResumeId}
+          onResumeSelect={setSelectedResumeId}
         />
       </div>
     )
@@ -308,6 +337,7 @@ export default function InterviewPage(): JSX.Element {
         onUpdateNotes={updateNotes}
         canGenerate={jobDescription.trim().length > 0 && companyName.trim().length > 0}
         onBack={handleBack}
+        resume={activeResume}
         cooldownEnd={questionCooldownEnd}
         onCooldownStart={handleCooldownStart}
       />

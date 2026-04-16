@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import type { Message, JobDescriptionFormValue, InterviewStyle } from '@/types'
+import type { Message, JobDescriptionFormValue, InterviewStyle, ResumeSummary, StructuredResumeData } from '@/types'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -12,6 +12,27 @@ type ErrorBody = {
   error?: string
   details?: string
 }
+
+
+function formatResumeText(parsed: StructuredResumeData | null | undefined): string {
+  if (!parsed || typeof parsed !== 'object' || !parsed.name) return ''
+  let text = ''
+  if (parsed.name?.text) text += `${parsed.name.text}\n`
+  if (parsed.summary?.text) text += `SUMMARY\n${parsed.summary.text}\n\n`
+  if (parsed.experience && Array.isArray(parsed.experience)) {
+    text += `EXPERIENCE\n`
+    parsed.experience.forEach((job) => {
+      text += `${job.title?.text || ''} at ${job.company?.text || ''} (${job.period?.text || ''})\n`
+      job.bullets?.forEach((b) => { text += `• ${b.text}\n` })
+      text += '\n'
+    })
+  }
+  if (parsed.skills && Array.isArray(parsed.skills)) {
+    text += `SKILLS\n${parsed.skills.map((s) => s.text).join(', ')}\n`
+  }
+  return text.trim()
+}
+
 
 const createInitialInterviewMessage = (): Message => ({
   id: 'init',
@@ -164,6 +185,7 @@ interface UseInterviewChatReturn {
 export function useInterviewChat(
   jobData: JobDescriptionFormValue,
   style: InterviewStyle,
+  activeResume?: ResumeSummary | null,
 ): UseInterviewChatReturn {
   const { user } = useAuth()
   // Tracks whether a practice_sessions row has been recorded for this session.
@@ -242,6 +264,7 @@ export function useInterviewChat(
             job_description: jobData.jobDescription,
             interview_style: style,
             messages: [],
+            resume_id: activeResume ? activeResume.id : null,
           })
           .select('id')
           .single()
@@ -266,6 +289,7 @@ export function useInterviewChat(
             interviewStyle: style,
             userMessage: content,
             conversationHistory,
+            resumeContext: activeResume ? formatResumeText(activeResume.structured_content) : undefined,
           },
         })
 
@@ -310,7 +334,7 @@ export function useInterviewChat(
         setIsTyping(false)
       }
     },
-    [jobData, style, user]
+    [jobData, style, user, activeResume]
   )
 
   return { messages, isTyping, sendMessage, interviewSessionId, resumeSession, resetSession }
