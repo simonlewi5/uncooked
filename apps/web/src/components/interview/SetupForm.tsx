@@ -121,167 +121,174 @@ export function SetupForm({
 
   return (
     <>
-      <div className={styles.pageLayout}>
-        <div className={styles.leftPanel}>
-          <h3 className={styles.panelTitle}>Select Resume</h3>
-          {resumes.length === 0 ? (
-            <div className={styles.emptyState}>No resumes found. Please upload one in your settings.</div>
-          ) : (
-            <div className={styles.resumeList}>
-              {resumes.map((resume) => (
-                <div 
-                  key={resume.id}
-                  className={styles.resumeCardWrapper}
-                  onClick={() => onResumeSelect(selectedResumeId === resume.id ? null : resume.id)}
-                >
-                  {selectedResumeId === resume.id && (
-                    <>
-                      <div className={styles.glowBlurLayer} />
-                      <div className={styles.glowBorderLayer} />
-                    </>
-                  )}
+      <div className={styles.wrapper}>
+        <div className={styles.cardContainer}>
+          <div className={styles.sketchLeft} style={{ top: 64 }}>
+            <span className={styles.sketchText}>1. Add the company name</span>
+            <svg width="48" height="20" viewBox="0 0 48 20" fill="none">
+              <path d="M2 16 C14 14, 28 10, 40 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+              <path d="M34 1 L42 4 L36 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </svg>
+          </div>
 
-                  <div className={`${styles.resumeCard} ${selectedResumeId === resume.id ? styles.resumeCardActive : ''}`}>
-                    <div className={styles.resumePreviewBg}>
-                      {formatResumeText(resume.structured_content) || "Experience\nEducation\nSkills\nProjects..."}
-                    </div>
+          <div className={styles.sketchRight} style={{ top: 150 }}>
+            <svg width="48" height="20" viewBox="0 0 48 20" fill="none">
+              <path d="M46 16 C34 14, 20 10, 8 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+              <path d="M14 1 L6 4 L12 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </svg>
+            <span className={styles.sketchText}>2. Paste the job description</span>
+          </div>
 
-                    <div className={styles.resumeCardForeground}>
-                      <div className={styles.resumeCardHeader}>
-                        <FileText size={16} className={styles.resumeIcon} />
-                        <span className={styles.resumeTitle}>{resume.title}</span>
-                        
-                        <div className={styles.cardActions}>
-                          <button 
-                            className={styles.zoomBtn}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setZoomedResume(resume);
-                            }}
-                            title="View Document"
-                          >
-                            <Maximize size={16} />
-                          </button>
-                        </div>
-                      </div>
-                      <div className={styles.resumeCardFooter}>
-                        {resume.is_primary && <span className={styles.primaryBadge}>Newest</span>}
-                        <span className={styles.resumeDate}>
-                          Updated: {new Date(resume.updated_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+          <div className={styles.sketchLeft} style={{ bottom: 150 }}>
+            <span className={styles.sketchTextMulti}>
+              3. Select a resume
+              <br />
+              <span className={styles.sketchTextSub}>(optional)</span>
+            </span>
+            <svg width="48" height="20" viewBox="0 0 48 20" fill="none">
+              <path d="M2 16 C14 14, 28 10, 40 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+              <path d="M34 1 L42 4 L36 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </svg>
+          </div>
+
+          <div className={styles.sketchRight} style={{ bottom: 35 }}>
+            <svg width="48" height="20" viewBox="0 0 48 20" fill="none">
+              <path d="M46 16 C34 14, 20 10, 8 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+              <path d="M14 1 L6 4 L12 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </svg>
+            <span className={styles.sketchTextMulti}>
+              4. Pick an interview style
+              <br />
+              <span className={styles.sketchTextSub}>(Mixed by default)</span>
+            </span>
+          </div>
+
+          <div className={styles.card}>
+            <div className={styles.field}>
+              <CompanyAutocomplete
+                value={companyName}
+                onChange={onCompanyNameChange}
+                onProfileSelect={onCompanyProfileSelect}
+              />
             </div>
-          )}
-        </div>
 
-        <div className={styles.rightPanel}>
-          <div className={styles.wrapper}>
-            <div className={styles.cardContainer}>
-              <div className={styles.sketchLeft} style={{ top: 85 }}>
-                <span className={styles.sketchText}>1. Add the company name</span>
-                <svg width="48" height="20" viewBox="0 0 48 20" fill="none">
-                  <path d="M2 16 C14 14, 28 10, 40 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-                  <path d="M34 1 L42 4 L36 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                </svg>
-              </div>
-
-              <div className={styles.sketchRight} style={{ top: 200 }}>
-                <svg width="48" height="20" viewBox="0 0 48 20" fill="none">
-                  <path d="M46 16 C34 14, 20 10, 8 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-                  <path d="M14 1 L6 4 L12 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                </svg>
-                <span className={styles.sketchText}>2. Paste the job description</span>
-              </div>
-
-              <div className={styles.sketchLeft} style={{ bottom: 35 }}>
-                <span className={styles.sketchTextMulti}>
-                  3. Pick an interview style
-                  <br />
-                  <span className={styles.sketchTextSub}>(Mixed by default)</span>
-                </span>
-                <svg width="48" height="20" viewBox="0 0 48 20" fill="none">
-                  <path d="M2 16 C14 14, 28 10, 40 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-                  <path d="M34 1 L42 4 L36 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                </svg>
-              </div>
-
-              <div className={styles.card}>
-                <div className={styles.field}>
-                  <span className={styles.label}>Company</span>
-                  <CompanyAutocomplete
-                    value={companyName}
-                    onChange={onCompanyNameChange}
-                    onProfileSelect={onCompanyProfileSelect}
-                  />
-                </div>
-
-                <div className={styles.field}>
-                  <span className={styles.label}>Job Description</span>
-                  {jobs.length > 0 && (
-                    <div className={styles.pastJobs}>
-                      {jobs.map((job) => (
-                        <button
-                          key={job.id}
-                          className={styles.pastJobBtn}
-                          onClick={() => onJobDescriptionChange(job.jobDescription)}
-                        >
-                          Use: {job.jobTitle}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <textarea
-                    className={styles.textarea}
-                    placeholder="Paste the job description here. The AI will generate tailored questions based on these requirements."
-                    value={jobDescription}
-                    onChange={(e) => onJobDescriptionChange(e.target.value)}
-                  />
-                </div>
-
-                <div className={styles.field}>
-                  <InterviewStyleSelector value={style} onChange={onStyleChange} />
-                </div>
-
-                <button
-                  className={styles.startBtn}
-                  disabled={!canStart}
-                  onClick={handleStartInterview}
-                >
-                  Start Interview <ArrowRight size={16} />
-                </button>
-              </div>
-            </div> {/* Closes cardContainer */}
-
-            {pastSessions.length > 0 && (
-              <div className={styles.pastSessions}>
-                <span className={styles.pastSessionsTitle}>Past Sessions</span>
-                <ul className={styles.sessionList}>
-                  {pastSessions.map((session) => (
-                    <li key={session.id}>
-                      <button
-                        className={styles.sessionCard}
-                        onClick={() => onLoadSession(session)}
-                      >
-                        <MessageSquare size={16} className={styles.sessionIcon} />
-                        <div className={styles.sessionInfo}>
-                          <span className={styles.sessionCompany}>{session.companyName}</span>
-                          <span className={styles.sessionMeta}>
-                            {session.interviewStyle ? `${session.interviewStyle} · ` : ''}
-                            {new Date(session.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </button>
-                    </li>
+            <div className={styles.field}>
+              <span className={styles.label}>Job Description</span>
+              {jobs.length > 0 && (
+                <div className={styles.pastJobs}>
+                  {jobs.map((job) => (
+                    <button
+                      key={job.id}
+                      className={styles.pastJobBtn}
+                      onClick={() => onJobDescriptionChange(job.jobDescription)}
+                    >
+                      Use: {job.jobTitle}
+                    </button>
                   ))}
-                </ul>
-              </div>
-            )}
+                </div>
+              )}
+              <textarea
+                className={styles.textarea}
+                placeholder="Paste the job description here. The AI will generate tailored questions based on these requirements."
+                value={jobDescription}
+                onChange={(e) => onJobDescriptionChange(e.target.value)}
+              />
+            </div>
+
+            <div className={styles.field}>
+              <span className={styles.label}>Resume</span>
+              {resumes.length === 0 ? (
+                <div className={styles.emptyState}>No resumes found. Please upload one in your settings.</div>
+              ) : (
+                <div className={styles.resumeList}>
+                  {resumes.map((resume) => (
+                    <div
+                      key={resume.id}
+                      className={styles.resumeCardWrapper}
+                      onClick={() => onResumeSelect(selectedResumeId === resume.id ? null : resume.id)}
+                    >
+                      {selectedResumeId === resume.id && (
+                        <>
+                          <div className={styles.glowBlurLayer} />
+                          <div className={styles.glowBorderLayer} />
+                        </>
+                      )}
+
+                      <div className={`${styles.resumeCard} ${selectedResumeId === resume.id ? styles.resumeCardActive : ''}`}>
+                        <div className={styles.resumePreviewBg}>
+                          {formatResumeText(resume.structured_content) || "Experience\nEducation\nSkills\nProjects..."}
+                        </div>
+
+                        <div className={styles.resumeCardForeground}>
+                          <div className={styles.resumeCardHeader}>
+                            <FileText size={16} className={styles.resumeIcon} />
+                            <span className={styles.resumeTitle}>{resume.title}</span>
+
+                            <div className={styles.cardActions}>
+                              <button
+                                className={styles.zoomBtn}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setZoomedResume(resume);
+                                }}
+                                title="View Document"
+                              >
+                                <Maximize size={16} />
+                              </button>
+                            </div>
+                          </div>
+                          <div className={styles.resumeCardFooter}>
+                            {resume.is_primary && <span className={styles.primaryBadge}>Newest</span>}
+                            <span className={styles.resumeDate}>
+                              Updated: {new Date(resume.updated_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className={styles.field}>
+              <InterviewStyleSelector value={style} onChange={onStyleChange} />
+            </div>
+
+            <button
+              className={styles.startBtn}
+              disabled={!canStart}
+              onClick={handleStartInterview}
+            >
+              Start Interview <ArrowRight size={16} />
+            </button>
           </div>
         </div>
+
+        {pastSessions.length > 0 && (
+          <div className={styles.pastSessions}>
+            <span className={styles.pastSessionsTitle}>Past Sessions</span>
+            <ul className={styles.sessionList}>
+              {pastSessions.map((session) => (
+                <li key={session.id}>
+                  <button
+                    className={styles.sessionCard}
+                    onClick={() => onLoadSession(session)}
+                  >
+                    <MessageSquare size={16} className={styles.sessionIcon} />
+                    <div className={styles.sessionInfo}>
+                      <span className={styles.sessionCompany}>{session.companyName}</span>
+                      <span className={styles.sessionMeta}>
+                        {session.interviewStyle ? `${session.interviewStyle} · ` : ''}
+                        {new Date(session.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       {zoomedResume && (
