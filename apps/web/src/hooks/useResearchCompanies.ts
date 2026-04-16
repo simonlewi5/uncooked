@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTrackActivity } from '@/hooks/useTrackActivity'
 
 interface ResearchCompanyProfile {
   id: string
@@ -20,6 +21,7 @@ interface CompanyRow {
 
 export function useResearchCompanies() {
   const { user } = useAuth()
+  const { trackEvent } = useTrackActivity('research')
   const [companies, setCompanies] = useState<ResearchCompanyProfile[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -68,6 +70,11 @@ export function useResearchCompanies() {
       const exists = prev.some((c) => c.id === newCompany.id)
       return exists ? prev : [newCompany, ...prev]
     })
+
+    trackEvent('company_added', {
+      hasWebsite: Boolean(newCompany.company_website),
+      isFavorite: Boolean(newCompany.isFavorite),
+    })
   }
 
   const toggleFavorite = async (id: string) => {
@@ -89,6 +96,11 @@ export function useResearchCompanies() {
           .map((c) => (c.id === id ? { ...c, isFavorite: newFavoriteState } : c))
           .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite)),
       )
+
+      trackEvent('note_saved', {
+        action: 'favorite_toggle',
+        favorite: newFavoriteState,
+      })
     } catch (err) {
       console.error('useResearchCompanies: failed to update favorite', err)
     }

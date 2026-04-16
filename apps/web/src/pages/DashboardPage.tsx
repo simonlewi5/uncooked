@@ -2,13 +2,11 @@ import { TrendingUp, Building2, Calendar, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Badge, Spinner } from '@/components/ui'
 import { GamificationCard } from '@/components/dashboard/GamificationCard'
+import { useConsistencyMetrics } from '@/contexts/ConsistencyMetricsContext'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { cn } from '@/utils/cn'
 import type { ResearchSessionSummary, CompanySummary, PipelineCounts } from '@/types'
 import styles from './DashboardPage.module.css'
-
-const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const
-const EMPTY_WEEK_HOURS = [0, 0, 0, 0, 0, 0, 0]
 
 function formatTimeAgo(isoString: string): string {
   const diffMs = Date.now() - new Date(isoString).getTime()
@@ -34,8 +32,22 @@ interface ApplicationPipelineCardProps {
 }
 
 function PracticeConsistencyCard(): JSX.Element {
-  const today = new Date().getDay()
-  const maxHours = Math.max(...EMPTY_WEEK_HOURS, 1)
+  const { data, isLoading } = useConsistencyMetrics()
+
+  const resume = data?.resume
+  const interview = data?.interview
+  const research = data?.research
+
+  const totalSessions7d =
+    (resume?.sessionsLast7d ?? 0) +
+    (interview?.sessionsLast7d ?? 0) +
+    (research?.sessionsLast7d ?? 0)
+
+  const bestCurrentStreak = Math.max(
+    resume?.currentStreakDays ?? 0,
+    interview?.currentStreakDays ?? 0,
+    research?.currentStreakDays ?? 0
+  )
 
   return (
     <div className={styles.card}>
@@ -49,23 +61,27 @@ function PracticeConsistencyCard(): JSX.Element {
             <span>This Week</span>
           </div>
         </div>
-        <div className={styles.statValue}>0h</div>
-        <p className={styles.statEmpty}>Start your first session to track consistency</p>
-        <div className={styles.barChart}>
-          {DAY_LABELS.map((label, i) => {
-            const heightPct = `${Math.max((EMPTY_WEEK_HOURS[i] / maxHours) * 100, 4)}%`
-            return (
-              <div key={`day-${i}`} className={styles.barGroup}>
-                <div
-                  className={cn(styles.bar, i === today && styles.barToday)}
-                  style={{ height: heightPct }}
-                />
-                <span className={cn(styles.barLabel, i === today && styles.barLabelToday)}>
-                  {label}
-                </span>
-              </div>
-            )
-          })}
+        <div className={styles.statValue}>{isLoading ? '...' : totalSessions7d}</div>
+        <p className={styles.statEmpty}>
+          {isLoading
+            ? 'Loading consistency metrics...'
+            : bestCurrentStreak > 0
+              ? `Active streak: ${bestCurrentStreak} day${bestCurrentStreak === 1 ? '' : 's'}`
+              : 'Start your first session to build a streak'}
+        </p>
+        <div className={styles.pipelineStats}>
+          <div className={styles.pipelineStat}>
+            <span className={styles.pipelineLabel}>Resume</span>
+            <span className={styles.pipelineValue}>{resume?.sessionsLast7d ?? 0}</span>
+          </div>
+          <div className={styles.pipelineStat}>
+            <span className={styles.pipelineLabel}>Interview</span>
+            <span className={styles.pipelineValue}>{interview?.sessionsLast7d ?? 0}</span>
+          </div>
+          <div className={styles.pipelineStat}>
+            <span className={styles.pipelineLabel}>Research</span>
+            <span className={styles.pipelineValue}>{research?.sessionsLast7d ?? 0}</span>
+          </div>
         </div>
       </div>
     </div>

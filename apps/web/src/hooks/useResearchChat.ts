@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTrackActivity } from '@/hooks/useTrackActivity'
 import type { Message } from '@/types'
 
 const RATE_LIMIT_FRIENDLY_MESSAGE =
@@ -62,6 +63,7 @@ export function useResearchChat({
   jobDescription?: string
 }) {
   const { session } = useAuth()
+  const { trackEvent } = useTrackActivity('research')
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE])
   const [isStreaming, setIsStreaming] = useState(false)
 
@@ -83,6 +85,10 @@ export function useResearchChat({
       const placeholder = msg('assistant', '')
       setMessages((prev) => [...prev, userMsg, placeholder])
       setIsStreaming(true)
+
+      trackEvent('board_write', {
+        contextCount: companies.length,
+      })
 
       const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }))
       const companyNames = companies.map((c) =>

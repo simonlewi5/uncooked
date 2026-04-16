@@ -97,6 +97,24 @@ export interface DashboardData {
   pipeline: PipelineCounts
 }
 
+export type ActivityType = 'resume' | 'interview' | 'research'
+
+export type StructuredErrorResponse = {
+  message: string
+  code?: string
+}
+
+export interface ConsistencyMetric {
+  activityType: ActivityType
+  currentStreakDays: number
+  longestStreakDays: number
+  sessionsLast7d: number
+  sessionsLast30d: number
+  lastActiveDate: string | null
+}
+
+export type ConsistencyMetrics = Record<ActivityType, ConsistencyMetric>
+
 export type ResumeNode = { text?: string }
 
 export interface StructuredResumeData {

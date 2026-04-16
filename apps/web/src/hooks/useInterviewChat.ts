@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import type { Message, JobDescriptionFormValue, InterviewStyle, ResumeSummary, StructuredResumeData } from '@/types'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTrackActivity } from '@/hooks/useTrackActivity'
 
 type ErrorWithContext = {
   message?: string
@@ -188,6 +189,7 @@ export function useInterviewChat(
   activeResume?: ResumeSummary | null,
 ): UseInterviewChatReturn {
   const { user } = useAuth()
+  const { trackEvent } = useTrackActivity('interview')
   // Tracks whether a practice_sessions row has been recorded for this session.
   // Ensures we only insert once per hook instance, not on every message.
   const sessionRecordedRef = useRef(false)
@@ -236,6 +238,11 @@ export function useInterviewChat(
       setMessages((prev) => [...prev, userMsg])
       setIsTyping(true)
 
+      trackEvent('question_answered', {
+        lengthBucket:
+          content.length < 120 ? 'short' : content.length < 400 ? 'medium' : 'long',
+      })
+
       // On first user message of a new session: record practice session,
       // ensure company profile, and create the interview_sessions row.
       if (!sessionRecordedRef.current && user) {
@@ -274,6 +281,10 @@ export function useInterviewChat(
         } else {
           interviewSessionIdRef.current = session.id as string
           setInterviewSessionId(session.id as string)
+          trackEvent('session_started', {
+            interviewStyle: style,
+            hasResumeContext: Boolean(activeResume?.id),
+          })
         }
       }
 
@@ -315,6 +326,12 @@ export function useInterviewChat(
           }
           return updated
         })
+
+        if (data?.message) {
+          trackEvent('feedback_received', {
+            source: 'assistant_reply',
+          })
+        }
       } catch (e) {
         const errMsg = await mapInterviewErrorMessage(e)
         const assistantMsg: Message = {

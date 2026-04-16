@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { ConsistencyMetricsProvider } from '@/contexts/ConsistencyMetricsContext'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import AppShell from '@/components/AppShell'
 import LoginPage from '@/pages/LoginPage'
@@ -13,26 +14,28 @@ import AddCompanyPage from '@/pages/AddCompanyPage'
 export default function App() {
   return (
     <AuthProvider>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/auth/callback" element={<AuthCallbackPage />} />
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <AppShell />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="interview" element={<InterviewPage />} />
-          <Route path="research" element={<ResearchPage />} />
-          <Route path="add-company" element={<AddCompanyPage />} />
-          <Route path="resume" element={<ResumePage />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <ConsistencyMetricsProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <AppShell />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="interview" element={<InterviewPage />} />
+            <Route path="research" element={<ResearchPage />} />
+            <Route path="add-company" element={<AddCompanyPage />} />
+            <Route path="resume" element={<ResumePage />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </ConsistencyMetricsProvider>
     </AuthProvider>
   )
 }
