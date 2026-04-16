@@ -80,7 +80,8 @@ ${jobDescription?.trim() ? `## Job description context (use to tailor answers ab
 - Answer based on the specified company/companies only.
 - Be concise and factual; cite public knowledge where relevant.
 - If they ask about culture, engineering challenges, or interview prep, tailor to the company and any job description context above.
-- Maintain conversation context from the chat history.`
+- Maintain conversation context from the chat history.
+- Write in plain text only. Do not use markdown (no asterisks, # headings, or line-leading list markers). Use short paragraphs and blank lines between ideas.`
 
     const contents = [
       ...history.map((msg) => ({
