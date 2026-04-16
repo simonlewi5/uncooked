@@ -46,6 +46,7 @@ export interface InterviewSessionSummary {
   companyProfileId: string | null
   interviewStyle: string | null
   createdAt: string
+  resumeId?: string | null
 }
 
 export interface InterviewQuestion {

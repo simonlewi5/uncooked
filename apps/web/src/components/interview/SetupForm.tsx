@@ -99,7 +99,7 @@ export function SetupForm({
   useEffect(() => {
     supabase
       .from('interview_sessions')
-      .select('id, company_name, company_profile_id, interview_style, created_at')
+      .select('id, company_name, company_profile_id, interview_style, created_at, resume_id')
       .order('created_at', { ascending: false })
       .limit(10)
       .then(({ data, error }) => {
@@ -114,6 +114,7 @@ export function SetupForm({
             companyProfileId: (row.company_profile_id as string | null) ?? null,
             interviewStyle: (row.interview_style as string | null) ?? null,
             createdAt: row.created_at as string,
+            resumeId: (row.resume_id as string | null) ?? null,
           })),
         )
       })

@@ -272,6 +272,7 @@ export function useInterviewChat(
             job_description: jobData.jobDescription,
             interview_style: style,
             messages: [],
+            resume_id: activeResume ? activeResume.id : null,
           })
           .select('id')
           .single()

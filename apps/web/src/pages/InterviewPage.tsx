@@ -96,7 +96,7 @@ export default function InterviewPage(): JSX.Element {
   const handleLoadSession = useCallback(async (session: InterviewSessionSummary) => {
     const { data, error } = await supabase
       .from('interview_sessions')
-      .select('messages, job_description, interview_style, company_name')
+      .select('messages, job_description, interview_style, company_name, resume_id')
       .eq('id', session.id)
       .single()
 
@@ -118,6 +118,24 @@ export default function InterviewPage(): JSX.Element {
     setCompanyName(data.company_name as string)
     if (data.job_description) setJobDescription(data.job_description as string)
     if (data.interview_style) setStyle(data.interview_style as InterviewStyle)
+
+    if (data.resume_id) {
+      const { data: resumeData } = await supabase
+        .from('resumes')
+        .select('id, title, is_primary, updated_at, structured_content, source_file_path')
+        .eq('id', data.resume_id)
+        .single()
+        
+      if (resumeData) {
+        setActiveResume(resumeData)
+        setSelectedResumeId(resumeData.id) 
+      }
+    } else {
+      // Ensure it's cleared if this past session didn't use a resume
+      setActiveResume(null)
+      setSelectedResumeId(null)
+    }
+    
     setPhase('interview')
   }, [resumeSession])
 
