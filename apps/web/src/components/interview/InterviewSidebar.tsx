@@ -71,7 +71,7 @@ export function InterviewSidebar({
   const [questionsOpen, setQuestionsOpen] = useState(true)
   const [jdOpen, setJdOpen] = useState(false)
   const [resumeOpen, setResumeOpen] = useState(false) 
-  const [zoomedResume, setZoomedResume] = useState<any | null>(null) 
+  const [zoomedResume, setZoomedResume] = useState<ResumeSummary | null>(null) 
 
   const logoProfile: CompanyProfile = companyProfile ?? {
     id: '',
