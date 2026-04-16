@@ -2,6 +2,7 @@
 // Organized by feature domain for clarity and maintainability
 
 export type { Database } from './types/database'
+export type {
   ResumeDocument,
   ResumeDocumentField,
   ResumeDocumentEducationEntry,
@@ -20,9 +21,6 @@ export type {
 // ── Resume Tailor Normalized: Hook's consumer contract ───────────────────────
 export type {
   ResumeTailorNormalizedResponse,
-  ResumeTailorSuccessResponse,
-  ResumeTailorSuccessEmptyResponse,
-  ResumeTailorPartialResponse,
   ResumeTailorErrorResponse,
 } from './types/resumeTailorNormalized'
 
