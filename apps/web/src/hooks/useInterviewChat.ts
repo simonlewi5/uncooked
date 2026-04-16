@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import type { Message, JobDescriptionFormValue, InterviewStyle } from '@/types'
+import type { Message, JobDescriptionFormValue, InterviewStyle, ResumeSummary, StructuredResumeData } from '@/types'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -13,14 +13,6 @@ type ErrorBody = {
   details?: string
 }
 
-type ResumeNode = { text?: string }
-interface StructuredResumeData {
-  name?: ResumeNode
-  contact?: ResumeNode
-  summary?: ResumeNode
-  experience?: Array<{ title?: ResumeNode; company?: ResumeNode; period?: ResumeNode; bullets?: Array<ResumeNode> }>
-  skills?: Array<ResumeNode>
-}
 
 function formatResumeText(parsed: StructuredResumeData | null | undefined): string {
   if (!parsed || typeof parsed !== 'object' || !parsed.name) return ''
@@ -193,7 +185,7 @@ interface UseInterviewChatReturn {
 export function useInterviewChat(
   jobData: JobDescriptionFormValue,
   style: InterviewStyle,
-  activeResume?: any | null,
+  activeResume?: ResumeSummary | null,
 ): UseInterviewChatReturn {
   const { user } = useAuth()
   // Tracks whether a practice_sessions row has been recorded for this session.

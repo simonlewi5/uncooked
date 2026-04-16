@@ -5,7 +5,7 @@ import { ChatBox } from '@/components/interview/ChatBox'
 import { useInterviewChat } from '@/hooks/useInterviewChat'
 import { useInterviewQuestions } from '@/hooks/useInterviewQuestions'
 import { supabase } from '@/lib/supabase'
-import type { CompanyProfile, InterviewStyle, InterviewSessionSummary } from '@/types'
+import type { CompanyProfile, InterviewStyle, InterviewSessionSummary, ResumeSummary } from '@/types'
 import styles from './InterviewPage.module.css'
 
 type Phase = 'setup' | 'interview'
@@ -54,7 +54,7 @@ export default function InterviewPage(): JSX.Element {
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null)
   const [style, setStyle] = useState<InterviewStyle | null>(initialState.current?.style ?? 'mixed')
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null)
-  const [activeResume, setActiveResume] = useState<any | null>(null)
+  const [activeResume, setActiveResume] = useState<ResumeSummary | null>(null)
 
   const [activeSessionId, setActiveSessionId] = useState<string | null>(
     initialState.current?.sessionId ?? null,
@@ -166,7 +166,7 @@ export default function InterviewPage(): JSX.Element {
     setCompanyProfile(null)
   }
 
-function handleStart(resumeObject?: any): void {
+function handleStart(resumeObject?: ResumeSummary): void {
     if (resumeObject) {
       setActiveResume(resumeObject)
     }

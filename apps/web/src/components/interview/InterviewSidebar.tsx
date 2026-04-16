@@ -3,17 +3,9 @@ import { ArrowLeft, ChevronDown, ChevronRight, FileText, Maximize, X } from 'luc
 import { CompanyLogo } from './CompanyLogo'
 import { QuestionList } from './QuestionList'
 import { JobDescriptionForm } from './JobDescriptionForm'
-import type { CompanyProfile, InterviewQuestion, InterviewStyle } from '@/types'
+import type { CompanyProfile, InterviewQuestion, InterviewStyle, ResumeSummary, StructuredResumeData } from '@/types'
 import styles from './InterviewSidebar.module.css'
 
-type ResumeNode = { text?: string }
-interface StructuredResumeData {
-  name?: ResumeNode
-  contact?: ResumeNode
-  summary?: ResumeNode
-  experience?: Array<{ title?: ResumeNode; company?: ResumeNode; period?: ResumeNode; bullets?: Array<ResumeNode> }>
-  skills?: Array<ResumeNode>
-}
 
 interface InterviewSidebarProps {
   companyName: string
@@ -31,7 +23,7 @@ interface InterviewSidebarProps {
   onUpdateNotes: (id: string, notes: string) => void
   canGenerate: boolean
   onBack: () => void
-  resume: any
+  resume?: ResumeSummary | null
   cooldownEnd: number | null
   onCooldownStart: (end: number) => void
 }

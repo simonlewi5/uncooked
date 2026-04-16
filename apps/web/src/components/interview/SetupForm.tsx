@@ -4,32 +4,10 @@ import { CompanyAutocomplete } from './CompanyAutocomplete'
 import { InterviewStyleSelector } from './InterviewStyleSelector'
 import { usePastJobDescriptions } from '@/hooks/usePastJobDescriptions'
 import { supabase } from '@/lib/supabase'
-import type { CompanyProfile, InterviewStyle, InterviewSessionSummary } from '@/types'
+import type { CompanyProfile, InterviewStyle, InterviewSessionSummary, ResumeSummary, StructuredResumeData } from '@/types'
 import styles from './SetupForm.module.css'
 
-type ResumeNode = { text?: string }
 
-interface StructuredResumeData {
-  name?: ResumeNode
-  contact?: ResumeNode
-  summary?: ResumeNode
-  experience?: Array<{
-    title?: ResumeNode
-    company?: ResumeNode
-    period?: ResumeNode
-    bullets?: Array<ResumeNode>
-  }>
-  skills?: Array<ResumeNode>
-}
-
-interface ResumeSummary {
-  id: string
-  title: string
-  is_primary: boolean
-  updated_at: string
-  structured_content: any
-  source_file_path: string | null 
-}
 
 interface SetupFormProps {
   companyName: string
@@ -40,7 +18,7 @@ interface SetupFormProps {
   onJobDescriptionChange: (value: string) => void
   style: InterviewStyle | null
   onStyleChange: (style: InterviewStyle) => void
-  onStart: (resume?: any) => void
+  onStart: (resume?: ResumeSummary | null) => void
   onLoadSession: (session: InterviewSessionSummary) => void
   selectedResumeId: string | null
   onResumeSelect: (id: string | null) => void
