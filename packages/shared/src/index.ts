@@ -23,9 +23,6 @@ export type {
 // ── Resume Tailor Normalized: Hook's consumer contract ───────────────────────
 export type {
 	ResumeTailorNormalizedResponse,
-	ResumeTailorSuccessResponse,
-	ResumeTailorSuccessEmptyResponse,
-	ResumeTailorPartialResponse,
 	ResumeTailorErrorResponse,
 } from './types/resumeTailorNormalized'
 

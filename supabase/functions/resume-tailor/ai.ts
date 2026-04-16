@@ -36,9 +36,9 @@ export type ResumeTailorEdit = {
 export type ResumeTailorMode = 'delta_only'
 
 export type ResumeTailorResult = {
-  edits?: ResumeTailorEdit[]
-  appliedMode?: ResumeTailorMode
-  isPartial?: boolean
+	status: 'success' | 'success_empty'
+	edits: ResumeTailorEdit[]
+	appliedMode: ResumeTailorMode
 }
 
 type ParseFailureReason =
@@ -323,14 +323,22 @@ type ParseEditsResult =
   | { ok: false; details: string }
 
 const parseEdits = (value: unknown): ParseEditsResult => {
+  // Undefined/null edits field is an error (required).
   if (value === undefined) {
     return { ok: false, details: 'delta_only mode requires edits[]' }
   }
 
+  // Non-array edits is an error.
   if (!Array.isArray(value)) {
     return { ok: false, details: 'edits must be an array' }
   }
 
+  // Empty array is valid (model chose not to suggest edits).
+  if (value.length === 0) {
+    return { ok: true, edits: [] }
+  }
+
+  // Non-empty array: validate each item and filter out invalid ones.
   const edits: ResumeTailorEdit[] = []
   const sectionValues: ResumeTailorEdit['section'][] = ['summary', 'experience', 'skills']
 
@@ -354,7 +362,9 @@ const parseEdits = (value: unknown): ParseEditsResult => {
     edits.push({ section, targetId, operation, replacement, reason })
   }
 
-  if (value.length > 0 && edits.length === 0) {
+  // If array had items but none were valid, that's a malformed response.
+  // This triggers a retry rather than silently accepting "0 edits".
+  if (edits.length === 0) {
     return { ok: false, details: 'edits array contained no valid edit items' }
   }
 
@@ -429,7 +439,9 @@ const parseGeminiResponse = (response: unknown): ParseGeminiResult => {
   return {
     ok: true,
     value: {
+      status: parsedEdits.edits.length > 0 ? 'success' : 'success_empty',
       edits: parsedEdits.edits,
+      appliedMode: 'delta_only',
     },
   }
 }

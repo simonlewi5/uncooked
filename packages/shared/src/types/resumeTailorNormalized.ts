@@ -1,35 +1,17 @@
 /**
- * Normalized resume tailor responses — the hook's contract to components.
- * Single source of truth for all tailor outcomes.
- * useResumeTailor() normalizes raw backend responses into one of these 4 statuses.
+ * Hook's response contract to components — union of success and error outcomes.
+ * Combines backend's explicit status (on 200) with error state (on 4xx/5xx).
  *
  * Components switch on `status` to handle each case. All variants expose `edits`
- * so callers never need to guard before iterating (error/empty variants carry `[]`).
+ * so callers never need to guard before iterating (error variant carries `[]`).
  */
 
-import type { ResumeTailorEdit, ResumeTailorMode } from './resumeTailor'
+import type { ResumeTailorResponse } from './resumeTailor'
 
-export interface ResumeTailorSuccessResponse {
-	status: 'success'
-	/** 1 or more edits returned from the AI. */
-	edits: ResumeTailorEdit[]
-	appliedMode: ResumeTailorMode
-}
-
-export interface ResumeTailorSuccessEmptyResponse {
-	status: 'success_empty'
-	/** Resume already aligned — AI returned 0 edits. */
-	edits: []
-	appliedMode: ResumeTailorMode
-}
-
-export interface ResumeTailorPartialResponse {
-	status: 'partial'
-	/** AI response was truncated. May contain 0 or more edits. */
-	edits: ResumeTailorEdit[]
-	appliedMode: ResumeTailorMode
-}
-
+/**
+ * Error state: HTTP 4xx/5xx or network failure.
+ * Companion `error` string on hook for user-friendly message.
+ */
 export interface ResumeTailorErrorResponse {
 	status: 'error'
 	/** Always empty — no edits on error. */
@@ -39,10 +21,6 @@ export interface ResumeTailorErrorResponse {
 
 /**
  * Discriminated union of all possible tailor outcomes.
- * Hook returns this; components switch on `status` to handle each case.
+ * Hook returns: ResumeTailorResponse (success) | ResumeTailorErrorResponse (error)
  */
-export type ResumeTailorNormalizedResponse =
-	| ResumeTailorSuccessResponse
-	| ResumeTailorSuccessEmptyResponse
-	| ResumeTailorPartialResponse
-	| ResumeTailorErrorResponse
+export type ResumeTailorNormalizedResponse = ResumeTailorResponse | ResumeTailorErrorResponse

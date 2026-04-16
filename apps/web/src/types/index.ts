@@ -32,9 +32,6 @@ export type {
   ResumeTailorRequest,
   ResumeTailorResponse,
   ResumeTailorNormalizedResponse,
-  ResumeTailorSuccessResponse,
-  ResumeTailorSuccessEmptyResponse,
-  ResumeTailorPartialResponse,
   ResumeTailorErrorResponse,
 } from '@uncooked/shared'
 

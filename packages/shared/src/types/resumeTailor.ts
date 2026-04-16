@@ -20,13 +20,17 @@ export interface ResumeTailorEdit {
 }
 
 /**
- * Raw response from backend resume-tailor function.
- * Ambiguous and optional fields — use ResumeTailorNormalizedResponse for consumer logic.
+ * Backend HTTP 200 response — success case with explicit status.
+ * HTTP 4xx/5xx already signal errors, so 200 always means success.
  */
-export interface ResumeTailorResponse {
-	edits?: ResumeTailorEdit[]
-	appliedMode?: ResumeTailorMode
-	isPartial?: boolean
-	/** Human-readable reason set when isPartial is true (e.g. 'truncated', 'safety_filtered'). */
-	warning?: string
-}
+export type ResumeTailorResponse =
+	| {
+			status: 'success'
+			edits: ResumeTailorEdit[]
+			appliedMode: ResumeTailorMode
+		}
+	| {
+			status: 'success_empty'
+			edits: []
+			appliedMode: ResumeTailorMode
+		}

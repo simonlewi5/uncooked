@@ -105,32 +105,22 @@ async function mapErrorMessage(error: unknown): Promise<string> {
 }
 
 /**
- * Normalize raw backend response and hook state to a single unified response type.
- * This is the single source of truth for interpreting all tailor outcomes.
- * 
- * Backend returns:
- * - HTTP error (4xx/5xx): error state
- * - 200 with edits: success state
- * - 200 with empty edits: success_empty state
+ * Normalize response: pass through backend's explicit status (200) or error state (4xx/5xx).
+ * Backend now handles status determination on success path.
+ * Hook handles error path when exceptions are thrown.
  */
 function normalizeBackendResponse(
   backendResponse: ResumeTailorResponse | null,
   error: unknown | null,
   errorMessage: string | null
 ): ResumeTailorNormalizedResponse {
+  // Error path: HTTP 4xx/5xx or network failure
   if (error || errorMessage) {
     return { status: 'error', edits: [], appliedMode: null }
   }
 
-  // backendResponse is non-null on the success path — error path returns above
-  const response = backendResponse!
-  const edits = response.edits ?? []
-
-  if (edits.length === 0) {
-    return { status: 'success_empty', edits: [], appliedMode: response.appliedMode ?? 'delta_only' }
-  }
-
-  return { status: 'success', edits, appliedMode: response.appliedMode ?? 'delta_only' }
+  // Success path: backend already set explicit status
+  return backendResponse!
 }
 
 export function useResumeTailor(): UseResumeTailorReturn {
@@ -195,8 +185,8 @@ export function useResumeTailor(): UseResumeTailorReturn {
 
       debugLog('request_success', {
         clientRequestId,
-        editCount: data.edits?.length ?? 0,
-        isPartial: data.isPartial ?? false,
+        status: data.status,
+        editCount: data.edits.length,
       })
 
       // Normalize successful response

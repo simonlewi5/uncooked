@@ -384,6 +384,7 @@ Deno.serve(async (req: Request) => {
     resolvedEdits: resolvedEdits.length,
     resultPreview: DEBUG_VERBOSE
       ? toDebugPreview({
+          status: tailorResult.status,
           edits: resolvedEdits,
           appliedMode: tailorResult.appliedMode,
         })
@@ -391,6 +392,7 @@ Deno.serve(async (req: Request) => {
   })
 
   return json(200, {
+    status: resolvedEdits.length > 0 ? 'success' : 'success_empty',
     edits: resolvedEdits,
     appliedMode: tailorResult.appliedMode,
   })
