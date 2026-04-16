@@ -180,8 +180,8 @@ export function ResumeSuggestionsPanel({
     friendlyNotice = (
       <NoticeCard
         type="warning"
-        title="We hit a response limit"
-        body="The AI response may have been cut off before it could finish. Try Auto-Tailor again to see if we can get a fuller pass."
+        title="Oops We Encountered an Issue"
+        body="The AI response may have been cut off before it could finish. Try Auto-Tailor again!."
         action={onRetryTailor ? { label: 'Try Again', onClick: onRetryTailor } : undefined}
       />
     )

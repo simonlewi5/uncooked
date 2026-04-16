@@ -323,15 +323,13 @@ Deno.serve(async (req: Request) => {
             ? 'empty_response'
             : 'invalid_format'
 
-      debugLog(requestId, 'tailor_partial_parse_fallback', {
+      debugLog(requestId, 'tailor_parse_failed', {
         parseReason,
       })
 
-      return json(200, {
-        edits: [],
-        appliedMode: 'delta_only',
-        isPartial: true,
-        warning: `AI parse fallback applied: ${parseReason}`,
+      return json(502, {
+        error: 'AI Parse Error',
+        details: `AI response was ${parseReason}. Please try again.`,
       })
     }
 
