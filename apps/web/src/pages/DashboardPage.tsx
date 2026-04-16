@@ -1,4 +1,4 @@
-import { TrendingUp, Building2, Calendar, ChevronRight, Zap } from 'lucide-react'
+import { TrendingUp, Building2, Calendar, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Badge, Spinner } from '@/components/ui'
 import { GamificationCard } from '@/components/dashboard/GamificationCard'
@@ -152,20 +152,6 @@ function TargetCompaniesCard({ companies }: TargetCompaniesCardProps): JSX.Eleme
   )
 }
 
-function AiPromoCard(): JSX.Element {
-  return (
-    <div className={styles.promoCard}>
-      <Zap size={20} className={styles.promoIcon} />
-      <p className={styles.promoTitle}>Unlock AI Mock Interviews</p>
-      <p className={styles.promoSubtitle}>
-        Practice with an AI interviewer tailored to your target role and company.
-      </p>
-      <Link to="/interview" className={styles.promoBtn}>
-        Upgrade Now
-      </Link>
-    </div>
-  )
-}
 
 function ApplicationPipelineCard({ pipeline }: ApplicationPipelineCardProps): JSX.Element {
   return (
@@ -244,7 +230,7 @@ export default function DashboardPage(): JSX.Element {
           <PracticeConsistencyCard />
           <div className={styles.bottomRow}>
             <TargetCompaniesCard companies={data?.companies ?? []} />
-            <AiPromoCard />
+
           </div>
         </div>
         <div className={styles.rightCol}>
