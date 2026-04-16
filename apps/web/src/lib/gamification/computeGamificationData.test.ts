@@ -9,8 +9,8 @@ import {
   XP_PER_RESEARCH,
 } from './computeGamificationData'
 
-describe('getXpForEventType (resume tailoring actions)', () => {
-  it('returns the configured XP for each resume event type', () => {
+describe('eventCatalog (resume actions)', () => {
+  it('maps each resume event type to its configured XP', () => {
     expect(getXpForEventType(GAMIFICATION_EVENT_TYPES.RESUME_SESSION_UPLOAD)).toBe(30)
     expect(getXpForEventType(GAMIFICATION_EVENT_TYPES.RESUME_AUTO_TAILOR)).toBe(40)
     expect(getXpForEventType(GAMIFICATION_EVENT_TYPES.RESUME_APPLY_TAILOR_EDIT)).toBe(15)
@@ -19,7 +19,7 @@ describe('getXpForEventType (resume tailoring actions)', () => {
 })
 
 describe('computeGamificationData', () => {
-  it('adds resume tailoring XP events into total XP', () => {
+  it('sums resume ledger rows into total XP', () => {
     const data = computeGamificationData({
       practiceCount: 0,
       researchCount: 0,
@@ -34,19 +34,19 @@ describe('computeGamificationData', () => {
     expect(data.totalXp).toBe(95)
   })
 
-  it('combines table-derived XP with ledger event XP', () => {
+  it('adds session-table XP and ledger XP', () => {
     const data = computeGamificationData({
       practiceCount: 2,
       researchCount: 1,
       applicationCount: 1,
       xpEvents: [{ event_type: GAMIFICATION_EVENT_TYPES.RESUME_AUTO_TAILOR, xp_awarded: 40 }],
     })
-    const expected =
-      2 * XP_PER_PRACTICE + 1 * XP_PER_RESEARCH + 1 * XP_PER_APPLICATION + 40
-    expect(data.totalXp).toBe(expected)
+    expect(data.totalXp).toBe(
+      2 * XP_PER_PRACTICE + 1 * XP_PER_RESEARCH + 1 * XP_PER_APPLICATION + 40,
+    )
   })
 
-  it('unlocks resume_on_file after one upload event', () => {
+  it('earns resume_on_file after one upload event', () => {
     const data = computeGamificationData({
       practiceCount: 0,
       researchCount: 0,
@@ -57,7 +57,7 @@ describe('computeGamificationData', () => {
     expect(data.badges.find((b) => b.id === 'tailor_pilot')?.earned).toBe(false)
   })
 
-  it('unlocks edit_adopter after five apply events', () => {
+  it('earns edit_adopter after five apply events', () => {
     const applies = Array.from({ length: 5 }, () => ({
       event_type: GAMIFICATION_EVENT_TYPES.RESUME_APPLY_TAILOR_EDIT,
       xp_awarded: 15,
@@ -72,7 +72,7 @@ describe('computeGamificationData', () => {
     expect(countEventsByType(applies, GAMIFICATION_EVENT_TYPES.RESUME_APPLY_TAILOR_EDIT)).toBe(5)
   })
 
-  it('sumLedgerXp sums xp_awarded across rows', () => {
+  it('sumLedgerXp aggregates xp_awarded', () => {
     const rows = [
       { event_type: GAMIFICATION_EVENT_TYPES.INTERVIEW_MESSAGE, xp_awarded: 1 },
       { event_type: GAMIFICATION_EVENT_TYPES.RESUME_SESSION_UPLOAD, xp_awarded: 30 },

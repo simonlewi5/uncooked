@@ -31,14 +31,24 @@ function getTierLabel(level: number): string {
   return tier?.[1] ?? 'Job Seeker'
 }
 
-/** Count rows with a given event_type (each row = one action, e.g. one chat message). */
 export function countEventsByType(rows: XpEventRow[], eventType: string): number {
   return rows.filter((r) => r.event_type === eventType).length
 }
 
-/** Sum of xp_awarded across all ledger rows (interview + resume + future events). */
 export function sumLedgerXp(rows: XpEventRow[]): number {
   return rows.reduce((sum, row) => sum + (Number(row.xp_awarded) || 0), 0)
+}
+
+function ledgerCounts(xpEvents: XpEventRow[]) {
+  const n = (t: string) => countEventsByType(xpEvents, t)
+  return {
+    eventXp: sumLedgerXp(xpEvents),
+    interviewMessages: n(GAMIFICATION_EVENT_TYPES.INTERVIEW_MESSAGE),
+    resumeUploads: n(GAMIFICATION_EVENT_TYPES.RESUME_SESSION_UPLOAD),
+    resumeTailorRuns: n(GAMIFICATION_EVENT_TYPES.RESUME_AUTO_TAILOR),
+    resumeApplyEdits: n(GAMIFICATION_EVENT_TYPES.RESUME_APPLY_TAILOR_EDIT),
+    resumeDeclineEdits: n(GAMIFICATION_EVENT_TYPES.RESUME_DECLINE_TAILOR_EDIT),
+  }
 }
 
 interface Counts {
@@ -135,24 +145,16 @@ const BADGE_DEFS: readonly BadgeDef[] = [
   },
 ] as const
 
-/**
- * Pure computation from aggregate sources (used by the dashboard hook and tests).
- */
+/** Derives level, XP, and badges from session counts plus `user_xp_events` rows. */
 export function computeGamificationData(sources: GamificationSources): GamificationData {
   const { practiceCount, researchCount, applicationCount, xpEvents } = sources
-
-  const eventXp = sumLedgerXp(xpEvents)
-  const interviewMessages = countEventsByType(xpEvents, GAMIFICATION_EVENT_TYPES.INTERVIEW_MESSAGE)
-  const resumeUploads = countEventsByType(xpEvents, GAMIFICATION_EVENT_TYPES.RESUME_SESSION_UPLOAD)
-  const resumeTailorRuns = countEventsByType(xpEvents, GAMIFICATION_EVENT_TYPES.RESUME_AUTO_TAILOR)
-  const resumeApplyEdits = countEventsByType(xpEvents, GAMIFICATION_EVENT_TYPES.RESUME_APPLY_TAILOR_EDIT)
-  const resumeDeclineEdits = countEventsByType(xpEvents, GAMIFICATION_EVENT_TYPES.RESUME_DECLINE_TAILOR_EDIT)
+  const ledger = ledgerCounts(xpEvents)
 
   const totalXp =
     practiceCount * XP_PER_PRACTICE +
     researchCount * XP_PER_RESEARCH +
     applicationCount * XP_PER_APPLICATION +
-    eventXp
+    ledger.eventXp
 
   const level = Math.floor(totalXp / XP_PER_LEVEL) + 1
   const xpInLevel = totalXp % XP_PER_LEVEL
@@ -164,11 +166,11 @@ export function computeGamificationData(sources: GamificationSources): Gamificat
     practice: practiceCount,
     research: researchCount,
     applications: applicationCount,
-    interviewMessages,
-    resumeUploads,
-    resumeTailorRuns,
-    resumeApplyEdits,
-    resumeDeclineEdits,
+    interviewMessages: ledger.interviewMessages,
+    resumeUploads: ledger.resumeUploads,
+    resumeTailorRuns: ledger.resumeTailorRuns,
+    resumeApplyEdits: ledger.resumeApplyEdits,
+    resumeDeclineEdits: ledger.resumeDeclineEdits,
     totalXp,
   }
 

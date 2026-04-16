@@ -2,6 +2,7 @@ export {
   GAMIFICATION_EVENT_TYPES,
   getResumeToastTitle,
   getXpForEventType,
+  XP_BY_EVENT_TYPE,
   type ResumeGamificationEventType,
 } from './eventCatalog'
 export {
@@ -17,5 +18,5 @@ export {
   type XpEventRow,
 } from './computeGamificationData'
 export { fetchGamificationSources } from './fetchGamificationSources'
-export { recordXpEvent } from './recordXpEvent'
+export { recordXpEvent, type RecordXpEventParams } from './recordXpEvent'
 export { awardGamificationEvent, type AwardGamificationResult } from './awardGamificationEvent'

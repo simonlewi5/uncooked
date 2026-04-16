@@ -7,10 +7,7 @@ export interface RecordXpEventParams {
   referenceId?: string | null
 }
 
-/**
- * Inserts one row into the XP ledger. Callers should not await in critical UI paths;
- * use `void recordXpEvent(...)` or `awardGamificationEvent` which batches snapshots.
- */
+/** Inserts one `user_xp_events` row. Prefer `awardGamificationEvent` when UI needs badge diff. */
 export async function recordXpEvent(params: RecordXpEventParams): Promise<boolean> {
   const xp = getXpForEventType(params.eventType)
   if (xp <= 0) return false
@@ -23,7 +20,7 @@ export async function recordXpEvent(params: RecordXpEventParams): Promise<boolea
   })
 
   if (error) {
-    console.error('recordXpEvent failed', params.eventType, error.message)
+    console.error('recordXpEvent', params.eventType, error.message)
     return false
   }
   return true
