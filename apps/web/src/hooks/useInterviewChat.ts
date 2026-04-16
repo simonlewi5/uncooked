@@ -186,6 +186,7 @@ export function useInterviewChat(
   jobData: JobDescriptionFormValue,
   style: InterviewStyle,
   activeResume?: ResumeSummary | null,
+  onXpAwarded?: (xp: number, eventType: string) => void,
 ): UseInterviewChatReturn {
   const { user } = useAuth()
   // Tracks whether a practice_sessions row has been recorded for this session.
@@ -194,6 +195,8 @@ export function useInterviewChat(
   // Tracks the interview_sessions row id once created.
   const interviewSessionIdRef = useRef<string | null>(null)
   const [interviewSessionId, setInterviewSessionId] = useState<string | null>(null)
+  // Tracks user messages sent in current session for milestone detection
+  const userMessageCountRef = useRef(0)
 
   const [messages, setMessages] = useState<Message[]>([createInitialInterviewMessage()])
   const [isTyping, setIsTyping] = useState(false)
@@ -209,6 +212,8 @@ export function useInterviewChat(
     setMessages(pastMessages)
     // Mark as already recorded so we don't create a duplicate session row
     sessionRecordedRef.current = true
+    // Set message count so milestones don't re-trigger
+    userMessageCountRef.current = pastMessages.filter(m => m.role === 'user').length
   }, [])
 
   const resetSession = useCallback(() => {
@@ -216,6 +221,7 @@ export function useInterviewChat(
     setInterviewSessionId(null)
     setMessages([createInitialInterviewMessage()])
     sessionRecordedRef.current = false
+    userMessageCountRef.current = 0
   }, [])
 
   const sendMessage = useCallback(
@@ -274,6 +280,15 @@ export function useInterviewChat(
         } else {
           interviewSessionIdRef.current = session.id as string
           setInterviewSessionId(session.id as string)
+
+          // Award XP for starting a new interview session
+          supabase
+            .from('user_xp_events')
+            .insert({ user_id: user.id, event_type: 'interview_start', xp_awarded: 5, reference_id: session.id })
+            .then(({ error: xpErr }) => {
+              if (xpErr) console.error('Failed to award interview_start XP:', xpErr)
+              else onXpAwarded?.(5, 'interview_start')
+            })
         }
       }
 
@@ -307,6 +322,36 @@ export function useInterviewChat(
           timestamp: new Date(),
         }
 
+        // Award per-message XP (only on successful AI response)
+        if (user && interviewSessionIdRef.current && !error && !data?.error) {
+          userMessageCountRef.current += 1
+          const count = userMessageCountRef.current
+          const refId = interviewSessionIdRef.current
+
+          supabase
+            .from('user_xp_events')
+            .insert({ user_id: user.id, event_type: 'interview_message', xp_awarded: 1, reference_id: refId })
+            .then(({ error: xpErr }) => {
+              if (!xpErr) onXpAwarded?.(1, 'interview_message')
+            })
+
+          if (count === 5) {
+            supabase
+              .from('user_xp_events')
+              .insert({ user_id: user.id, event_type: 'interview_milestone_5', xp_awarded: 5, reference_id: refId })
+              .then(({ error: xpErr }) => {
+                if (!xpErr) onXpAwarded?.(5, 'interview_milestone_5')
+              })
+          } else if (count === 10) {
+            supabase
+              .from('user_xp_events')
+              .insert({ user_id: user.id, event_type: 'interview_milestone_10', xp_awarded: 10, reference_id: refId })
+              .then(({ error: xpErr }) => {
+                if (!xpErr) onXpAwarded?.(10, 'interview_milestone_10')
+              })
+          }
+        }
+
         setMessages((prev) => {
           const updated = [...prev, assistantMsg]
           // Persist the full conversation to the database
@@ -334,7 +379,7 @@ export function useInterviewChat(
         setIsTyping(false)
       }
     },
-    [jobData, style, user, activeResume]
+    [jobData, style, user, activeResume, onXpAwarded]
   )
 
   return { messages, isTyping, sendMessage, interviewSessionId, resumeSession, resetSession }

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { ArrowRight, MessageSquare, FileText, Maximize, X } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { ArrowRight, MessageSquare, FileText, Maximize, X, Trash2 } from 'lucide-react'
 import { CompanyAutocomplete } from './CompanyAutocomplete'
 import { InterviewStyleSelector } from './InterviewStyleSelector'
 import { usePastJobDescriptions } from '@/hooks/usePastJobDescriptions'
@@ -118,6 +118,19 @@ export function SetupForm({
     const selectedResumeObj = resumes.find(r => r.id === selectedResumeId)
     onStart(selectedResumeObj)
   }
+
+  const handleDeleteSession = useCallback(async (sessionId: string) => {
+    const { error } = await supabase
+      .from('interview_sessions')
+      .delete()
+      .eq('id', sessionId)
+
+    if (error) {
+      console.error('Failed to delete interview session:', error)
+      return
+    }
+    setPastSessions(prev => prev.filter(s => s.id !== sessionId))
+  }, [])
 
   return (
     <>
@@ -271,19 +284,28 @@ export function SetupForm({
             <ul className={styles.sessionList}>
               {pastSessions.map((session) => (
                 <li key={session.id}>
-                  <button
-                    className={styles.sessionCard}
-                    onClick={() => onLoadSession(session)}
-                  >
-                    <MessageSquare size={16} className={styles.sessionIcon} />
-                    <div className={styles.sessionInfo}>
-                      <span className={styles.sessionCompany}>{session.companyName}</span>
-                      <span className={styles.sessionMeta}>
-                        {session.interviewStyle ? `${session.interviewStyle} · ` : ''}
-                        {new Date(session.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </button>
+                  <div className={styles.sessionCard}>
+                    <button
+                      className={styles.sessionLoadBtn}
+                      onClick={() => onLoadSession(session)}
+                    >
+                      <MessageSquare size={16} className={styles.sessionIcon} />
+                      <div className={styles.sessionInfo}>
+                        <span className={styles.sessionCompany}>{session.companyName}</span>
+                        <span className={styles.sessionMeta}>
+                          {session.interviewStyle ? `${session.interviewStyle} · ` : ''}
+                          {new Date(session.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </button>
+                    <button
+                      className={styles.sessionDeleteBtn}
+                      onClick={() => handleDeleteSession(session.id)}
+                      title="Delete session"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
