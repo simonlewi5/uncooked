@@ -48,6 +48,7 @@ export interface InterviewSessionSummary {
   companyProfileId: string | null
   interviewStyle: string | null
   createdAt: string
+  resumeId?: string | null
 }
 
 export interface InterviewQuestion {
@@ -94,6 +95,30 @@ export interface DashboardData {
   recentSessions: ResearchSessionSummary[]
   companies: CompanySummary[]
   pipeline: PipelineCounts
+}
+
+export type ResumeNode = { text?: string }
+
+export interface StructuredResumeData {
+  name?: ResumeNode
+  contact?: ResumeNode
+  summary?: ResumeNode
+  experience?: Array<{
+    title?: ResumeNode
+    company?: ResumeNode
+    period?: ResumeNode
+    bullets?: Array<ResumeNode>
+  }>
+  skills?: Array<ResumeNode>
+}
+
+export interface ResumeSummary {
+  id: string
+  title: string
+  is_primary: boolean
+  updated_at: string
+  structured_content: StructuredResumeData | null 
+  source_file_path: string | null 
 }
 
 // ── Gamification ──────────────────────────────────────────────────────────────

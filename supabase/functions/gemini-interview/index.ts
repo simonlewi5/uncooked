@@ -8,6 +8,7 @@ interface InterviewRequest {
   interviewStyle: 'technical' | 'behavioral' | 'mixed' | 'friendly'
   userMessage: string
   conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>
+  resumeContext?: string
 }
 
 Deno.serve(async (req) => {
@@ -57,6 +58,7 @@ Deno.serve(async (req) => {
       interviewStyle,
       userMessage,
       conversationHistory = [],
+      resumeContext,
     } = (await req.json()) as InterviewRequest
 
     if (!jobDescription || !companyName || !userMessage || !interviewStyle) {
@@ -101,6 +103,10 @@ Deno.serve(async (req) => {
       .match(/\b(junior|mid-?level|senior|staff|principal|lead|entry-?level)\b/i)
     const detectedLevel = jobLevelMatch ? jobLevelMatch[1].toLowerCase() : 'mid-level'
 
+    const resumeInstruction = resumeContext 
+      ? `Candidate's Resume:\n${resumeContext}\n\nCRITICAL: The candidate has provided their resume. You MUST tailor your questions to specifically ask about their past projects, skills, and metrics listed above. Ask them to elaborate on specific architectural choices or achievements they mentioned.`
+      : `CRITICAL: The candidate did not provide a resume. Start by asking them to introduce themselves and their background, then proceed to ask behavioral and technical questions tailored strictly to the Job Description.`
+
     // Build system prompt with job context
     const systemPrompt = `You are an expert AI interviewer conducting a ${interviewStyle} interview for the role at ${companyName}.
 
@@ -111,6 +117,9 @@ ${companyContext ? `Company Context: ${companyContext}` : ''}
 
 ## Job Description
 ${jobDescription}
+
+## Candidate Background & Resume Instructions
+${resumeInstruction}
 
 ## Interview Style: ${interviewStyle}
 ${
