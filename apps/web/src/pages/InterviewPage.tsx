@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { SetupForm } from '@/components/interview/SetupForm'
 import { InterviewSidebar } from '@/components/interview/InterviewSidebar'
 import { ChatBox } from '@/components/interview/ChatBox'
+import { XpToast } from '@/components/interview/XpToast'
 import { useInterviewChat } from '@/hooks/useInterviewChat'
 import { useInterviewQuestions } from '@/hooks/useInterviewQuestions'
 import { supabase } from '@/lib/supabase'
@@ -79,11 +80,23 @@ export default function InterviewPage(): JSX.Element {
     updateNotes,
   } = useInterviewQuestions(activeSessionId, companyName)
 
+  // XP toast state
+  const [xpToasts, setXpToasts] = useState<Array<{ id: number; xp: number; label: string }>>([])
+
+  const handleXpAwarded = useCallback((xp: number, eventType: string) => {
+    const label = eventType === 'interview_start' ? 'Session Started!'
+      : eventType === 'interview_milestone_5' ? '5-Message Milestone!'
+      : eventType === 'interview_milestone_10' ? '10-Message Milestone!'
+      : ''
+    setXpToasts(prev => [...prev, { id: Date.now() + Math.random(), xp, label }])
+  }, [])
+
   const { messages, isTyping, sendMessage, interviewSessionId, resumeSession, resetSession } =
     useInterviewChat(
       { jobDescription, companyName, companyContext: '' },
       style ?? 'mixed',
       activeResume,
+      handleXpAwarded,
     )
 
   // Keep activeSessionId in sync and persist to sessionStorage
@@ -349,6 +362,14 @@ function handleStart(resumeObject?: ResumeSummary | null): void {
           onSend={sendMessage}
           disabled={false}
         />
+        {xpToasts.map(t => (
+          <XpToast
+            key={t.id}
+            xp={t.xp}
+            label={t.label}
+            onDone={() => setXpToasts(prev => prev.filter(x => x.id !== t.id))}
+          />
+        ))}
       </div>
     </div>
   )

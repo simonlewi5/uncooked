@@ -31,6 +31,7 @@ interface Counts {
   practice: number
   research: number
   applications: number
+  interviewMessages: number
   totalXp: number
 }
 
@@ -64,6 +65,20 @@ const BADGE_DEFS: readonly BadgeDef[] = [
     description: 'Complete 5 mock interview sessions',
     icon: '🏆',
     check: ({ practice }) => practice >= 5,
+  },
+  {
+    id: 'warming_up',
+    label: 'Warming Up',
+    description: 'Send 25 interview messages',
+    icon: '🔥',
+    check: ({ interviewMessages }) => interviewMessages >= 25,
+  },
+  {
+    id: 'marathon_talker',
+    label: 'Marathon Talker',
+    description: 'Send 100 interview messages',
+    icon: '🎙️',
+    check: ({ interviewMessages }) => interviewMessages >= 100,
   },
   {
     id: 'champion',
@@ -110,8 +125,8 @@ export function useGamificationData(): UseGamificationDataReturn {
 
     async function fetchGamificationData(): Promise<void> {
       try {
-        // Fire all three count queries in parallel — same pattern as useDashboardData
-        const [practiceResult, researchResult, applicationsResult] = await Promise.all([
+        // Fire all four queries in parallel — same pattern as useDashboardData
+        const [practiceResult, researchResult, applicationsResult, xpEventsResult] = await Promise.all([
           supabase
             .from('practice_sessions')
             .select('id', { count: 'exact', head: true })
@@ -124,6 +139,10 @@ export function useGamificationData(): UseGamificationDataReturn {
             .from('job_applications')
             .select('id', { count: 'exact', head: true })
             .eq('user_id', userId),
+          supabase
+            .from('user_xp_events')
+            .select('xp_awarded, event_type')
+            .eq('user_id', userId),
         ])
 
         if (controller.signal.aborted) return
@@ -132,10 +151,15 @@ export function useGamificationData(): UseGamificationDataReturn {
         const researchCount = researchResult.count ?? 0
         const appCount = applicationsResult.count ?? 0
 
+        const xpEvents = xpEventsResult.data ?? []
+        const eventXp = xpEvents.reduce((sum, row) => sum + (row.xp_awarded as number), 0)
+        const interviewMessages = xpEvents.filter(r => r.event_type === 'interview_message').length
+
         const totalXp =
           practiceCount * XP_PER_PRACTICE +
           researchCount * XP_PER_RESEARCH +
-          appCount * XP_PER_APPLICATION
+          appCount * XP_PER_APPLICATION +
+          eventXp
 
         const level = Math.floor(totalXp / XP_PER_LEVEL) + 1
         const xpInLevel = totalXp % XP_PER_LEVEL
@@ -147,6 +171,7 @@ export function useGamificationData(): UseGamificationDataReturn {
           practice: practiceCount,
           research: researchCount,
           applications: appCount,
+          interviewMessages,
           totalXp,
         }
 
