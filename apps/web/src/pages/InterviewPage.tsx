@@ -166,7 +166,7 @@ export default function InterviewPage(): JSX.Element {
     setCompanyProfile(null)
   }
 
-function handleStart(resumeObject?: ResumeSummary): void {
+function handleStart(resumeObject?: ResumeSummary | null): void {
     if (resumeObject) {
       setActiveResume(resumeObject)
     }
