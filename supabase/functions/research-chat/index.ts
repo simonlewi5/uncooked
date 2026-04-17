@@ -20,7 +20,7 @@ function buildUserTurnText(
   return `${m}
 
 USER_UPLOADED_DOCUMENT (file name: ${attachment.fileName})
-Use the text below as primary factual context for this reply. Follow the user's instructions above by drawing on this document where it applies, and connect it to the selected companies when relevant. Quote or paraphrase the document; do not invent details that contradict it. If the document is empty, irrelevant to the question, or unrelated to the companies, say so briefly.
+Use the conversation history above together with this document. Answer the user's latest message by combining: (1) prior user and assistant turns, (2) the document text below, and (3) the selected companies. When the latest question refers to the file, ground your answer in the excerpt; when it refers to earlier chat, use that context too. Quote or paraphrase the document; do not invent details that contradict it. If the document is empty, irrelevant, or unrelated to the question or companies, say so briefly.
 
 --- document start ---
 ${doc}
@@ -102,8 +102,8 @@ ${jobDescription?.trim() ? `## Job description context (use to tailor answers ab
 - Answer based on the specified company/companies only.
 - Be concise and factual; cite public knowledge where relevant.
 - If they ask about culture, engineering challenges, or interview prep, tailor to the company and any job description context above.
-- Maintain conversation context from the chat history.
-- When the user message includes a USER_UPLOADED_DOCUMENT block, treat that text as the authoritative source for questions about that file; prioritize it over general knowledge when they ask about the attachment. Still relate answers to the selected companies when appropriate.
+- Always use the prior turns in the chat history as context for follow-up questions; do not ignore what the user or you already said.
+- When the current user turn includes a USER_UPLOADED_DOCUMENT block, treat that text as authoritative for anything about that file, and combine it with the chat history and company context—do not answer follow-ups from memory alone if the document is included again in this turn.
 - Write in plain text only. Do not use markdown (no asterisks, # headings, or line-leading list markers). Use short paragraphs and blank lines between ideas.`
 
     const userTurnText = buildUserTurnText(message, attachment)

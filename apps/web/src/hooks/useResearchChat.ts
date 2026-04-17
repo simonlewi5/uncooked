@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Message } from '@/types'
 
@@ -64,8 +64,11 @@ export function useResearchChat({
   const { session } = useAuth()
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE])
   const [isStreaming, setIsStreaming] = useState(false)
+  /** Re-send on every turn until New Board so follow-ups still see the file. */
+  const sessionAttachmentRef = useRef<{ fileName: string; text: string } | null>(null)
 
   const resetMessages = useCallback(() => {
+    sessionAttachmentRef.current = null
     setMessages([{ ...INITIAL_MESSAGE, timestamp: new Date() }])
   }, [])
 
@@ -87,7 +90,22 @@ export function useResearchChat({
       }
 
       const prompt = (options?.prompt ?? displayContent).trim()
-      const hasDoc = Boolean(options?.attachment?.text?.trim())
+
+      const newAttachment = options?.attachment?.text?.trim()
+        ? { fileName: options.attachment.fileName, text: options.attachment.text.trim() }
+        : null
+      if (newAttachment) sessionAttachmentRef.current = newAttachment
+
+      const attachmentForRequest =
+        newAttachment ??
+        (sessionAttachmentRef.current?.text?.trim()
+          ? {
+              fileName: sessionAttachmentRef.current.fileName,
+              text: sessionAttachmentRef.current.text.trim(),
+            }
+          : null)
+
+      const hasDoc = Boolean(attachmentForRequest?.text)
       if (!prompt && !hasDoc) {
         pushError('Enter a message or attach a file.')
         return
@@ -128,11 +146,11 @@ export function useResearchChat({
               message: prompt,
               jobDescription: jobDescription?.trim() || undefined,
               history,
-              ...(options?.attachment?.text?.trim()
+              ...(attachmentForRequest
                 ? {
                     attachment: {
-                      fileName: options.attachment.fileName,
-                      text: options.attachment.text.trim(),
+                      fileName: attachmentForRequest.fileName,
+                      text: attachmentForRequest.text,
                     },
                   }
                 : {}),
