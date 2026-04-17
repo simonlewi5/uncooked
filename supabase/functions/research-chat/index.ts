@@ -98,7 +98,7 @@ ${jobDescription?.trim() ? `## Job description context (use to tailor answers ab
 - Answer based on the specified company/companies only; be concise and factual.
 - Use chat history on every turn; do not ignore prior user or assistant messages.
 - If a USER_UPLOADED_DOCUMENT block appears in this turn, treat it as the source for file-specific claims and combine it with history and companies.
-- Plain text only (no markdown: no asterisks, # headings, or line-leading list markers). Short paragraphs; blank lines between ideas.`
+- Plain text only: never use asterisks, underscores for emphasis, backticks, # headings, or list markers (- * •) at line starts. Short paragraphs; blank lines between ideas.`
 
     const userTurnText = buildUserTurnText(message, attachment)
 

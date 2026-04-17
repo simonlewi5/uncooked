@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Message } from '@/types'
+import { stripResearchChatMarkdown } from '@/utils/stripResearchChatMarkdown'
 
 const RATE_LIMIT_FRIENDLY_MESSAGE =
   'You are sending requests too quickly right now. Please wait a minute and try again.'
@@ -119,7 +120,11 @@ export function useResearchChat({
         )
       const appendPlaceholder = (chunk: string) =>
         setMessages((prev) =>
-          prev.map((m) => (m.id === placeholder.id ? { ...m, content: m.content + chunk } : m)),
+          prev.map((m) =>
+            m.id === placeholder.id
+              ? { ...m, content: stripResearchChatMarkdown(m.content + chunk) }
+              : m,
+          ),
         )
 
       try {
