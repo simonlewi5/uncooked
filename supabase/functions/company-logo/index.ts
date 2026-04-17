@@ -34,13 +34,8 @@ Deno.serve(async (req) => {
     }
 
     const domain = cleanDomain(rawDomain);
-    const clearbitUrl = `https://logo.clearbit.com/${encodeURIComponent(domain)}`
-
-    const logoResponse = await fetch(clearbitUrl, {
-      headers: {
-        'User-Agent': 'Uncooked-Logo-Proxy',
-      },
-    })
+    const googleFaviconUrl = `https://s2.googleusercontent.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`
+    const logoResponse = await fetch(googleFaviconUrl);
 
     if (!logoResponse.ok) {
       return new Response('Logo not found', {
