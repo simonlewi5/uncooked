@@ -58,7 +58,8 @@ function msg(role: Message['role'], content: string, id = `${role}-${Date.now()}
 type AttachmentPayload = { fileName: string; text: string }
 
 function trimmedAttachment(a: AttachmentPayload | null | undefined): AttachmentPayload | null {
-  const text = a?.text?.trim()
+  if (!a) return null
+  const text = a.text.trim()
   return text ? { fileName: a.fileName, text } : null
 }
 
