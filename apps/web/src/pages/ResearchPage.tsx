@@ -5,7 +5,10 @@ import { Button } from '@/components/ui'
 import { useAuth } from '@/contexts/AuthContext'
 import { useResearchChat } from '@/hooks/useResearchChat'
 import { useResearchCompanies } from '@/hooks/useResearchCompanies'
+import { StandardToast } from '@/components/interview/Toast' 
+import AddCompanyModal from './AddCompanyPage'
 import { cn } from '@/utils/cn'
+import { ConfirmModal } from '@/utils/ConfirmModal' 
 import styles from './ResearchPage.module.css'
 
 interface CompanyProfile {
@@ -54,11 +57,15 @@ export default function ResearchPage() {
   });
   const [activeContext, setActiveContext] = useState<CompanyProfile[]>([])
   const [input, setInput] = useState('')
-  // const [companies, setCompanies] = useState<CompanyProfile[]>(MOCK_COMPANIES)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const draggingCompany = useRef<CompanyProfile | null>(null)
   const { user } = useAuth()
-  const { companies: dbCompanies, isLoading, toggleFavorite, deleteCompany } = useResearchCompanies()
+  const { companies: dbCompanies, isLoading, toggleFavorite, deleteCompany, refreshCompanies } = useResearchCompanies()
+  const [toastConfig, setToastConfig] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
+  const [companyToDelete, setCompanyToDelete] = useState<{ id: string, name: string } | null>(null)
+
+
   useEffect(() => {
     if (location.state?.newCompanyId && dbCompanies.length > 0) {
       const newCompany = dbCompanies.find((c) => c.id === location.state.newCompanyId)
@@ -89,10 +96,18 @@ export default function ResearchPage() {
   //     prev.map((c) => (c.id === id ? { ...c, isFavorite: !c.isFavorite } : c)),
   //   )
   // }
-  const handleDeleteCompany = async (id: string, name: string) => {
-  if (confirm(`Delete "${name}" from your saved companies?`)) {
-    await deleteCompany(id)
+  const handleDeleteCompany = async () => {
+    if (!companyToDelete) return;
+    const { id, name } = companyToDelete;
+    try {
+        await deleteCompany(id)
+        setToastConfig({ message: `Removed ${name} from your board`, variant: 'error' })
+    } catch (error) {
+        console.error(`Failed to delete company ${id}:`, error);
+        const errorMessage = error instanceof Error ? error.message : 'Please try again later.';
+        setToastConfig({ message: `Failed to delete ${name}: ${errorMessage}`, variant: 'error' })
     }
+    setCompanyToDelete(null);
   }
 
   function handleDragStart(company: CompanyProfile) {
@@ -205,13 +220,17 @@ export default function ResearchPage() {
                 </button>
                 <button
                   className={styles.deleteBtn}
-                  onClick={(e) => { e.stopPropagation(); handleDeleteCompany(company.id, company.name) }}
+                  onClick={(e) => {
+                    e.stopPropagation(); 
+                    setCompanyToDelete({ id: company.id, name: company.name });
+                  }}
                   aria-label={`Delete ${company.name}`}
                 >
                   <Trash2 size={13} />
                 </button>
               </div>
             ))}
+            
             {isLoading && filteredCompanies.length === 0 && (
               <p className={styles.noResults}>Loading companies...</p>
             )}
@@ -226,7 +245,7 @@ export default function ResearchPage() {
               <div className={styles.persistentAddContainer}>
                 <button
                   className={styles.addCompanyBtn}
-                  onClick={() => navigate('/add-company', { state: { companyName: searchQuery } })}
+                  onClick={() => setIsAddModalOpen(true)}
                 >
                   + Add "{searchQuery}" as new company
                 </button>
@@ -320,6 +339,34 @@ export default function ResearchPage() {
           </div>
         </div>
       </div>
+
+      <AddCompanyModal 
+        isOpen={isAddModalOpen} 
+        onClose={() => setIsAddModalOpen(false)}
+        initialCompanyName={searchQuery}
+        onSuccess={async (_newId, newName) => {
+          setIsAddModalOpen(false);
+          setSearchQuery(newName);
+          await refreshCompanies();
+          setToastConfig({ message: `Added ${newName} to your board!`, variant: 'success' })
+        }}
+      />
+      <ConfirmModal
+        isOpen={!!companyToDelete}
+        title="Delete Company"
+        message={`Are you sure you want to remove "${companyToDelete?.name}" from your board? This action cannot be undone.`}
+        confirmText="Delete"
+        onCancel={() => setCompanyToDelete(null)}
+        onConfirm={handleDeleteCompany}
+      />
+      {/* Toast Component */}
+      {toastConfig && (
+        <StandardToast 
+          message={toastConfig.message} 
+          variant={toastConfig.variant} 
+          onDone={() => setToastConfig(null)} 
+        />
+      )}
     </div>
   )
 }
