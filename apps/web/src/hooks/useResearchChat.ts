@@ -70,7 +70,14 @@ export function useResearchChat({
   }, [])
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (
+      displayContent: string,
+      options?: {
+        /** User question only (omit [Attached] line); defaults to displayContent. Sent as \`message\`; attachment body is sent separately. */
+        prompt?: string
+        attachment?: { fileName: string; text: string }
+      },
+    ) => {
       const pushError = (text: string) =>
         setMessages((prev) => [...prev, msg('assistant', text, `err-${Date.now()}`)])
 
@@ -79,12 +86,19 @@ export function useResearchChat({
         return
       }
 
-      const userMsg = msg('user', content.trim())
+      const prompt = (options?.prompt ?? displayContent).trim()
+      const hasDoc = Boolean(options?.attachment?.text?.trim())
+      if (!prompt && !hasDoc) {
+        pushError('Enter a message or attach a file.')
+        return
+      }
+
+      const userMsg = msg('user', displayContent.trim())
       const placeholder = msg('assistant', '')
       setMessages((prev) => [...prev, userMsg, placeholder])
       setIsStreaming(true)
 
-      const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }))
+      const history = messages.map((m) => ({ role: m.role, content: m.content }))
       const companyNames = companies.map((c) =>
         typeof c === 'string' ? c : (c as { name: string }).name,
       )
@@ -111,9 +125,17 @@ export function useResearchChat({
             },
             body: JSON.stringify({
               companies: companyNames,
-              message: content.trim(),
+              message: prompt,
               jobDescription: jobDescription?.trim() || undefined,
               history,
+              ...(options?.attachment?.text?.trim()
+                ? {
+                    attachment: {
+                      fileName: options.attachment.fileName,
+                      text: options.attachment.text.trim(),
+                    },
+                  }
+                : {}),
             }),
           },
         )

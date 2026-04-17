@@ -5,6 +5,26 @@ interface ResearchChatRequest {
   message: string
   jobDescription?: string
   history?: Array<{ role: 'user' | 'assistant'; content: string }>
+  /** Plain-text excerpt of a user-uploaded file; model must ground answers in this when present. */
+  attachment?: { fileName: string; text: string }
+}
+
+function buildUserTurnText(
+  message: string,
+  attachment?: { fileName: string; text: string },
+): string {
+  const m = message.trim()
+  const doc = attachment?.text?.trim()
+  if (!doc) return m
+
+  return `${m}
+
+USER_UPLOADED_DOCUMENT (file name: ${attachment.fileName})
+Use the text below as primary factual context for this reply. Follow the user's instructions above by drawing on this document where it applies, and connect it to the selected companies when relevant. Quote or paraphrase the document; do not invent details that contradict it. If the document is empty, irrelevant to the question, or unrelated to the companies, say so briefly.
+
+--- document start ---
+${doc}
+--- document end ---`
 }
 
 function requireAuth(req: Request): Response | null {
@@ -43,9 +63,11 @@ Deno.serve(async (req) => {
       message,
       jobDescription,
       history = [],
+      attachment,
     } = body
 
-    if (!companies?.length || !message?.trim()) {
+    const hasAttachment = Boolean(attachment?.text?.trim())
+    if (!companies?.length || (!message?.trim() && !hasAttachment)) {
       return new Response(
         JSON.stringify({
           error: 'Missing required fields: companies (non-empty array) and message',
@@ -81,7 +103,10 @@ ${jobDescription?.trim() ? `## Job description context (use to tailor answers ab
 - Be concise and factual; cite public knowledge where relevant.
 - If they ask about culture, engineering challenges, or interview prep, tailor to the company and any job description context above.
 - Maintain conversation context from the chat history.
+- When the user message includes a USER_UPLOADED_DOCUMENT block, treat that text as the authoritative source for questions about that file; prioritize it over general knowledge when they ask about the attachment. Still relate answers to the selected companies when appropriate.
 - Write in plain text only. Do not use markdown (no asterisks, # headings, or line-leading list markers). Use short paragraphs and blank lines between ideas.`
+
+    const userTurnText = buildUserTurnText(message, attachment)
 
     const contents = [
       ...history.map((msg) => ({
@@ -90,7 +115,7 @@ ${jobDescription?.trim() ? `## Job description context (use to tailor answers ab
       })),
       {
         role: 'user',
-        parts: [{ text: message.trim() }],
+        parts: [{ text: userTurnText }],
       },
     ]
 

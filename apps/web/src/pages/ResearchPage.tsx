@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useResearchChat } from '@/hooks/useResearchChat'
 import { useResearchCompanies } from '@/hooks/useResearchCompanies'
 import { cn } from '@/utils/cn'
+import { readResearchChatAttachment } from '@/utils/readResearchChatAttachment'
 import styles from './ResearchPage.module.css'
 
 interface CompanyProfile {
@@ -54,6 +55,9 @@ export default function ResearchPage() {
   });
   const [activeContext, setActiveContext] = useState<CompanyProfile[]>([])
   const [input, setInput] = useState('')
+  const [attachment, setAttachment] = useState<{ name: string; excerpt: string } | null>(null)
+  const [attachmentError, setAttachmentError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   // const [companies, setCompanies] = useState<CompanyProfile[]>(MOCK_COMPANIES)
   const [isDragOver, setIsDragOver] = useState(false)
   const draggingCompany = useRef<CompanyProfile | null>(null)
@@ -129,13 +133,40 @@ export default function ResearchPage() {
     setActiveContext([])
     resetMessages()
     setInput('')
+    setAttachment(null)
+    setAttachmentError(null)
+  }
+
+  async function handleAttachmentChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setAttachmentError(null)
+    try {
+      const excerpt = await readResearchChatAttachment(file)
+      setAttachment({ name: file.name, excerpt })
+    } catch (err) {
+      setAttachment(null)
+      setAttachmentError(err instanceof Error ? err.message : 'Could not read that file.')
+    }
   }
 
   function handleSend() {
     const trimmed = input.trim()
-    if (!trimmed || isStreaming) return
+    if ((!trimmed && !attachment) || isStreaming) return
+    if (!activeContext.length) return
+
+    const defaultAsk =
+      'Use the attached file as context and respond in relation to the companies in context.'
+    const displayLine = trimmed || defaultAsk
+    const displayContent = attachment ? `[Attached: ${attachment.name}]\n${displayLine}` : displayLine
+
     setInput('')
-    sendMessage(trimmed)
+    setAttachment(null)
+    sendMessage(displayContent, {
+      prompt: displayLine,
+      attachment: attachment ? { fileName: attachment.name, text: attachment.excerpt } : undefined,
+    })
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -294,29 +325,69 @@ export default function ResearchPage() {
               ))}
           </div>
 
-          {/* Input bar */}
-          <div className={styles.inputBar}>
-            <button className={styles.attachBtn} aria-label="Attach file">
-              <Paperclip size={16} />
-            </button>
-            <input
-              className={styles.chatInput}
-              placeholder="Ask about culture, prep for interviews, or drag a company here..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            <button
-              className={cn(
-                styles.sendBtn,
-                input.trim() && activeContext.length > 0 && !isStreaming && styles.sendBtnActive,
-              )}
-              onClick={handleSend}
-              disabled={!input.trim() || activeContext.length === 0 || isStreaming}
-              aria-label="Send message"
-            >
-              <Send size={16} />
-            </button>
+          <div className={styles.inputArea}>
+            {attachment && (
+              <div className={styles.attachRow}>
+                <span className={styles.attachChip}>
+                  <Paperclip size={12} aria-hidden />
+                  <span className={styles.attachChipName}>{attachment.name}</span>
+                  <button
+                    type="button"
+                    className={styles.attachChipRemove}
+                    onClick={() => {
+                      setAttachment(null)
+                      setAttachmentError(null)
+                    }}
+                    aria-label="Remove attachment"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              </div>
+            )}
+            {attachmentError && <p className={styles.attachError}>{attachmentError}</p>}
+            <div className={styles.inputBar}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className={styles.fileInputHidden}
+                accept=".pdf,.txt,.md,.csv,.json,.tsv,.markdown,text/*,application/pdf,application/json"
+                aria-hidden
+                tabIndex={-1}
+                onChange={handleAttachmentChange}
+              />
+              <button
+                type="button"
+                className={styles.attachBtn}
+                aria-label="Attach file"
+                disabled={isStreaming}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Paperclip size={16} />
+              </button>
+              <input
+                className={styles.chatInput}
+                placeholder="Ask about culture, prep for interviews, or drag a company here..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+              <button
+                type="button"
+                className={cn(
+                  styles.sendBtn,
+                  (input.trim() || attachment) &&
+                    activeContext.length > 0 &&
+                    !isStreaming &&
+                    styles.sendBtnActive,
+                )}
+                onClick={handleSend}
+                disabled={(!input.trim() && !attachment) || activeContext.length === 0 || isStreaming}
+                aria-label="Send message"
+              >
+                <Send size={16} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
