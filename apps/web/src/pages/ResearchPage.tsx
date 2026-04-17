@@ -103,7 +103,9 @@ export default function ResearchPage() {
         await deleteCompany(id)
         setToastConfig({ message: `Removed ${name} from your board`, variant: 'error' })
     } catch (error) {
-        setToastConfig({ message: `Failed to delete ${name}`, variant: 'error' })
+        console.error(`Failed to delete company ${id}:`, error);
+        const errorMessage = error instanceof Error ? error.message : 'Please try again later.';
+        setToastConfig({ message: `Failed to delete ${name}: ${errorMessage}`, variant: 'error' })
     }
     setCompanyToDelete(null);
   }

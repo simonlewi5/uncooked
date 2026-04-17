@@ -1,6 +1,5 @@
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui'
-import { cn } from '@/utils/cn'
 import styles from './ConfirmModal.module.css'
 
 interface ConfirmModalProps {
