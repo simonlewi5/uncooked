@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { SetupForm } from '@/components/interview/SetupForm'
 import { InterviewSidebar } from '@/components/interview/InterviewSidebar'
 import { ChatBox } from '@/components/interview/ChatBox'
@@ -47,11 +48,27 @@ function getInitialState() {
 }
 
 export default function InterviewPage(): JSX.Element {
+  const location = useLocation()
+  const roleState = location.state as {
+    companyName?: string
+    companyProfileId?: string
+    roleId?: string
+    roleTitle?: string
+    jobDescription?: string
+  } | null
+
   const initialState = useRef(getInitialState())
   const [phase, setPhase] = useState<Phase>(initialState.current ? 'interview' : 'setup')
-  const [jobDescription, setJobDescription] = useState(initialState.current?.jobDescription ?? '')
-  const [companyName, setCompanyName] = useState(initialState.current?.companyName ?? '')
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null)
+  const [jobDescription, setJobDescription] = useState(
+    roleState?.jobDescription || initialState.current?.jobDescription || ''
+  )
+  const [companyName, setCompanyName] = useState(
+    roleState?.companyName || initialState.current?.companyName || ''
+  )
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(
+    roleState?.companyProfileId || null
+  )
+  const [companyRoleId, setCompanyRoleId] = useState<string | null>(roleState?.roleId || null)
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null)
   const [style, setStyle] = useState<InterviewStyle | null>(initialState.current?.style ?? 'mixed')
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null)
@@ -97,6 +114,7 @@ export default function InterviewPage(): JSX.Element {
       style ?? 'mixed',
       activeResume,
       handleXpAwarded,
+      companyRoleId,
     )
 
   // Keep activeSessionId in sync and persist to sessionStorage
@@ -200,6 +218,7 @@ function handleStart(resumeObject?: ResumeSummary | null): void {
     setJobDescription('')
     setCompanyName('')
     setSelectedCompanyId(null)
+    setCompanyRoleId(null)
     setCompanyProfile(null)
     setStyle('mixed')
     setActiveResume(null)
@@ -353,6 +372,8 @@ function handleStart(resumeObject?: ResumeSummary | null): void {
         resume={activeResume}
         cooldownEnd={questionCooldownEnd}
         onCooldownStart={handleCooldownStart}
+        companyRoleId={companyRoleId}
+        roleTitle={roleState?.roleTitle || null}
       />
       <div className={styles.resizeHandle} onMouseDown={handleMouseDown} />
       <div className={styles.chatPanel}>
