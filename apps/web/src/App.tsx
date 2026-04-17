@@ -28,7 +28,6 @@ export default function App() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="interview" element={<InterviewPage />} />
           <Route path="research" element={<ResearchPage />} />
-          <Route path="add-company" element={<AddCompanyPage />} />
           <Route path="resume" element={<ResumePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
