@@ -5,22 +5,18 @@ interface ResearchChatRequest {
   message: string
   jobDescription?: string
   history?: Array<{ role: 'user' | 'assistant'; content: string }>
-  /** Plain-text excerpt of a user-uploaded file; model must ground answers in this when present. */
   attachment?: { fileName: string; text: string }
 }
 
-function buildUserTurnText(
-  message: string,
-  attachment?: { fileName: string; text: string },
-): string {
+function buildUserTurnText(message: string, attachment?: { fileName: string; text: string }): string {
   const m = message.trim()
   const doc = attachment?.text?.trim()
-  if (!doc) return m
+  if (!doc || !attachment) return m
 
   return `${m}
 
-USER_UPLOADED_DOCUMENT (file name: ${attachment.fileName})
-Use the conversation history above together with this document. Answer the user's latest message by combining: (1) prior user and assistant turns, (2) the document text below, and (3) the selected companies. When the latest question refers to the file, ground your answer in the excerpt; when it refers to earlier chat, use that context too. Quote or paraphrase the document; do not invent details that contradict it. If the document is empty, irrelevant, or unrelated to the question or companies, say so briefly.
+USER_UPLOADED_DOCUMENT (${attachment.fileName})
+Use chat history above plus this excerpt and the selected companies. Ground file-specific answers in the text below; use prior turns for follow-ups. Quote or paraphrase; do not contradict the document. Say briefly if it does not apply.
 
 --- document start ---
 ${doc}
@@ -99,12 +95,10 @@ ${companyList}
 ${jobDescription?.trim() ? `## Job description context (use to tailor answers about fit, skills, or role)\n${jobDescription.trim()}` : ''}
 
 ## Guidelines
-- Answer based on the specified company/companies only.
-- Be concise and factual; cite public knowledge where relevant.
-- If they ask about culture, engineering challenges, or interview prep, tailor to the company and any job description context above.
-- Always use the prior turns in the chat history as context for follow-up questions; do not ignore what the user or you already said.
-- When the current user turn includes a USER_UPLOADED_DOCUMENT block, treat that text as authoritative for anything about that file, and combine it with the chat history and company context—do not answer follow-ups from memory alone if the document is included again in this turn.
-- Write in plain text only. Do not use markdown (no asterisks, # headings, or line-leading list markers). Use short paragraphs and blank lines between ideas.`
+- Answer based on the specified company/companies only; be concise and factual.
+- Use chat history on every turn; do not ignore prior user or assistant messages.
+- If a USER_UPLOADED_DOCUMENT block appears in this turn, treat it as the source for file-specific claims and combine it with history and companies.
+- Plain text only (no markdown: no asterisks, # headings, or line-leading list markers). Short paragraphs; blank lines between ideas.`
 
     const userTurnText = buildUserTurnText(message, attachment)
 

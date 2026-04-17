@@ -18,6 +18,9 @@ interface CompanyProfile {
 }
 
 
+const DEFAULT_ATTACHMENT_PROMPT =
+  'Use the attached file as context and respond in relation to the companies in context.'
+
 const CATEGORY_STYLE: Record<string, string> = {
   Technology: styles.categoryTechnology,
   Fintech: styles.categoryFintech,
@@ -156,15 +159,13 @@ export default function ResearchPage() {
     if ((!trimmed && !attachment) || isStreaming) return
     if (!activeContext.length) return
 
-    const defaultAsk =
-      'Use the attached file as context and respond in relation to the companies in context.'
-    const displayLine = trimmed || defaultAsk
-    const displayContent = attachment ? `[Attached: ${attachment.name}]\n${displayLine}` : displayLine
+    const line = trimmed || (attachment ? DEFAULT_ATTACHMENT_PROMPT : '')
+    const display = attachment ? `[Attached: ${attachment.name}]\n${line}` : line
 
     setInput('')
     setAttachment(null)
-    sendMessage(displayContent, {
-      prompt: displayLine,
+    sendMessage(display, {
+      prompt: line,
       attachment: attachment ? { fileName: attachment.name, text: attachment.excerpt } : undefined,
     })
   }

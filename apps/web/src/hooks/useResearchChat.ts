@@ -54,6 +54,13 @@ function msg(role: Message['role'], content: string, id = `${role}-${Date.now()}
   return { id, role, content, timestamp: new Date() }
 }
 
+type AttachmentPayload = { fileName: string; text: string }
+
+function trimmedAttachment(a: AttachmentPayload | null | undefined): AttachmentPayload | null {
+  const text = a?.text?.trim()
+  return text ? { fileName: a.fileName, text } : null
+}
+
 export function useResearchChat({
   companies,
   jobDescription,
@@ -64,8 +71,7 @@ export function useResearchChat({
   const { session } = useAuth()
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE])
   const [isStreaming, setIsStreaming] = useState(false)
-  /** Re-send on every turn until New Board so follow-ups still see the file. */
-  const sessionAttachmentRef = useRef<{ fileName: string; text: string } | null>(null)
+  const sessionAttachmentRef = useRef<AttachmentPayload | null>(null)
 
   const resetMessages = useCallback(() => {
     sessionAttachmentRef.current = null
@@ -75,11 +81,7 @@ export function useResearchChat({
   const sendMessage = useCallback(
     async (
       displayContent: string,
-      options?: {
-        /** User question only (omit [Attached] line); defaults to displayContent. Sent as \`message\`; attachment body is sent separately. */
-        prompt?: string
-        attachment?: { fileName: string; text: string }
-      },
+      options?: { prompt?: string; attachment?: AttachmentPayload },
     ) => {
       const pushError = (text: string) =>
         setMessages((prev) => [...prev, msg('assistant', text, `err-${Date.now()}`)])
@@ -91,21 +93,11 @@ export function useResearchChat({
 
       const prompt = (options?.prompt ?? displayContent).trim()
 
-      const newAttachment = options?.attachment?.text?.trim()
-        ? { fileName: options.attachment.fileName, text: options.attachment.text.trim() }
-        : null
-      if (newAttachment) sessionAttachmentRef.current = newAttachment
+      const uploaded = trimmedAttachment(options?.attachment ?? null)
+      if (uploaded) sessionAttachmentRef.current = uploaded
 
-      const attachmentForRequest =
-        newAttachment ??
-        (sessionAttachmentRef.current?.text?.trim()
-          ? {
-              fileName: sessionAttachmentRef.current.fileName,
-              text: sessionAttachmentRef.current.text.trim(),
-            }
-          : null)
-
-      const hasDoc = Boolean(attachmentForRequest?.text)
+      const attachment = uploaded ?? trimmedAttachment(sessionAttachmentRef.current)
+      const hasDoc = Boolean(attachment)
       if (!prompt && !hasDoc) {
         pushError('Enter a message or attach a file.')
         return
@@ -146,14 +138,7 @@ export function useResearchChat({
               message: prompt,
               jobDescription: jobDescription?.trim() || undefined,
               history,
-              ...(attachmentForRequest
-                ? {
-                    attachment: {
-                      fileName: attachmentForRequest.fileName,
-                      text: attachmentForRequest.text,
-                    },
-                  }
-                : {}),
+              ...(attachment ? { attachment } : {}),
             }),
           },
         )

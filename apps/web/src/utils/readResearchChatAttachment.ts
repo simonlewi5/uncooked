@@ -17,9 +17,7 @@ function pdfToPlainText(items: ParserTextItem[]): string {
     .trim()
 }
 
-/**
- * Reads supported research-chat attachments into a plain-text excerpt for the model.
- */
+/** Plain-text excerpt for research chat (PDF or common text types). */
 export async function readResearchChatAttachment(file: File): Promise<string> {
   if (file.size > MAX_BYTES) {
     throw new Error(`File is too large (max ${Math.round(MAX_BYTES / 1024 / 1024)} MB).`)
