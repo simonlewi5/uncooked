@@ -8,7 +8,6 @@ import DashboardPage from '@/pages/DashboardPage'
 import InterviewPage from '@/pages/InterviewPage'
 import ResearchPage from '@/pages/ResearchPage'
 import ResumePage from '@/pages/ResumePage'
-import AddCompanyPage from '@/pages/AddCompanyPage'  
 
 export default function App() {
   return (
