@@ -4,13 +4,10 @@ import { SetupForm } from '@/components/interview/SetupForm'
 import { InterviewSidebar } from '@/components/interview/InterviewSidebar'
 import { ChatBox } from '@/components/interview/ChatBox'
 import { XpToast } from '@/components/interview/XpToast'
-import { Badge } from '@/components/ui'
-import { useConsistencyMetrics } from '@/contexts/ConsistencyMetricsContext'
 import { useInterviewChat } from '@/hooks/useInterviewChat'
 import { useInterviewQuestions } from '@/hooks/useInterviewQuestions'
 import { supabase } from '@/lib/supabase'
 import type { CompanyProfile, InterviewStyle, InterviewSessionSummary, ResumeSummary } from '@/types'
-import { formatMinutes } from '@/utils/formatMinutes'
 import styles from './InterviewPage.module.css'
 
 type Phase = 'setup' | 'interview'
@@ -61,7 +58,6 @@ export default function InterviewPage(): JSX.Element {
   } | null
 
   const initialState = useRef(getInitialState())
-  const { data: consistencyMetrics } = useConsistencyMetrics()
   const [phase, setPhase] = useState<Phase>(initialState.current ? 'interview' : 'setup')
   const [jobDescription, setJobDescription] = useState(
     roleState?.jobDescription || initialState.current?.jobDescription || ''
@@ -294,7 +290,6 @@ export default function InterviewPage(): JSX.Element {
 
   const [sidebarWidth, setSidebarWidth] = useState(initialState.current?.sidebarWidth ?? 340)
   const isDragging = useRef(false)
-  const todayMinutes = consistencyMetrics?.interview.dailyMinutes[6]?.minutes ?? 0
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()

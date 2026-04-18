@@ -1,12 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { Plus, Search, Send, X, Paperclip, Star, Trash2, ChevronRight, ChevronDown, Play, Briefcase } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Badge, Button } from '@/components/ui'
+import { Button } from '@/components/ui'
 import { useAuth } from '@/contexts/AuthContext'
-import { useConsistencyMetrics } from '@/contexts/ConsistencyMetricsContext'
 import { useResearchChat } from '@/hooks/useResearchChat'
 import { useResearchCompanies } from '@/hooks/useResearchCompanies'
-import { formatMinutes } from '@/utils/formatMinutes'
 import { useCompanyRoles } from '@/hooks/useCompanyRoles'
 import { StandardToast } from '@/components/interview/Toast'
 import AddCompanyModal from './AddCompanyPage'
@@ -60,7 +58,6 @@ function CompanyLogo({ company, styles }: { company: CompanyProfile, styles: Rec
 export default function ResearchPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { data: consistencyMetrics } = useConsistencyMetrics()
   const [searchQuery, setSearchQuery] = useState(() => {
     return location.state?.companyName || '';
   });
@@ -115,7 +112,6 @@ export default function ResearchPage() {
     }
   }, [location.state, dbCompanies, navigate, location.pathname, searchQuery])
   const userInitial = user?.email?.[0].toUpperCase() ?? '?'
-  const todayMinutes = consistencyMetrics?.research.dailyMinutes[6]?.minutes ?? 0
 
   // Derive active context for the chat hook
   const activeRole = activeContext.length === 1 ? activeContext[0].role : undefined
