@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, KeyboardEvent, useCallback } from 'react'
 import html2pdf from 'html2pdf.js'
 import { Download, Sparkles, Search, X, Plus, FileUp } from 'lucide-react'
-import { Button } from '@/components/ui'
-import { Badge } from '@/components/ui'
+import { Badge, Button } from '@/components/ui'
+import { XpToast } from '@/components/interview/XpToast'
 import { ResumeSuggestionsPanel } from '@/components/resume/ResumeSuggestionsPanel'
 import { useConsistencyMetrics } from '@/contexts/ConsistencyMetricsContext'
 import {
@@ -34,6 +34,12 @@ import { useResumeTailor } from '@/hooks/useResumeTailor'
 import { useResumeUploadAndParse } from '@/hooks/useResumeUploadAndParse'
 import { useResumePersistence } from '@/hooks/useResumePersistence'
 import { useAuth } from '@/contexts/AuthContext'
+import {
+  awardGamificationEvent,
+  GAMIFICATION_EVENT_TYPES,
+  getResumeToastTitle,
+  type ResumeGamificationEventType,
+} from '@/lib/gamification'
 import type { ResumeDocument, ResumeTailorEdit } from '@/types'
 import { formatMinutes } from '@/utils/formatMinutes'
 import { cn } from '@/utils/cn'
@@ -150,6 +156,43 @@ export default function ResumePage() {
 
   const pdfInputRef = useRef<HTMLInputElement>(null)
 
+  type GamificationToastItem =
+    | { id: number; variant: 'xp'; xp: number; label: string }
+    | { id: number; variant: 'achievement'; label: string }
+
+  const [gamificationToasts, setGamificationToasts] = useState<GamificationToastItem[]>([])
+
+  const pushGamificationToast = useCallback((item: GamificationToastItem) => {
+    setGamificationToasts((prev) => [...prev, item])
+  }, [])
+
+  const queueResumeGamification = useCallback(
+    (eventType: ResumeGamificationEventType, referenceId?: string | null) => {
+      if (!user?.id) return
+      void awardGamificationEvent(user.id, eventType, { referenceId: referenceId ?? undefined }).then(
+        (result) => {
+          if (!result.success) return
+          pushGamificationToast({
+            id: Date.now() + Math.random(),
+            variant: 'xp',
+            xp: result.xpAwarded,
+            label: getResumeToastTitle(eventType),
+          })
+          result.newBadges.forEach((badge, i) => {
+            window.setTimeout(() => {
+              pushGamificationToast({
+                id: Date.now() + Math.random(),
+                variant: 'achievement',
+                label: `${badge.icon} ${badge.label}`,
+              })
+            }, 320 * (i + 1))
+          })
+        },
+      )
+    },
+    [user?.id, pushGamificationToast],
+  )
+
   // ── Local helpers for contentEditable field updates ──
   const handleUpdateProfileField = (field: 'name' | 'contact', text: string) => {
     setResumeContent((prev) => updateProfileField(prev, field, text))
@@ -220,6 +263,7 @@ export default function ResumePage() {
       setResumeContent(normalizeResumeDocument(saved.structuredContent))
       setActiveResumeId(saved.id)
       setPendingEdits([])
+      queueResumeGamification(GAMIFICATION_EVENT_TYPES.RESUME_SESSION_UPLOAD, saved.id)
       setSubmitError(
         saved.status === 'partial'
           ? 'Resume imported with partial parsing. Please review and edit extracted sections.'
@@ -307,6 +351,7 @@ export default function ResumePage() {
 
     setPendingEdits(result.edits)
     setTailorRunState('complete')
+    queueResumeGamification(GAMIFICATION_EVENT_TYPES.RESUME_AUTO_TAILOR)
   }
 
   async function handleExportPDF() {
@@ -355,18 +400,35 @@ export default function ResumePage() {
 
   const handleAcceptTarget = (targetId: string) => {
     const normalizedTargetId = normalizeTargetId(targetId)
-    applyEditByTargetId(normalizedTargetId)
+    const applied = applyEditByTargetId(normalizedTargetId)
+    if (applied) {
+      queueResumeGamification(GAMIFICATION_EVENT_TYPES.RESUME_APPLY_TAILOR_EDIT)
+    }
     setActiveTargetId((current) => (current === normalizedTargetId ? null : current))
   }
 
   const handleDeclineTarget = (targetId: string) => {
     const normalizedTargetId = normalizeTargetId(targetId)
+    const hadSuggestion = Boolean(findSuggestionByTargetId(pendingEdits, normalizedTargetId))
     setPendingEdits((prev) => removeSuggestionByTargetId(prev, normalizedTargetId))
+    if (hadSuggestion) {
+      queueResumeGamification(GAMIFICATION_EVENT_TYPES.RESUME_DECLINE_TAILOR_EDIT)
+    }
     setActiveTargetId((current) => (current === normalizedTargetId ? null : current))
   }
 
   return (
     <div className={styles.page}>
+      {gamificationToasts.map((t, i) => (
+        <XpToast
+          key={t.id}
+          variant={t.variant}
+          xp={t.variant === 'xp' ? t.xp : undefined}
+          label={t.label}
+          style={{ bottom: `calc(1.5rem + ${i * 3.5}rem)` }}
+          onDone={() => setGamificationToasts((prev) => prev.filter((x) => x.id !== t.id))}
+        />
+      ))}
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Resume Editor</h1>

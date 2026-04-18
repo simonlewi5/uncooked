@@ -9,7 +9,6 @@ import DashboardPage from '@/pages/DashboardPage'
 import InterviewPage from '@/pages/InterviewPage'
 import ResearchPage from '@/pages/ResearchPage'
 import ResumePage from '@/pages/ResumePage'
-import AddCompanyPage from '@/pages/AddCompanyPage'  
 
 export default function App() {
   return (
@@ -30,7 +29,6 @@ export default function App() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="interview" element={<InterviewPage />} />
             <Route path="research" element={<ResearchPage />} />
-            <Route path="add-company" element={<AddCompanyPage />} />
             <Route path="resume" element={<ResumePage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

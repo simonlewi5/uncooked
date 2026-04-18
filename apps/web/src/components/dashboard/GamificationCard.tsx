@@ -1,10 +1,19 @@
+import { useEffect } from 'react'
 import { Trophy } from 'lucide-react'
 import { useGamificationData } from '@/hooks/useGamificationData'
 import { cn } from '@/utils/cn'
 import styles from './GamificationCard.module.css'
 
 export function GamificationCard(): JSX.Element {
-  const { data, isLoading } = useGamificationData()
+  const { data, isLoading, refetch } = useGamificationData()
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === 'visible') refetch()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [refetch])
 
   if (isLoading || !data) {
     return (

@@ -1,117 +1,27 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import type { Badge, GamificationData } from '@/types'
-
-// ── XP constants ──────────────────────────────────────────────────────────────
-
-const XP_PER_LEVEL = 200
-const XP_PER_PRACTICE = 50 // completing a mock interview session
-const XP_PER_RESEARCH = 25 // researching a company
-const XP_PER_APPLICATION = 20 // tracking a job application
-
-// ── Tier labels by level ──────────────────────────────────────────────────────
-
-const TIER_THRESHOLDS: readonly [number, string][] = [
-  [0, 'Job Seeker'],
-  [3, 'Candidate'],
-  [6, 'Contender'],
-  [10, 'Interview Ace'],
-  [15, 'Top Talent'],
-]
-
-function getTierLabel(level: number): string {
-  const tier = [...TIER_THRESHOLDS].reverse().find(([threshold]) => level >= threshold)
-  return tier?.[1] ?? 'Job Seeker'
-}
-
-// ── Badge definitions ─────────────────────────────────────────────────────────
-
-interface Counts {
-  practice: number
-  research: number
-  applications: number
-  interviewMessages: number
-  totalXp: number
-}
-
-type BadgeDef = Omit<Badge, 'earned'> & { check: (counts: Counts) => boolean }
-
-const BADGE_DEFS: readonly BadgeDef[] = [
-  {
-    id: 'first_move',
-    label: 'First Move',
-    description: 'Complete your first mock interview',
-    icon: '🎯',
-    check: ({ practice }) => practice >= 1,
-  },
-  {
-    id: 'researcher',
-    label: 'Researcher',
-    description: 'Research 3 companies',
-    icon: '🔬',
-    check: ({ research }) => research >= 3,
-  },
-  {
-    id: 'pipeline_builder',
-    label: 'Pipeline Builder',
-    description: 'Track your first job application',
-    icon: '💼',
-    check: ({ applications }) => applications >= 1,
-  },
-  {
-    id: 'interview_pro',
-    label: 'Interview Pro',
-    description: 'Complete 5 mock interview sessions',
-    icon: '🏆',
-    check: ({ practice }) => practice >= 5,
-  },
-  {
-    id: 'warming_up',
-    label: 'Warming Up',
-    description: 'Send 25 interview messages',
-    icon: '🔥',
-    check: ({ interviewMessages }) => interviewMessages >= 25,
-  },
-  {
-    id: 'marathon_talker',
-    label: 'Marathon Talker',
-    description: 'Send 100 interview messages',
-    icon: '🎙️',
-    check: ({ interviewMessages }) => interviewMessages >= 100,
-  },
-  {
-    id: 'champion',
-    label: 'Champion',
-    description: 'Earn 500 XP total',
-    icon: '⭐',
-    check: ({ totalXp }) => totalXp >= 500,
-  },
-] as const
-
-// ── Hook ──────────────────────────────────────────────────────────────────────
+import { supabase } from '@/lib/supabase'
+import { computeGamificationData, type GamificationSources } from '@/lib/gamification'
+import type { GamificationData } from '@/types'
 
 interface UseGamificationDataReturn {
   data: GamificationData | null
   isLoading: boolean
+  /** Refetch gamification (e.g. after awarding XP elsewhere). */
+  refetch: () => void
 }
 
 /**
- * Derives the user's gamification state from their existing activity.
- *
- * XP is computed from counts across practice_sessions, research_sessions,
- * and job_applications — no additional writes needed. The user_xp_events
- * table (migration 009) is available for future trigger-based awards or
- * admin bonuses, but is not queried here yet.
- *
- * Separation of concerns: computation logic lives here, presentation in
- * GamificationCard. The hook can be replaced with a DB-aggregated version
- * without touching the UI.
+ * Derives the user's gamification state from practice/research/applications counts
+ * plus the `user_xp_events` ledger (interview messages, resume tailoring, etc.).
  */
 export function useGamificationData(): UseGamificationDataReturn {
   const { user, loading: isAuthLoading } = useAuth()
   const [data, setData] = useState<GamificationData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [tick, setTick] = useState(0)
+
+  const refetch = () => setTick((t) => t + 1)
 
   useEffect(() => {
     if (isAuthLoading) return
@@ -125,7 +35,6 @@ export function useGamificationData(): UseGamificationDataReturn {
 
     async function fetchGamificationData(): Promise<void> {
       try {
-        // Fire all four queries in parallel — same pattern as useDashboardData
         const [practiceResult, researchResult, applicationsResult, xpEventsResult] = await Promise.all([
           supabase
             .from('practice_sessions')
@@ -139,51 +48,19 @@ export function useGamificationData(): UseGamificationDataReturn {
             .from('job_applications')
             .select('id', { count: 'exact', head: true })
             .eq('user_id', userId),
-          supabase
-            .from('user_xp_events')
-            .select('xp_awarded, event_type')
-            .eq('user_id', userId),
+          supabase.from('user_xp_events').select('xp_awarded, event_type').eq('user_id', userId),
         ])
 
         if (controller.signal.aborted) return
 
-        const practiceCount = practiceResult.count ?? 0
-        const researchCount = researchResult.count ?? 0
-        const appCount = applicationsResult.count ?? 0
-
-        const xpEvents = xpEventsResult.data ?? []
-        const eventXp = xpEvents.reduce((sum, row) => sum + (row.xp_awarded as number), 0)
-        const interviewMessages = xpEvents.filter(r => r.event_type === 'interview_message').length
-
-        const totalXp =
-          practiceCount * XP_PER_PRACTICE +
-          researchCount * XP_PER_RESEARCH +
-          appCount * XP_PER_APPLICATION +
-          eventXp
-
-        const level = Math.floor(totalXp / XP_PER_LEVEL) + 1
-        const xpInLevel = totalXp % XP_PER_LEVEL
-        const xpForNextLevel = XP_PER_LEVEL
-        const progressPct = Math.round((xpInLevel / XP_PER_LEVEL) * 100)
-        const tierLabel = getTierLabel(level)
-
-        const counts: Counts = {
-          practice: practiceCount,
-          research: researchCount,
-          applications: appCount,
-          interviewMessages,
-          totalXp,
+        const sources: GamificationSources = {
+          practiceCount: practiceResult.count ?? 0,
+          researchCount: researchResult.count ?? 0,
+          applicationCount: applicationsResult.count ?? 0,
+          xpEvents: (xpEventsResult.data ?? []) as GamificationSources['xpEvents'],
         }
 
-        const badges: Badge[] = BADGE_DEFS.map((def) => ({
-          id: def.id,
-          label: def.label,
-          description: def.description,
-          icon: def.icon,
-          earned: def.check(counts),
-        }))
-
-        setData({ level, totalXp, xpInLevel, xpForNextLevel, progressPct, tierLabel, badges })
+        setData(computeGamificationData(sources))
       } catch {
         // Gamification is non-critical; a fetch failure doesn't break the Dashboard
       } finally {
@@ -193,7 +70,7 @@ export function useGamificationData(): UseGamificationDataReturn {
 
     void fetchGamificationData()
     return () => controller.abort()
-  }, [user, isAuthLoading])
+  }, [user, isAuthLoading, tick])
 
-  return { data, isLoading }
+  return { data, isLoading, refetch }
 }

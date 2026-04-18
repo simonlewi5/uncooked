@@ -27,6 +27,20 @@
   opacity: 0.85;
 }
 
+.toastAchievement {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.achievementKicker {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.9;
+}
+
 @keyframes xpSlideUp {
   0% {
     opacity: 0;
