@@ -5,9 +5,11 @@ import { InterviewSidebar } from '@/components/interview/InterviewSidebar'
 import { ChatBox } from '@/components/interview/ChatBox'
 import { XpToast } from '@/components/interview/XpToast'
 import { useInterviewChat } from '@/hooks/useInterviewChat'
+import { useInterviewSetup } from '@/hooks/useInterviewSetup'
 import { useInterviewQuestions } from '@/hooks/useInterviewQuestions'
 import { supabase } from '@/lib/supabase'
 import type { CompanyProfile, InterviewStyle, InterviewSessionSummary, ResumeSummary } from '@/types'
+import AddCompanyModal from './AddCompanyPage'
 import styles from './InterviewPage.module.css'
 
 type Phase = 'setup' | 'interview'
@@ -115,6 +117,7 @@ export default function InterviewPage(): JSX.Element {
       activeResume,
       handleXpAwarded,
       companyRoleId,
+      selectedCompanyId
     )
 
   // Keep activeSessionId in sync and persist to sessionStorage
@@ -185,6 +188,29 @@ export default function InterviewPage(): JSX.Element {
       })
   }, [resumeSession])
 
+  const transitionToInterview = useCallback(() => {
+    saveSession({
+      sessionId: null,
+      companyName,
+      jobDescription,
+      style: style ?? 'mixed',
+    })
+    setPhase('interview')
+  }, [companyName, jobDescription, style])
+
+  const {
+    showCompanyModal,
+    setShowCompanyModal,
+    handleStart,
+    handleModalSuccess
+  } = useInterviewSetup(
+    companyName,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    setActiveResume,
+    transitionToInterview
+  )
+
   function handleCompanyProfileSelect(profile: CompanyProfile): void {
     setCompanyName(profile.companyName)
     setSelectedCompanyId(profile.id)
@@ -197,20 +223,7 @@ export default function InterviewPage(): JSX.Element {
     setCompanyProfile(null)
   }
 
-function handleStart(resumeObject?: ResumeSummary | null): void {
-    if (resumeObject) {
-      setActiveResume(resumeObject)
-    }
 
-    saveSession({
-      sessionId: null,
-      companyName,
-      jobDescription,
-      style: style ?? 'mixed',
-    })
-
-    setPhase('interview')
-  }
 
   function handleBack(): void {
     resetSession()
@@ -343,6 +356,17 @@ function handleStart(resumeObject?: ResumeSummary | null): void {
           selectedResumeId={selectedResumeId}
           onResumeSelect={setSelectedResumeId}
         />
+        {showCompanyModal && (
+          <AddCompanyModal 
+            initialCompanyName={companyName}
+            message="You have not researched this company yet. Please fill out their profile to prepare for your interview!"
+            onClose={() => setShowCompanyModal(false)}
+            onSuccess={(newId, newName, newWebsite) => {
+              const newProfile = { id: newId, companyName: newName, companyWebsite: newWebsite } as CompanyProfile;
+              handleModalSuccess(newProfile, handleCompanyProfileSelect);
+            }}
+          />
+        )}
       </div>
     )
   }

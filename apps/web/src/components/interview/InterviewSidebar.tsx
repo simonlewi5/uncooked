@@ -79,12 +79,12 @@ export function InterviewSidebar({
   const [resumeOpen, setResumeOpen] = useState(false)
   const [zoomedResume, setZoomedResume] = useState<ResumeSummary | null>(null)
 
-  const logoProfile: CompanyProfile = companyProfile ?? {
-    id: '',
-    companyName: companyName,
-    companyWebsite: null,
-    industry: null,
-    companySize: null,
+  const logoProfile: CompanyProfile = {
+    id: companyProfile?.id || selectedCompanyId || '',
+    companyName: companyProfile?.companyName || companyName || 'Company',
+    companyWebsite: companyProfile?.companyWebsite || null,
+    industry: companyProfile?.industry || null,
+    companySize: companyProfile?.companySize || null,
   }
 
   function handleViewResearch() {
