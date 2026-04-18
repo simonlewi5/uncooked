@@ -1,6 +1,5 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
 import type { Message } from '@/types'
 import { stripResearchChatMarkdown } from '@/utils/stripResearchChatMarkdown'
 
@@ -67,104 +66,18 @@ function trimmedAttachment(a: AttachmentPayload | null | undefined): AttachmentP
 export function useResearchChat({
   companies,
   jobDescription,
-  companyProfileId,
-  roleId,
 }: {
   companies: string[]
   jobDescription?: string
-  companyProfileId?: string | null
-  roleId?: string | null
 }) {
-  const { session, user } = useAuth()
+  const { session } = useAuth()
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE])
   const [isStreaming, setIsStreaming] = useState(false)
-  const [sessionId, setSessionId] = useState<string | null>(null)
-  const sessionIdRef = useRef<string | null>(null)
-  const loadedRoleRef = useRef<string | null>(null)
-
-  // Load existing research session for this role
-  useEffect(() => {
-    if (!user || !roleId || loadedRoleRef.current === roleId) return
-    loadedRoleRef.current = roleId
-
-    supabase
-      .from('research_sessions')
-      .select('id, messages')
-      .eq('user_id', user.id)
-      .eq('company_role_id', roleId)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .then(({ data, error }) => {
-        if (error || !data || data.length === 0) return
-        const row = data[0]
-        const saved = row.messages as Array<{ role: string; content: string; timestamp: string }>
-        if (!saved || saved.length === 0) return
-
-        sessionIdRef.current = row.id as string
-        setSessionId(row.id as string)
-        setMessages(
-          saved.map((m, i) => ({
-            id: `saved-${i}`,
-            role: m.role as 'user' | 'assistant',
-            content: m.content,
-            timestamp: new Date(m.timestamp),
-          }))
-        )
-      })
-  }, [user, roleId])
-
-  // Persist messages to research_sessions after streaming completes
-  const persistMessages = useCallback(
-    async (allMessages: Message[]) => {
-      if (!user) return
-      // Only persist if we have a role context
-      if (!roleId) return
-
-      const rows = allMessages
-        .filter((m) => m.id !== 'init')
-        .map((m) => ({
-          role: m.role,
-          content: m.content,
-          timestamp: m.timestamp.toISOString(),
-        }))
-
-      if (rows.length === 0) return
-
-      if (sessionIdRef.current) {
-        // Update existing session
-        await supabase
-          .from('research_sessions')
-          .update({ messages: rows })
-          .eq('id', sessionIdRef.current)
-      } else {
-        // Create new session
-        const { data, error } = await supabase
-          .from('research_sessions')
-          .insert({
-            user_id: user.id,
-            company_profile_id: companyProfileId || null,
-            company_role_id: roleId,
-            title: rows[0]?.content?.slice(0, 80) || 'Research session',
-            messages: rows,
-          })
-          .select('id')
-          .single()
-
-        if (!error && data) {
-          sessionIdRef.current = data.id as string
-          setSessionId(data.id as string)
-        }
-      }
-    },
-    [user, companyProfileId, roleId]
-  )
+  const sessionAttachmentRef = useRef<AttachmentPayload | null>(null)
 
   const resetMessages = useCallback(() => {
     sessionAttachmentRef.current = null
     setMessages([{ ...INITIAL_MESSAGE, timestamp: new Date() }])
-    sessionIdRef.current = null
-    setSessionId(null)
-    loadedRoleRef.current = null
   }, [])
 
   const sendMessage = useCallback(
@@ -272,12 +185,6 @@ export function useResearchChat({
           }
         }
         reader.releaseLock()
-
-        // Persist after streaming completes
-        setMessages((prev) => {
-          persistMessages(prev)
-          return prev
-        })
       } catch {
         setPlaceholderContent(
           "Couldn't reach the research service right now. Please check your connection and try again.",
@@ -286,8 +193,8 @@ export function useResearchChat({
         setIsStreaming(false)
       }
     },
-    [session?.access_token, companies, jobDescription, messages, persistMessages],
+    [session?.access_token, companies, jobDescription, messages],
   )
 
-  return { messages, isStreaming, sendMessage, resetMessages, sessionId }
+  return { messages, isStreaming, sendMessage, resetMessages }
 }

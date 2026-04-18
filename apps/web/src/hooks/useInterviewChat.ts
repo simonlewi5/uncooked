@@ -187,7 +187,6 @@ export function useInterviewChat(
   style: InterviewStyle,
   activeResume?: ResumeSummary | null,
   onXpAwarded?: (xp: number, eventType: string) => void,
-  companyRoleId?: string | null,
 ): UseInterviewChatReturn {
   const { user } = useAuth()
   // Tracks whether a practice_sessions row has been recorded for this session.
@@ -267,7 +266,6 @@ export function useInterviewChat(
           .insert({
             user_id: user.id,
             company_profile_id: companyProfileId,
-            company_role_id: companyRoleId || null,
             company_name: jobData.companyName.trim(),
             job_description: jobData.jobDescription,
             interview_style: style,
@@ -381,7 +379,7 @@ export function useInterviewChat(
         setIsTyping(false)
       }
     },
-    [jobData, style, user, activeResume, onXpAwarded, companyRoleId]
+    [jobData, style, user, activeResume, onXpAwarded]
   )
 
   return { messages, isTyping, sendMessage, interviewSessionId, resumeSession, resetSession }

@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ChevronDown, ChevronRight, FileText, Maximize, X, BookOpen } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronRight, FileText, Maximize, X } from 'lucide-react'
 import { CompanyLogo } from './CompanyLogo'
 import { QuestionList } from './QuestionList'
 import { JobDescriptionForm } from './JobDescriptionForm'
@@ -27,8 +26,6 @@ interface InterviewSidebarProps {
   resume?: ResumeSummary | null
   cooldownEnd: number | null
   onCooldownStart: (end: number) => void
-  companyRoleId?: string | null
-  roleTitle?: string | null
 }
 
 function formatResumeText(parsed: StructuredResumeData | null | undefined): string {
@@ -70,14 +67,11 @@ export function InterviewSidebar({
   resume,
   cooldownEnd,
   onCooldownStart,
-  companyRoleId,
-  roleTitle,
 }: InterviewSidebarProps): React.JSX.Element {
-  const navigate = useNavigate()
   const [questionsOpen, setQuestionsOpen] = useState(true)
   const [jdOpen, setJdOpen] = useState(false)
-  const [resumeOpen, setResumeOpen] = useState(false)
-  const [zoomedResume, setZoomedResume] = useState<ResumeSummary | null>(null)
+  const [resumeOpen, setResumeOpen] = useState(false) 
+  const [zoomedResume, setZoomedResume] = useState<ResumeSummary | null>(null) 
 
   const logoProfile: CompanyProfile = companyProfile ?? {
     id: '',
@@ -87,30 +81,14 @@ export function InterviewSidebar({
     companySize: null,
   }
 
-  function handleViewResearch() {
-    navigate('/research', {
-      state: {
-        companyProfileId: selectedCompanyId,
-        roleId: companyRoleId,
-      },
-    })
-  }
-
   return (
     <div className={styles.sidebar}>
       <div className={styles.contextHeader}>
         <CompanyLogo company={logoProfile} size="md" />
         <div className={styles.contextInfo}>
           <span className={styles.companyName}>{companyName}</span>
-          {roleTitle && <span className={styles.roleTitle}>{roleTitle}</span>}
           <div className={styles.contextMeta}>
             <span className={styles.styleBadge}>{style}</span>
-            {selectedCompanyId && (
-              <button className={styles.researchLink} onClick={handleViewResearch}>
-                <BookOpen size={12} />
-                Research
-              </button>
-            )}
           </div>
         </div>
       </div>
