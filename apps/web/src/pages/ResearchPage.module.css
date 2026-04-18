@@ -146,7 +146,7 @@
   height: 24px;
   border-radius: var(--radius-sm);
   object-fit: contain;
-  background-color: var(--color-bg); 
+  background-color: var(--color-bg);
   flex-shrink: 0;
 }
 
@@ -158,7 +158,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.6875rem; 
+  font-size: 0.6875rem;
   font-weight: 600;
   color: var(--color-text-secondary);
   flex-shrink: 0;
@@ -251,6 +251,7 @@
   background: var(--color-bg-muted);
   color: #f59e0b;
 }
+
 .deleteBtn {
   display: flex;
   align-items: center;
@@ -276,6 +277,7 @@
   background: var(--color-bg-muted);
   color: #dc2626;
 }
+
 .noResults {
   font-size: var(--font-sm);
   color: var(--color-text-tertiary);
@@ -316,7 +318,6 @@
   justify-content: center;
   padding: var(--space-4) 0;
 }
-
 
 .persistentAddContainer .addCompanyBtn {
   width: 100%;
@@ -490,6 +491,73 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+/* Input area */
+
+.inputArea {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.hiddenFileInput {
+  display: none;
+}
+
+.fileAlert {
+  margin: 0 var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid #f59e0b;
+  border-radius: var(--radius-md);
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--color-text);
+  font-size: var(--font-sm);
+}
+
+.selectedFileRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 var(--space-4);
+}
+
+.selectedFileChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-subtle);
+  color: var(--color-text);
+  font-size: var(--font-sm);
+}
+
+.selectedFileName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selectedFileRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.selectedFileRemove:hover {
+  background: var(--color-bg-subtle);
+  color: var(--color-text);
 }
 
 /* Input bar */
