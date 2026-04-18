@@ -104,6 +104,18 @@ export async function getPrimaryResume(userId: string): Promise<ResumeRecordDto 
   return data ? mapRowToDto(data) : null
 }
 
+export async function getUserResumes(userId: string): Promise<ResumeRecordDto[]> {
+  const { data, error } = await supabase
+    .from('resumes')
+    .select('*')
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false })
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return (data ?? []).map((row) => mapRowToDto(row as ResumeRow))
+}
+
 export async function createParsedResume(input: CreateParsedResumeInput): Promise<ResumeRecordDto> {
   const { data, error } = await supabase
     .from('resumes')
