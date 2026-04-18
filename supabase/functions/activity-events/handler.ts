@@ -12,6 +12,8 @@ type RequestBody = {
   activity_type?: string
   event_type?: string
   metadata?: Record<string, unknown>
+  session_id?: string
+  duration_seconds?: number
 }
 
 type EventInsertPayload = {
@@ -19,12 +21,16 @@ type EventInsertPayload = {
   activity_type: ActivityType
   event_type: string
   metadata: Record<string, unknown>
+  session_id?: string
+  duration_seconds: number
 }
 
 type EventInsertResult = {
   id: string
   created_at: string
 }
+
+type EventInsertPayloadWithoutSession = Omit<EventInsertPayload, 'session_id'>
 
 export type HandlerDeps = {
   getUserFromAuth: (authHeader: string) => Promise<{ id: string } | null>
@@ -77,6 +83,12 @@ const sanitizeMetadata = (input: unknown): Record<string, unknown> => {
   return out
 }
 
+const isNonNegativeInteger = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0
+
+const isUuid = (value: unknown): value is string =>
+  typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+
 export async function handleActivityEvents(req: Request, deps: HandlerDeps): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -122,13 +134,29 @@ export async function handleActivityEvents(req: Request, deps: HandlerDeps): Pro
   }
 
   const metadata = sanitizeMetadata(body.metadata)
+  const sessionId = body.session_id && isUuid(body.session_id) ? body.session_id : crypto.randomUUID()
+  const durationSeconds = body.duration_seconds ?? 0
+
+  if (!isNonNegativeInteger(durationSeconds)) {
+    return json(400, {
+      error: 'Validation failed',
+      code: 'invalid_duration',
+      details: 'duration_seconds must be a non-negative integer',
+    })
+  }
 
   try {
-    const row = await deps.insertEvent({
+    const basePayload: EventInsertPayloadWithoutSession = {
       user_id: user.id,
       activity_type: activityType,
       event_type: eventType,
       metadata,
+      duration_seconds: durationSeconds,
+    }
+
+    const row = await deps.insertEvent({
+      ...basePayload,
+      session_id: sessionId,
     })
 
     // Keep derived daily sessions fresh while avoiding full blocking table locks.
@@ -137,6 +165,30 @@ export async function handleActivityEvents(req: Request, deps: HandlerDeps): Pro
     return json(201, { status: 'success', data: row })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown insert error'
+
+    if (/session_id/i.test(message) && /column|does not exist/i.test(message)) {
+      try {
+        const row = await deps.insertEvent({
+          user_id: user.id,
+          activity_type: activityType,
+          event_type: eventType,
+          metadata,
+          duration_seconds: durationSeconds,
+        })
+
+        await deps.refreshSessions()
+
+        return json(201, { status: 'success', data: row })
+      } catch (fallbackError) {
+        const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : 'Unknown insert error'
+        return json(500, {
+          error: 'Failed to persist activity event',
+          code: 'insert_failed',
+          details: fallbackMessage,
+        })
+      }
+    }
+
     return json(500, {
       error: 'Failed to persist activity event',
       code: 'insert_failed',

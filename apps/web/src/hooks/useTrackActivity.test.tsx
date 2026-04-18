@@ -37,7 +37,7 @@ describe('useTrackActivity', () => {
     vi.useRealTimers()
   })
 
-  it('does not fire events while preference is not loaded', async () => {
+  it('fires events while preference is still loading', async () => {
     singleMock.mockImplementationOnce(() => new Promise(() => {}))
 
     const { result } = renderHook(() => useTrackActivity('resume'))
@@ -47,7 +47,7 @@ describe('useTrackActivity', () => {
     })
 
     await vi.advanceTimersByTimeAsync(600)
-    expect(invokeMock).not.toHaveBeenCalled()
+    expect(invokeMock).toHaveBeenCalledTimes(1)
   })
 
   it('does not fire events when analytics tracking is disabled', async () => {
@@ -86,9 +86,15 @@ describe('useTrackActivity', () => {
     await vi.advanceTimersByTimeAsync(600)
 
     expect(invokeMock).toHaveBeenCalledTimes(1)
-    const payload = invokeMock.mock.calls[0][1].body as { metadata: Record<string, unknown> }
+    const payload = invokeMock.mock.calls[0][1].body as {
+      metadata: Record<string, unknown>
+      session_id: string
+      duration_seconds: number
+    }
     expect(payload.metadata.answerText).toBeUndefined()
     expect(payload.metadata.lengthBucket).toBe('short')
+    expect(typeof payload.session_id).toBe('string')
+    expect(payload.duration_seconds).toBeGreaterThanOrEqual(0)
   })
 
   it('flushes batched events after 500ms debounce', async () => {
@@ -112,6 +118,11 @@ describe('useTrackActivity', () => {
 
     await vi.advanceTimersByTimeAsync(1)
     expect(invokeMock).toHaveBeenCalledTimes(2)
+
+    const firstPayload = invokeMock.mock.calls[0][1].body as { session_id: string; duration_seconds: number }
+    const secondPayload = invokeMock.mock.calls[1][1].body as { session_id: string; duration_seconds: number }
+    expect(firstPayload.session_id).toBe(secondPayload.session_id)
+    expect(secondPayload.duration_seconds).toBeGreaterThanOrEqual(firstPayload.duration_seconds)
   })
 
   it('does not throw when flush fails', async () => {

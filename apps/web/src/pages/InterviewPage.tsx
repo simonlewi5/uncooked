@@ -2,10 +2,14 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { SetupForm } from '@/components/interview/SetupForm'
 import { InterviewSidebar } from '@/components/interview/InterviewSidebar'
 import { ChatBox } from '@/components/interview/ChatBox'
+import { XpToast } from '@/components/interview/XpToast'
+import { Badge } from '@/components/ui'
+import { useConsistencyMetrics } from '@/contexts/ConsistencyMetricsContext'
 import { useInterviewChat } from '@/hooks/useInterviewChat'
 import { useInterviewQuestions } from '@/hooks/useInterviewQuestions'
 import { supabase } from '@/lib/supabase'
 import type { CompanyProfile, InterviewStyle, InterviewSessionSummary, ResumeSummary } from '@/types'
+import { formatMinutes } from '@/utils/formatMinutes'
 import styles from './InterviewPage.module.css'
 
 type Phase = 'setup' | 'interview'
@@ -47,6 +51,7 @@ function getInitialState() {
 
 export default function InterviewPage(): JSX.Element {
   const initialState = useRef(getInitialState())
+  const { data: consistencyMetrics } = useConsistencyMetrics()
   const [phase, setPhase] = useState<Phase>(initialState.current ? 'interview' : 'setup')
   const [jobDescription, setJobDescription] = useState(initialState.current?.jobDescription ?? '')
   const [companyName, setCompanyName] = useState(initialState.current?.companyName ?? '')
@@ -79,11 +84,23 @@ export default function InterviewPage(): JSX.Element {
     updateNotes,
   } = useInterviewQuestions(activeSessionId, companyName)
 
+  // XP toast state
+  const [xpToasts, setXpToasts] = useState<Array<{ id: number; xp: number; label: string }>>([])
+
+  const handleXpAwarded = useCallback((xp: number, eventType: string) => {
+    const label = eventType === 'interview_start' ? 'Session Started!'
+      : eventType === 'interview_milestone_5' ? '5-Message Milestone!'
+      : eventType === 'interview_milestone_10' ? '10-Message Milestone!'
+      : ''
+    setXpToasts(prev => [...prev, { id: Date.now() + Math.random(), xp, label }])
+  }, [])
+
   const { messages, isTyping, sendMessage, interviewSessionId, resumeSession, resetSession } =
     useInterviewChat(
       { jobDescription, companyName, companyContext: '' },
       style ?? 'mixed',
       activeResume,
+      handleXpAwarded,
     )
 
   // Keep activeSessionId in sync and persist to sessionStorage
@@ -258,6 +275,7 @@ function handleStart(resumeObject?: ResumeSummary | null): void {
 
   const [sidebarWidth, setSidebarWidth] = useState(initialState.current?.sidebarWidth ?? 340)
   const isDragging = useRef(false)
+  const todayMinutes = consistencyMetrics?.interview.dailyMinutes[6]?.minutes ?? 0
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -288,68 +306,81 @@ function handleStart(resumeObject?: ResumeSummary | null): void {
     document.addEventListener('mouseup', onMouseUp)
   }, [])
 
-  if (phase === 'setup') {
-    return (
-      <div className={styles.setupPage}>
-        <div className={styles.setupHeader}>
-          <h1 className={styles.title}>Interview Simulator</h1>
-          <p className={styles.subtitle}>
-            Practice answering questions live with AI. Provide context to make it realistic.
-          </p>
-        </div>
-        <SetupForm
-          companyName={companyName}
-          onCompanyNameChange={handleCompanyNameChange}
-          selectedCompanyId={selectedCompanyId}
-          onCompanyProfileSelect={handleCompanyProfileSelect}
-          jobDescription={jobDescription}
-          onJobDescriptionChange={setJobDescription}
-          style={style}
-          onStyleChange={setStyle}
-          onStart={handleStart}
-          onLoadSession={handleLoadSession}
-          selectedResumeId={selectedResumeId}
-          onResumeSelect={setSelectedResumeId}
-        />
-      </div>
-    )
-  }
-
   return (
-    <div
-      className={styles.interviewPage}
-      style={{ gridTemplateColumns: `${sidebarWidth}px 6px 1fr` }}
-    >
-      <InterviewSidebar
-        companyName={companyName}
-        onCompanyNameChange={handleCompanyNameChange}
-        selectedCompanyId={selectedCompanyId}
-        companyProfile={companyProfile}
-        onCompanyProfileSelect={handleCompanyProfileSelect}
+    <>
+      {todayMinutes > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-3)' }}>
+          <Badge variant="info">Today: {formatMinutes(todayMinutes)}</Badge>
+        </div>
+      )}
+      {phase === 'setup' ? (
+        <div className={styles.setupPage}>
+          <div className={styles.setupHeader}>
+            <h1 className={styles.title}>Interview Simulator</h1>
+            <p className={styles.subtitle}>
+              Practice answering questions live with AI. Provide context to make it realistic.
+            </p>
+          </div>
+          <SetupForm
+            companyName={companyName}
+            onCompanyNameChange={handleCompanyNameChange}
+            selectedCompanyId={selectedCompanyId}
+            onCompanyProfileSelect={handleCompanyProfileSelect}
+            jobDescription={jobDescription}
+            onJobDescriptionChange={setJobDescription}
+            style={style}
+            onStyleChange={setStyle}
+            onStart={handleStart}
+            onLoadSession={handleLoadSession}
+            selectedResumeId={selectedResumeId}
+            onResumeSelect={setSelectedResumeId}
+          />
+        </div>
+      ) : (
+        <div
+          className={styles.interviewPage}
+          style={{ gridTemplateColumns: `${sidebarWidth}px 6px 1fr` }}
+        >
+          <InterviewSidebar
+            companyName={companyName}
+            onCompanyNameChange={handleCompanyNameChange}
+            selectedCompanyId={selectedCompanyId}
+            companyProfile={companyProfile}
+            onCompanyProfileSelect={handleCompanyProfileSelect}
 
-        style={style ?? 'mixed'}
-        jobDescription={jobDescription}
-        onJobDescriptionChange={setJobDescription}
-        questions={questions}
-        isGenerating={isGenerating}
-        onGenerateQuestions={handleGenerateQuestions}
-        onToggleBookmark={toggleBookmark}
-        onUpdateNotes={updateNotes}
-        canGenerate={jobDescription.trim().length > 0 && companyName.trim().length > 0}
-        onBack={handleBack}
-        resume={activeResume}
-        cooldownEnd={questionCooldownEnd}
-        onCooldownStart={handleCooldownStart}
-      />
-      <div className={styles.resizeHandle} onMouseDown={handleMouseDown} />
-      <div className={styles.chatPanel}>
-        <ChatBox
-          messages={messages}
-          isTyping={isTyping}
-          onSend={sendMessage}
-          disabled={false}
-        />
-      </div>
-    </div>
+            style={style ?? 'mixed'}
+            jobDescription={jobDescription}
+            onJobDescriptionChange={setJobDescription}
+            questions={questions}
+            isGenerating={isGenerating}
+            onGenerateQuestions={handleGenerateQuestions}
+            onToggleBookmark={toggleBookmark}
+            onUpdateNotes={updateNotes}
+            canGenerate={jobDescription.trim().length > 0 && companyName.trim().length > 0}
+            onBack={handleBack}
+            resume={activeResume}
+            cooldownEnd={questionCooldownEnd}
+            onCooldownStart={handleCooldownStart}
+          />
+          <div className={styles.resizeHandle} onMouseDown={handleMouseDown} />
+          <div className={styles.chatPanel}>
+            <ChatBox
+              messages={messages}
+              isTyping={isTyping}
+              onSend={sendMessage}
+              disabled={false}
+            />
+            {xpToasts.map((t) => (
+              <XpToast
+                key={t.id}
+                xp={t.xp}
+                label={t.label}
+                onDone={() => setXpToasts((prev) => prev.filter((x) => x.id !== t.id))}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </>
   )
 }

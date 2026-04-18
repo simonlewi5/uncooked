@@ -1,53 +1,21 @@
--- Activity tracking foundation: normalized event ledger + derived sessions + consistency metrics
+-- Roll up total practice duration by session, then sum per day.
 
--- Consent preference column is intentionally nullable at creation time.
--- Product/legal can later choose default opt-in or opt-out in a follow-up migration.
-ALTER TABLE public.users
-  ADD COLUMN IF NOT EXISTS analytics_tracking_enabled boolean;
+ALTER TABLE public.activity_events
+  ADD COLUMN IF NOT EXISTS session_id uuid;
 
-ALTER TABLE public.users
-  ALTER COLUMN analytics_tracking_enabled SET DEFAULT true;
+UPDATE public.activity_events
+SET session_id = gen_random_uuid()
+WHERE session_id IS NULL;
 
-UPDATE public.users
-SET analytics_tracking_enabled = true
-WHERE analytics_tracking_enabled IS NULL;
+ALTER TABLE public.activity_events
+  ALTER COLUMN session_id SET DEFAULT gen_random_uuid();
 
-ALTER TABLE public.users
-  ALTER COLUMN analytics_tracking_enabled SET NOT NULL;
+ALTER TABLE public.activity_events
+  ALTER COLUMN session_id SET NOT NULL;
 
-COMMENT ON COLUMN public.users.analytics_tracking_enabled IS
-  'Default opt-in variant applied. Ensure legal basis and user consent disclosures are compliant.';
+CREATE INDEX IF NOT EXISTS activity_events_user_session_created_idx
+  ON public.activity_events (user_id, session_id, created_at DESC);
 
-CREATE TABLE IF NOT EXISTS public.activity_events (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  activity_type text NOT NULL CHECK (activity_type IN ('resume', 'interview', 'research')),
-  event_type text NOT NULL,
-  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-  duration_seconds integer CHECK (duration_seconds >= 0),
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS activity_events_user_created_idx
-  ON public.activity_events (user_id, created_at DESC);
-
-CREATE INDEX IF NOT EXISTS activity_events_user_activity_created_idx
-  ON public.activity_events (user_id, activity_type, created_at DESC);
-
-ALTER TABLE public.activity_events ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own activity events"
-  ON public.activity_events FOR SELECT
-  USING (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "Users can insert own activity events"
-  ON public.activity_events;
-
--- Enforce service-only writes so all inserts go through edge validation.
-REVOKE INSERT ON public.activity_events FROM anon, authenticated;
-GRANT INSERT ON public.activity_events TO service_role;
-
-DROP VIEW IF EXISTS public.practice_sessions_v2;
 DROP MATERIALIZED VIEW IF EXISTS public.practice_sessions_v2;
 
 CREATE MATERIALIZED VIEW public.practice_sessions_v2 AS
@@ -55,11 +23,12 @@ WITH meaningful_events AS (
   SELECT
     user_id,
     activity_type,
+    session_id,
     event_type,
     metadata,
     duration_seconds,
     created_at,
-    (created_at AT TIME ZONE 'UTC')::date AS session_date
+    (created_at AT TIME ZONE 'UTC')::date AS event_date
   FROM public.activity_events
   WHERE
     (activity_type = 'resume' AND event_type IN (
@@ -87,18 +56,19 @@ WITH meaningful_events AS (
 SELECT
   user_id,
   activity_type,
-  session_date,
+  session_id,
+  (max(created_at) AT TIME ZONE 'UTC')::date AS session_date,
   min(created_at) AS started_at,
   max(created_at) AS ended_at,
-  max(duration_seconds)::integer AS session_duration_seconds,
+  coalesce(max(duration_seconds), 0)::integer AS session_duration_seconds,
   count(*)::int AS event_count,
   bool_or(event_type = 'session_completed' OR coalesce((metadata->>'completed')::boolean, false)) AS completed
 FROM meaningful_events
-GROUP BY user_id, activity_type, session_date
+GROUP BY user_id, activity_type, session_id
 WITH NO DATA;
 
-CREATE UNIQUE INDEX practice_sessions_v2_user_activity_date_idx
-  ON public.practice_sessions_v2 (user_id, activity_type, session_date);
+CREATE UNIQUE INDEX practice_sessions_v2_user_activity_session_idx
+  ON public.practice_sessions_v2 (user_id, activity_type, session_id);
 
 CREATE INDEX practice_sessions_v2_user_date_idx
   ON public.practice_sessions_v2 (user_id, session_date DESC);
@@ -138,12 +108,18 @@ AS $$
     FROM public.practice_sessions_v2
     WHERE user_id = p_user_id
   ),
+  session_days AS (
+    SELECT DISTINCT
+      activity_type,
+      session_date
+    FROM sessions
+  ),
   grouped AS (
     SELECT
       activity_type,
       session_date,
       session_date - (row_number() OVER (PARTITION BY activity_type ORDER BY session_date))::int AS streak_group
-    FROM sessions
+    FROM session_days
   ),
   streaks AS (
     SELECT
@@ -158,7 +134,7 @@ AS $$
     SELECT
       activity_type,
       max(session_date) AS last_active_date
-    FROM sessions
+    FROM session_days
     GROUP BY activity_type
   ),
   counts AS (
@@ -205,10 +181,11 @@ AS $$
   SELECT
     activity_type,
     session_date AS practice_date,
-    COALESCE(session_duration_seconds, 0) / 60 AS duration_minutes
+    ROUND(COALESCE(SUM(session_duration_seconds), 0) / 60.0)::int AS duration_minutes
   FROM public.practice_sessions_v2
   WHERE user_id = p_user_id
     AND session_date >= current_date - 6
+  GROUP BY activity_type, session_date
   ORDER BY activity_type, session_date ASC;
 $$;
 

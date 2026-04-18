@@ -6,6 +6,8 @@ import type { ActivityType, StructuredErrorResponse } from '@/types'
 type QueueItem = {
   eventType: string
   metadata: Record<string, unknown>
+  sessionId: string
+  durationSeconds: number
 }
 
 const FORBIDDEN_METADATA_KEYS = new Set([
@@ -40,19 +42,26 @@ const scrubMetadata = (metadata?: Record<string, unknown>): Record<string, unkno
 
 export function useTrackActivity(activityType: ActivityType) {
   const { user } = useAuth()
-  const [isPreferenceLoaded, setIsPreferenceLoaded] = useState(false)
-  const [enabled, setEnabled] = useState(false)
+  const [isPreferenceLoaded, setIsPreferenceLoaded] = useState(true)
+  const [enabled, setEnabled] = useState(true)
   const [lastError, setLastError] = useState<StructuredErrorResponse | null>(null)
 
   const queueRef = useRef<QueueItem[]>([])
   const timerRef = useRef<number | null>(null)
   const flushingRef = useRef(false)
+  const sessionIdRef = useRef<string>(crypto.randomUUID())
+  const sessionStartedAtRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    sessionIdRef.current = crypto.randomUUID()
+    sessionStartedAtRef.current = null
+  }, [activityType, user?.id])
 
   useEffect(() => {
     let cancelled = false
 
     setIsPreferenceLoaded(false)
-    setEnabled(false)
+    setEnabled(true)
 
     if (!user?.id) {
       setIsPreferenceLoaded(true)
@@ -72,12 +81,11 @@ export function useTrackActivity(activityType: ActivityType) {
 
       if (error) {
         setLastError({ message: error.message, code: 'preference_fetch_failed' })
-        setEnabled(false)
         setIsPreferenceLoaded(true)
         return
       }
 
-      setEnabled(data?.analytics_tracking_enabled === true)
+      setEnabled(data?.analytics_tracking_enabled !== false)
       setIsPreferenceLoaded(true)
     })()
 
@@ -88,7 +96,7 @@ export function useTrackActivity(activityType: ActivityType) {
 
   const flushNow = useCallback(async () => {
     if (flushingRef.current) return
-    if (!user?.id || !enabled || !isPreferenceLoaded) return
+    if (!user?.id || !enabled) return
     if (queueRef.current.length === 0) return
 
     flushingRef.current = true
@@ -101,6 +109,8 @@ export function useTrackActivity(activityType: ActivityType) {
             activity_type: activityType,
             event_type: item.eventType,
             metadata: item.metadata,
+            session_id: item.sessionId,
+            duration_seconds: item.durationSeconds,
           },
         })
       )
@@ -113,7 +123,7 @@ export function useTrackActivity(activityType: ActivityType) {
     }
 
     flushingRef.current = false
-  }, [activityType, enabled, isPreferenceLoaded, user?.id])
+  }, [activityType, enabled, user?.id])
 
   const scheduleFlush = useCallback(() => {
     if (timerRef.current !== null) {
@@ -128,12 +138,23 @@ export function useTrackActivity(activityType: ActivityType) {
 
   const trackEvent = useCallback(
     (eventType: string, metadata?: Record<string, unknown>) => {
-      if (!user?.id || !isPreferenceLoaded || !enabled) return
+      if (!user?.id || !enabled) return
 
       queueMicrotask(() => {
+        if (sessionStartedAtRef.current === null) {
+          sessionStartedAtRef.current = Date.now()
+        }
+
+        const elapsedSeconds = Math.max(
+          0,
+          Math.floor((Date.now() - sessionStartedAtRef.current) / 1000)
+        )
+
         queueRef.current.push({
           eventType,
           metadata: scrubMetadata(metadata),
+          sessionId: sessionIdRef.current,
+          durationSeconds: elapsedSeconds,
         })
 
         if (queueRef.current.length >= 10) {
@@ -143,7 +164,7 @@ export function useTrackActivity(activityType: ActivityType) {
         }
       })
     },
-    [enabled, flushNow, isPreferenceLoaded, scheduleFlush, user?.id]
+    [enabled, flushNow, scheduleFlush, user?.id]
   )
 
   useEffect(() => {

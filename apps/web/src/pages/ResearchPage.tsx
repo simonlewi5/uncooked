@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
 import { Plus, Search, Send, GripVertical, X, Paperclip, Star, Trash2 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Button } from '@/components/ui'
+import { Badge, Button } from '@/components/ui'
 import { useAuth } from '@/contexts/AuthContext'
+import { useConsistencyMetrics } from '@/contexts/ConsistencyMetricsContext'
 import { useResearchChat } from '@/hooks/useResearchChat'
 import { useResearchCompanies } from '@/hooks/useResearchCompanies'
+import { formatMinutes } from '@/utils/formatMinutes'
 import { cn } from '@/utils/cn'
 import styles from './ResearchPage.module.css'
 
@@ -49,6 +51,7 @@ function CompanyLogo({ company, styles }: { company: CompanyProfile, styles: Rec
 export default function ResearchPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { data: consistencyMetrics } = useConsistencyMetrics()
   const [searchQuery, setSearchQuery] = useState(() => {
     return location.state?.companyName || '';
   });
@@ -71,6 +74,7 @@ export default function ResearchPage() {
     }
   }, [location.state, dbCompanies, navigate, location.pathname, searchQuery])
   const userInitial = user?.email?.[0].toUpperCase() ?? '?'
+  const todayMinutes = consistencyMetrics?.research.dailyMinutes[6]?.minutes ?? 0
 
   const companyNames = activeContext.map((c) => c.name)
   const { messages, isStreaming, sendMessage, resetMessages } = useResearchChat({
@@ -154,10 +158,13 @@ export default function ResearchPage() {
             Chat with AI to analyze companies, compare roles, and build your knowledge base
           </p>
         </div>
-        <Button variant="primary" size="sm" onClick={handleNewBoard}>
-          <Plus size={14} />
-          New Board
-        </Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          {todayMinutes > 0 && <Badge variant="info">Today: {formatMinutes(todayMinutes)}</Badge>}
+          <Button variant="primary" size="sm" onClick={handleNewBoard}>
+            <Plus size={14} />
+            New Board
+          </Button>
+        </div>
       </div>
 
       <div className={styles.layout}>

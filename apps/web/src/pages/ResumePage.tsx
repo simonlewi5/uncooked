@@ -2,7 +2,9 @@ import { useState, useEffect, useRef, KeyboardEvent, useCallback } from 'react'
 import html2pdf from 'html2pdf.js'
 import { Download, Sparkles, Search, X, Plus, FileUp } from 'lucide-react'
 import { Button } from '@/components/ui'
+import { Badge } from '@/components/ui'
 import { ResumeSuggestionsPanel } from '@/components/resume/ResumeSuggestionsPanel'
+import { useConsistencyMetrics } from '@/contexts/ConsistencyMetricsContext'
 import {
   applySuggestion,
   buildResumeSuggestionViewModels,
@@ -33,6 +35,7 @@ import { useResumeUploadAndParse } from '@/hooks/useResumeUploadAndParse'
 import { useResumePersistence } from '@/hooks/useResumePersistence'
 import { useAuth } from '@/contexts/AuthContext'
 import type { ResumeDocument, ResumeTailorEdit } from '@/types'
+import { formatMinutes } from '@/utils/formatMinutes'
 import { cn } from '@/utils/cn'
 import styles from './ResumePage.module.css'
 
@@ -118,6 +121,7 @@ const toInitialResumeContent = (): ResumeDocument => ({
 
 export default function ResumePage() {
   const { user } = useAuth()
+  const { data: consistencyMetrics } = useConsistencyMetrics()
   const resumeRef = useRef<HTMLDivElement>(null)
   const [activeTargetId, setActiveTargetId] = useState<string | null>(null)
   const [resumeContent, setResumeContent] = useState<ResumeDocument>(toInitialResumeContent())
@@ -339,6 +343,7 @@ export default function ResumePage() {
   const suggestionItems: ResumeSuggestionViewModel[] = buildResumeSuggestionViewModels(resumeContent, pendingEdits)
   const suggestionPanelState = tailorRunState === 'idle' ? 'idle' : tailorRunState
   const pageError = submitError ?? uploadError ?? persistenceError ?? tailorError
+  const todayMinutes = consistencyMetrics?.resume.dailyMinutes[6]?.minutes ?? 0
 
   const handleRevealTarget = useCallback((targetId: string) => {
     const normalizedTargetId = normalizeTargetId(targetId)
@@ -410,6 +415,7 @@ export default function ResumePage() {
             <Sparkles size={14} />
             Auto-Tailor
           </Button>
+          {todayMinutes > 0 && <Badge variant="info">Today: {formatMinutes(todayMinutes)}</Badge>}
         </div>
       </div>
 

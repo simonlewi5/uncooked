@@ -158,6 +158,61 @@
   font-weight: 600;
 }
 
+.durationSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.durationRow {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.durationActivityLabel {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  padding-top: var(--space-2);
+}
+
+.durationGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.durationCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-bg-subtle);
+}
+
+.durationCellLabel {
+  font-size: var(--font-xs);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.durationCellValue {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.durationCellValueEmpty {
+  color: var(--color-text-tertiary);
+}
+
 .itemList {
   list-style: none;
   display: flex;

@@ -4,6 +4,7 @@ import { Badge, Spinner } from '@/components/ui'
 import { GamificationCard } from '@/components/dashboard/GamificationCard'
 import { useConsistencyMetrics } from '@/contexts/ConsistencyMetricsContext'
 import { useDashboardData } from '@/hooks/useDashboardData'
+import { formatMinutes } from '@/utils/formatMinutes'
 import { cn } from '@/utils/cn'
 import type { ResearchSessionSummary, CompanySummary, PipelineCounts } from '@/types'
 import styles from './DashboardPage.module.css'
@@ -19,6 +20,10 @@ function formatTimeAgo(isoString: string): string {
   return `${diffDays}d ago`
 }
 
+function formatDayLabel(date: string): string {
+  return new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(new Date(`${date}T00:00:00`))
+}
+
 interface RecentResearchCardProps {
   sessions: ResearchSessionSummary[]
 }
@@ -32,11 +37,16 @@ interface ApplicationPipelineCardProps {
 }
 
 function PracticeConsistencyCard(): JSX.Element {
-  const { data, isLoading } = useConsistencyMetrics()
+  const { data, durationError, isLoading } = useConsistencyMetrics()
 
   const resume = data?.resume
   const interview = data?.interview
   const research = data?.research
+  const fallbackDaily = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (6 - i))
+    return { date: d.toISOString().slice(0, 10), minutes: 0 }
+  })
 
   const totalSessions7d =
     (resume?.sessionsLast7d ?? 0) +
@@ -82,6 +92,35 @@ function PracticeConsistencyCard(): JSX.Element {
             <span className={styles.pipelineLabel}>Research</span>
             <span className={styles.pipelineValue}>{research?.sessionsLast7d ?? 0}</span>
           </div>
+        </div>
+        <div className={styles.durationSection}>
+          {([
+            ['Resume', resume],
+            ['Interview', interview],
+            ['Research', research],
+          ] as const).map(([label, metric]) => {
+            const dailyMinutes = metric?.dailyMinutes ?? fallbackDaily
+            return (
+              <div key={label} className={styles.durationRow}>
+                <span className={styles.durationActivityLabel}>{label}</span>
+                <div className={styles.durationGrid}>
+                  {dailyMinutes.map((day) => (
+                    <div key={day.date} className={styles.durationCell}>
+                      <span className={styles.durationCellLabel}>{formatDayLabel(day.date)}</span>
+                      <span
+                        className={cn(
+                          styles.durationCellValue,
+                          (durationError || day.minutes === 0) && styles.durationCellValueEmpty
+                        )}
+                      >
+                        {durationError ? '—' : formatMinutes(day.minutes)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

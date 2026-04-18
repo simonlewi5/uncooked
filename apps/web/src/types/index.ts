@@ -104,16 +104,24 @@ export type StructuredErrorResponse = {
   code?: string
 }
 
-export interface ConsistencyMetric {
+export type DailyDuration = {
+  date: string
+  minutes: number
+}
+
+export type ActivityMetric = {
   activityType: ActivityType
   currentStreakDays: number
   longestStreakDays: number
   sessionsLast7d: number
   sessionsLast30d: number
   lastActiveDate: string | null
+  dailyMinutes: DailyDuration[]
 }
 
-export type ConsistencyMetrics = Record<ActivityType, ConsistencyMetric>
+export type ConsistencyMetric = ActivityMetric
+
+export type ConsistencyMetrics = Record<ActivityType, ActivityMetric>
 
 export type ResumeNode = { text?: string }
 
