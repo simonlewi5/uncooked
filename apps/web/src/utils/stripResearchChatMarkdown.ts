@@ -14,7 +14,7 @@ export function stripResearchChatMarkdown(text: string): string {
   }
   s = s.replace(/\*\*/g, '')
 
-  s = s.replace(/^\s*[\*\-•◦▪]\s+/gm, '')
+  s = s.replace(/^\s*[-*•◦▪]\s+/gm, '')
   s = s.replace(/^\s*\d+\.\s+/gm, '')
   s = s.replace(/^>\s?/gm, '')
   s = s.replace(/(^|\s)_([^_\n]+)_($|\s)/g, '$1$2$3')
