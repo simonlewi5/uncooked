@@ -294,7 +294,10 @@ export default function DashboardPage(): JSX.Element {
       ? { totalMinutes: 0, buckets: [0, 0, 0, 0, 0, 0, 0] }
       : { totalMinutes: 0, buckets: [0, 0, 0, 0, 0] }
 
-  if (isLoading) {
+  const shouldShowInitialLoader = isLoading && !data
+  const shouldShowFullPageError = fetchError && !data
+
+  if (shouldShowInitialLoader) {
     return (
       <div className={styles.loadingState}>
         <Spinner size="lg" />
@@ -302,7 +305,7 @@ export default function DashboardPage(): JSX.Element {
     )
   }
 
-  if (fetchError) {
+  if (shouldShowFullPageError) {
     return (
       <div className={styles.errorState}>
         <p className={styles.errorText}>{fetchError}</p>
