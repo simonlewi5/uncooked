@@ -4,6 +4,7 @@ import { SetupForm } from '@/components/interview/SetupForm'
 import { InterviewSidebar } from '@/components/interview/InterviewSidebar'
 import { ChatBox } from '@/components/interview/ChatBox'
 import { XpToast } from '@/components/interview/XpToast'
+import { StandardToast } from '@/components/interview/Toast'
 import { useInterviewChat } from '@/hooks/useInterviewChat'
 import { useInterviewSetup } from '@/hooks/useInterviewSetup'
 import { useInterviewQuestions } from '@/hooks/useInterviewQuestions'
@@ -101,6 +102,7 @@ export default function InterviewPage(): JSX.Element {
 
   // XP toast state
   const [xpToasts, setXpToasts] = useState<Array<{ id: number; xp: number; label: string }>>([])
+  const [toastConfig, setToastConfig] = useState<{ message: string; variant?: 'success' | 'error' } | null>(null)
 
   const handleXpAwarded = useCallback((xp: number, eventType: string) => {
     const label = eventType === 'interview_start' ? 'Session Started!'
@@ -364,7 +366,15 @@ export default function InterviewPage(): JSX.Element {
             onSuccess={(newId, newName, newWebsite) => {
               const newProfile = { id: newId, companyName: newName, companyWebsite: newWebsite } as CompanyProfile;
               handleModalSuccess(newProfile, handleCompanyProfileSelect);
+              setToastConfig({ message: `Added ${newName} to your research board!`, variant: 'success' });
             }}
+          />
+        )}
+        {toastConfig && (
+          <StandardToast
+            message={toastConfig.message}
+            variant={toastConfig.variant}
+            onDone={() => setToastConfig(null)}
           />
         )}
       </div>
@@ -416,6 +426,13 @@ export default function InterviewPage(): JSX.Element {
           />
         ))}
       </div>
+      {toastConfig && (
+          <StandardToast
+            message={toastConfig.message}
+            variant={toastConfig.variant}
+            onDone={() => setToastConfig(null)}
+          />
+        )}
     </div>
   )
 }
