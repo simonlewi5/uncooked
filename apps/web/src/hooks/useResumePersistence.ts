@@ -3,6 +3,7 @@ import type { ResumeDocument, ResumeRecordDto, ResumeRecordStatus } from '@/type
 import {
   createParsedResume,
   getPrimaryResume,
+  getUserResumes,
   saveResumeStructuredContent,
 } from '@/lib/resumeRepository'
 
@@ -23,6 +24,7 @@ type UseResumePersistenceReturn = {
   error: string | null
   clearError: () => void
   loadPrimaryResume: (userId: string) => Promise<ResumeRecordDto | null>
+  loadUserResumes: (userId: string) => Promise<ResumeRecordDto[]>
   createResumeFromParse: (input: CreateParsedResumeParams) => Promise<ResumeRecordDto>
   saveResume: (
     resumeId: string,
@@ -51,6 +53,19 @@ export function useResumePersistence(): UseResumePersistenceReturn {
       return await getPrimaryResume(userId)
     } catch (err) {
       setError(toErrorMessage(err, 'Failed to load resume.'))
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  const loadUserResumes = useCallback(async (userId: string) => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      return await getUserResumes(userId)
+    } catch (err) {
+      setError(toErrorMessage(err, 'Failed to load saved resumes.'))
       throw err
     } finally {
       setIsLoading(false)
@@ -95,6 +110,7 @@ export function useResumePersistence(): UseResumePersistenceReturn {
     error,
     clearError,
     loadPrimaryResume,
+    loadUserResumes,
     createResumeFromParse,
     saveResume,
   }

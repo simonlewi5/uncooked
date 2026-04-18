@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, KeyboardEvent, useCallback } from 'react'
 import html2pdf from 'html2pdf.js'
-import { Download, Sparkles, Search, X, Plus, FileUp } from 'lucide-react'
+import { Download, Sparkles, Search, X, Plus, FileUp, FileText } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { XpToast } from '@/components/interview/XpToast'
 import { ResumeSuggestionsPanel } from '@/components/resume/ResumeSuggestionsPanel'
@@ -39,13 +39,13 @@ import {
   getResumeToastTitle,
   type ResumeGamificationEventType,
 } from '@/lib/gamification'
-import type { ResumeDocument, ResumeTailorEdit } from '@/types'
+import type { ResumeDocument, ResumeTailorEdit, ResumeRecordDto } from '@/types'
 import { cn } from '@/utils/cn'
 import styles from './ResumePage.module.css'
 
 // Helper: Extract and trim text from contentEditable element
 const readEditableText = (element: HTMLElement): string => {
-  return (element?.textContent?.trim() || '')
+  return element?.textContent?.trim() || ''
 }
 
 const MOCK_RESUME = {
@@ -123,26 +123,36 @@ const toInitialResumeContent = (): ResumeDocument => ({
   ],
 })
 
+const formatResumeDate = (value: string | null | undefined) => {
+  if (!value) return 'No date'
+  return new Date(value).toLocaleDateString()
+}
+
 export default function ResumePage() {
   const { user } = useAuth()
   const resumeRef = useRef<HTMLDivElement>(null)
   const [activeTargetId, setActiveTargetId] = useState<string | null>(null)
   const [resumeContent, setResumeContent] = useState<ResumeDocument>(toInitialResumeContent())
+  const [savedResumes, setSavedResumes] = useState<ResumeRecordDto[]>([])
   const [jobDescription, setJobDescription] = useState('')
   const [skillInput, setSkillInput] = useState('')
   const [pendingEdits, setPendingEdits] = useState<ResumeTailorEdit[]>([])
   const [tailorRunState, setTailorRunState] = useState<'idle' | 'complete'>('idle')
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
+  const [isExportingPDF, setIsExportingPDF] = useState(false)
   const [activeResumeId, setActiveResumeId] = useState<string | null>(null)
+
   const { runTailor, isLoading, error: tailorError, clearError } = useResumeTailor()
   const {
     loadPrimaryResume,
+    loadUserResumes,
     saveResume,
     isLoading: isPersistenceLoading,
     error: persistenceError,
     clearError: clearPersistenceError,
   } = useResumePersistence()
+
   const {
     uploadAndParse,
     phase: uploadPhase,
@@ -190,6 +200,25 @@ export default function ResumePage() {
     [user?.id, pushGamificationToast],
   )
 
+  const loadSavedResumes = useCallback(async () => {
+    if (!user?.id) return
+
+    try {
+      const resumes = await loadUserResumes(user.id)
+      setSavedResumes(resumes ?? [])
+    } catch {
+      // surfaced through persistenceError
+    }
+  }, [user?.id, loadUserResumes])
+
+  const handleLoadResume = useCallback((resume: ResumeRecordDto) => {
+    if (!resume.structuredContent) return
+    setResumeContent(normalizeResumeDocument(resume.structuredContent))
+    setActiveResumeId(resume.id)
+    setPendingEdits([])
+    setSubmitError(null)
+  }, [])
+
   // ── Local helpers for contentEditable field updates ──
   const handleUpdateProfileField = (field: 'name' | 'contact', text: string) => {
     setResumeContent((prev) => updateProfileField(prev, field, text))
@@ -219,12 +248,21 @@ export default function ResumePage() {
       clearPersistenceError()
 
       try {
-        const existing = await loadPrimaryResume(user.id)
-        if (cancelled || !existing?.structuredContent) return
-        setResumeContent(normalizeResumeDocument(existing.structuredContent))
-        setActiveResumeId(existing.id)
+        const [existing, resumes] = await Promise.all([
+          loadPrimaryResume(user.id),
+          loadUserResumes(user.id),
+        ])
+
+        if (cancelled) return
+
+        if (existing?.structuredContent) {
+          setResumeContent(normalizeResumeDocument(existing.structuredContent))
+          setActiveResumeId(existing.id)
+        }
+
+        setSavedResumes(resumes ?? [])
       } catch {
-        // error surfaced through persistenceError
+        // surfaced through persistenceError
       }
     }
 
@@ -233,7 +271,7 @@ export default function ResumePage() {
     return () => {
       cancelled = true
     }
-  }, [user?.id, loadPrimaryResume, clearPersistenceError])
+  }, [user?.id, loadPrimaryResume, loadUserResumes, clearPersistenceError])
 
   async function handlePdfImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -266,6 +304,7 @@ export default function ResumePage() {
           ? 'Resume imported with partial parsing. Please review and edit extracted sections.'
           : null
       )
+      await loadSavedResumes()
     } else {
       setSubmitError(`Could not parse "${file.name}". Please try a different file.`)
     }
@@ -353,16 +392,31 @@ export default function ResumePage() {
 
   async function handleExportPDF() {
     if (!resumeRef.current) return
-    await html2pdf()
-      .set({
-        margin: [10, 10, 10, 10],
-        filename: 'resume_export.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+
+    try {
+      setIsExportingPDF(true)
+
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve())
       })
-      .from(resumeRef.current)
-      .save()
+
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve())
+      })
+
+      await html2pdf()
+        .set({
+          margin: [10, 10, 10, 10],
+          filename: 'resume_export.pdf',
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        })
+        .from(resumeRef.current)
+        .save()
+    } finally {
+      setIsExportingPDF(false)
+    }
   }
 
   async function handleSaveResume() {
@@ -376,12 +430,13 @@ export default function ResumePage() {
 
     try {
       await saveResume(activeResumeId, resumeContent, 'edited')
+      await loadSavedResumes()
     } catch {
-      // error surfaced through persistenceError
+      // surfaced through persistenceError
     }
   }
 
-  const editable = !isPreviewMode
+  const editable = !isPreviewMode && !isExportingPDF
   const suggestionItems: ResumeSuggestionViewModel[] = buildResumeSuggestionViewModels(resumeContent, pendingEdits)
   const suggestionPanelState = tailorRunState === 'idle' ? 'idle' : tailorRunState
   const pageError = submitError ?? uploadError ?? persistenceError ?? tailorError
@@ -425,6 +480,7 @@ export default function ResumePage() {
           onDone={() => setGamificationToasts((prev) => prev.filter((x) => x.id !== t.id))}
         />
       ))}
+
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Resume Editor</h1>
@@ -455,12 +511,13 @@ export default function ResumePage() {
             onChange={handlePdfImport}
           />
           <Button
-            variant='secondary'
-            size='sm'
+            variant="secondary"
+            size="sm"
             onClick={() => pdfInputRef.current?.click()}
             loading={isUploadLoading}
           >
-            <FileUp size={14} /> {uploadPhase === 'uploading' || uploadPhase === 'parsing' ? 'Processing...' : 'Upload Resume'}
+            <FileUp size={14} />{' '}
+            {uploadPhase === 'uploading' || uploadPhase === 'parsing' ? 'Processing...' : 'Upload Resume'}
           </Button>
           <Button variant="secondary" size="sm" onClick={handleExportPDF}>
             <Download size={14} />
@@ -477,6 +534,89 @@ export default function ResumePage() {
       </div>
 
       <div className={styles.layout}>
+        <aside
+          style={{
+            width: '240px',
+            flexShrink: 0,
+            border: '1px solid var(--color-border)',
+            borderRadius: '16px',
+            background: 'var(--color-bg)',
+            padding: '16px',
+            height: 'fit-content',
+            maxHeight: 'calc(100vh - 180px)',
+            overflowY: 'auto',
+          }}
+        >
+          <h3
+            style={{
+              margin: '0 0 12px 0',
+              fontSize: '14px',
+              fontWeight: 700,
+              color: 'var(--color-text)',
+            }}
+          >
+            Saved Resumes
+          </h3>
+
+          {savedResumes.length === 0 ? (
+            <p
+              style={{
+                margin: 0,
+                fontSize: '13px',
+                color: 'var(--color-text-secondary)',
+              }}
+            >
+              No saved resumes yet.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {savedResumes.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleLoadResume(item)}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    border: activeResumeId === item.id
+                      ? '1px solid var(--color-primary)'
+                      : '1px solid var(--color-border)',
+                    background: activeResumeId === item.id
+                      ? 'var(--color-primary-subtle)'
+                      : 'transparent',
+                    borderRadius: '12px',
+                    padding: '10px 12px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      marginBottom: '6px',
+                      color: 'var(--color-text)',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    <FileText size={14} />
+                    <span>{item.title || item.fileName || 'Untitled Resume'}</span>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '12px',
+                      color: 'var(--color-text-secondary)',
+                    }}
+                  >
+                    Updated {formatResumeDate(item.updatedAt ?? item.createdAt)}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </aside>
+
         <aside className={styles.leftPanel}>
           <div className={styles.card}>
             <p className={styles.cardTitle}>Target Job Description</p>
