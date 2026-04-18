@@ -21,7 +21,7 @@ type EventInsertPayload = {
   activity_type: ActivityType
   event_type: string
   metadata: Record<string, unknown>
-  session_id?: string
+  session_id: string
   duration_seconds: number
 }
 
@@ -29,8 +29,6 @@ type EventInsertResult = {
   id: string
   created_at: string
 }
-
-type EventInsertPayloadWithoutSession = Omit<EventInsertPayload, 'session_id'>
 
 export type HandlerDeps = {
   getUserFromAuth: (authHeader: string) => Promise<{ id: string } | null>
@@ -146,17 +144,13 @@ export async function handleActivityEvents(req: Request, deps: HandlerDeps): Pro
   }
 
   try {
-    const basePayload: EventInsertPayloadWithoutSession = {
+    const row = await deps.insertEvent({
       user_id: user.id,
       activity_type: activityType,
       event_type: eventType,
       metadata,
-      duration_seconds: durationSeconds,
-    }
-
-    const row = await deps.insertEvent({
-      ...basePayload,
       session_id: sessionId,
+      duration_seconds: durationSeconds,
     })
 
     // Keep derived daily sessions fresh while avoiding full blocking table locks.
@@ -165,29 +159,6 @@ export async function handleActivityEvents(req: Request, deps: HandlerDeps): Pro
     return json(201, { status: 'success', data: row })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown insert error'
-
-    if (/session_id/i.test(message) && /column|does not exist/i.test(message)) {
-      try {
-        const row = await deps.insertEvent({
-          user_id: user.id,
-          activity_type: activityType,
-          event_type: eventType,
-          metadata,
-          duration_seconds: durationSeconds,
-        })
-
-        await deps.refreshSessions()
-
-        return json(201, { status: 'success', data: row })
-      } catch (fallbackError) {
-        const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : 'Unknown insert error'
-        return json(500, {
-          error: 'Failed to persist activity event',
-          code: 'insert_failed',
-          details: fallbackMessage,
-        })
-      }
-    }
 
     return json(500, {
       error: 'Failed to persist activity event',

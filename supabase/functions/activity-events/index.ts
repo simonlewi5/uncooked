@@ -55,7 +55,7 @@ Deno.serve(async (req: Request) => {
       }
 
       try {
-        await sql.unsafe('REFRESH MATERIALIZED VIEW CONCURRENTLY public.practice_sessions_v2;')
+        await sql.unsafe('REFRESH MATERIALIZED VIEW CONCURRENTLY public.user_activity_sessions;')
       } catch (error) {
         console.error('activity-events refresh failed:', error)
       }

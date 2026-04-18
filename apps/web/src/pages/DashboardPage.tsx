@@ -9,6 +9,8 @@ import { cn } from '@/utils/cn'
 import type { ResearchSessionSummary, CompanySummary, PipelineCounts } from '@/types'
 import styles from './DashboardPage.module.css'
 
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
 function formatTimeAgo(isoString: string): string {
   const diffMs = Date.now() - new Date(isoString).getTime()
   const diffMins = Math.floor(diffMs / 60000)
@@ -20,9 +22,6 @@ function formatTimeAgo(isoString: string): string {
   return `${diffDays}d ago`
 }
 
-function formatDayLabel(date: string): string {
-  return new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(new Date(`${date}T00:00:00`))
-}
 
 interface RecentResearchCardProps {
   sessions: ResearchSessionSummary[]
@@ -37,27 +36,34 @@ interface ApplicationPipelineCardProps {
 }
 
 function PracticeConsistencyCard(): JSX.Element {
-  const { data, durationError, isLoading } = useConsistencyMetrics()
+  const { data, isLoading } = useConsistencyMetrics()
+  const todayDow = new Date().getDay() // 0 = Sun, 6 = Sat
 
-  const resume = data?.resume
-  const interview = data?.interview
-  const research = data?.research
-  const fallbackDaily = Array.from({ length: 7 }, (_, i) => {
+  // Sum minutes across all three activity types for each date in the rolling window.
+  const minutesByDate = new Map<string, number>()
+  for (const activity of ['resume', 'interview', 'research'] as const) {
+    for (const { date, minutes } of data?.[activity].dailyMinutes ?? []) {
+      minutesByDate.set(date, (minutesByDate.get(date) ?? 0) + minutes)
+    }
+  }
+
+  // Sun–Sat dates for the current calendar week.
+  const weekDates = Array.from({ length: 7 }, (_, i) => {
     const d = new Date()
-    d.setDate(d.getDate() - (6 - i))
-    return { date: d.toISOString().slice(0, 10), minutes: 0 }
+    d.setDate(d.getDate() - todayDow + i)
+    return d.toISOString().slice(0, 10)
   })
 
-  const totalSessions7d =
-    (resume?.sessionsLast7d ?? 0) +
-    (interview?.sessionsLast7d ?? 0) +
-    (research?.sessionsLast7d ?? 0)
-
-  const bestCurrentStreak = Math.max(
-    resume?.currentStreakDays ?? 0,
-    interview?.currentStreakDays ?? 0,
-    research?.currentStreakDays ?? 0
+  // Future days in the week always show 0.
+  
+  const weekMinutes = weekDates.map((date, i) =>
+    i <= todayDow ? (minutesByDate.get(date) ?? 0) : 0
   )
+
+  // Demo-day mock: const weekMinutes = [12, 45, 90, 25, 120, 0, 65]
+
+  const totalMinutes = weekMinutes.reduce((sum, m) => sum + m, 0)
+  const maxMinutes = Math.max(...weekMinutes, 1)
 
   return (
     <div className={styles.card}>
@@ -71,53 +77,29 @@ function PracticeConsistencyCard(): JSX.Element {
             <span>This Week</span>
           </div>
         </div>
-        <div className={styles.statValue}>{isLoading ? '...' : totalSessions7d}</div>
+        <div className={styles.statValue}>
+          {isLoading ? '...' : totalMinutes === 0 ? '0h' : formatMinutes(totalMinutes)}
+        </div>
         <p className={styles.statEmpty}>
           {isLoading
             ? 'Loading consistency metrics...'
-            : bestCurrentStreak > 0
-              ? `Active streak: ${bestCurrentStreak} day${bestCurrentStreak === 1 ? '' : 's'}`
-              : 'Start your first session to build a streak'}
+            : totalMinutes > 0
+              ? 'Total practice time this week'
+              : 'Start your first session to track consistency'}
         </p>
-        <div className={styles.pipelineStats}>
-          <div className={styles.pipelineStat}>
-            <span className={styles.pipelineLabel}>Resume</span>
-            <span className={styles.pipelineValue}>{resume?.sessionsLast7d ?? 0}</span>
-          </div>
-          <div className={styles.pipelineStat}>
-            <span className={styles.pipelineLabel}>Interview</span>
-            <span className={styles.pipelineValue}>{interview?.sessionsLast7d ?? 0}</span>
-          </div>
-          <div className={styles.pipelineStat}>
-            <span className={styles.pipelineLabel}>Research</span>
-            <span className={styles.pipelineValue}>{research?.sessionsLast7d ?? 0}</span>
-          </div>
-        </div>
-        <div className={styles.durationSection}>
-          {([
-            ['Resume', resume],
-            ['Interview', interview],
-            ['Research', research],
-          ] as const).map(([label, metric]) => {
-            const dailyMinutes = metric?.dailyMinutes ?? fallbackDaily
+        <div className={styles.barChart}>
+          {DAY_LABELS.map((label, i) => {
+            const heightPx = Math.max((weekMinutes[i] / maxMinutes) * 80, 4)
+            const tooltip = weekMinutes[i] === 0 ? 'No activity' : formatMinutes(weekMinutes[i])
             return (
-              <div key={label} className={styles.durationRow}>
-                <span className={styles.durationActivityLabel}>{label}</span>
-                <div className={styles.durationGrid}>
-                  {dailyMinutes.map((day) => (
-                    <div key={day.date} className={styles.durationCell}>
-                      <span className={styles.durationCellLabel}>{formatDayLabel(day.date)}</span>
-                      <span
-                        className={cn(
-                          styles.durationCellValue,
-                          (durationError || day.minutes === 0) && styles.durationCellValueEmpty
-                        )}
-                      >
-                        {durationError ? '—' : formatMinutes(day.minutes)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+              <div key={label} className={styles.barGroup} data-tooltip={tooltip}>
+                <div
+                  className={cn(styles.bar, i === todayDow && styles.barToday)}
+                  style={{ height: heightPx }}
+                />
+                <span className={cn(styles.barLabel, i === todayDow && styles.barLabelToday)}>
+                  {label}
+                </span>
               </div>
             )
           })}

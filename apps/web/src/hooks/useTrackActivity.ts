@@ -33,6 +33,7 @@ const scrubMetadata = (metadata?: Record<string, unknown>): Record<string, unkno
       typeof value === 'number' ||
       typeof value === 'string'
     ) {
+      if (typeof value === 'string' && value.length > 120) continue
       sanitized[key] = value
     }
   }
