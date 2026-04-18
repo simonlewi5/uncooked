@@ -104,7 +104,7 @@ export function useResumeUploadAndParse(): UseResumeUploadAndParseReturn {
         return null
       }
     },
-    [createResumeFromParse]
+    [createResumeFromParse, trackEvent]
   )
 
   return {

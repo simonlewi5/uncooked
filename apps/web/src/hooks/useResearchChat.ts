@@ -262,7 +262,7 @@ export function useResearchChat({
         setIsStreaming(false)
       }
     },
-    [session?.access_token, companies, jobDescription, messages, persistMessages],
+    [session?.access_token, companies, jobDescription, messages, persistMessages, trackEvent],
   )
 
   return { messages, isStreaming, sendMessage, resetMessages, sessionId }

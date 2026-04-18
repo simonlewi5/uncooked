@@ -218,7 +218,7 @@ export function useResumeTailor(): UseResumeTailorReturn {
     }
 
     return result
-  }, [])
+  }, [trackEvent])
 
   return { runTailor, isLoading, error, clearError }
 }

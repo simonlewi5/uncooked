@@ -477,7 +477,6 @@ export default function ResumePage() {
             <Sparkles size={14} />
             Auto-Tailor
           </Button>
-          {todayMinutes > 0 && <Badge variant="info">Today: {formatMinutes(todayMinutes)}</Badge>}
         </div>
       </div>
 

@@ -257,7 +257,6 @@ export default function ResearchPage() {
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-          {todayMinutes > 0 && <Badge variant="info">Today: {formatMinutes(todayMinutes)}</Badge>}
           <Button variant="primary" size="sm" onClick={handleNewBoard}>
             <Plus size={14} />
             New Board

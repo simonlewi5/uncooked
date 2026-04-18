@@ -168,6 +168,7 @@ export function ConsistencyMetricsProvider({ children }: { children: React.React
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useConsistencyMetrics(): ConsistencyMetricsContextValue {
   const context = useContext(ConsistencyMetricsContext)
   if (!context) {

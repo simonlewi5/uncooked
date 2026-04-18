@@ -327,11 +327,6 @@ export default function InterviewPage(): JSX.Element {
 
   return (
     <>
-      {todayMinutes > 0 && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-3)' }}>
-          <Badge variant="info">Today: {formatMinutes(todayMinutes)}</Badge>
-        </div>
-      )}
       {phase === 'setup' ? (
         <div className={styles.setupPage}>
           <div className={styles.setupHeader}>

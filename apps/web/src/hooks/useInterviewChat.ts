@@ -398,7 +398,7 @@ export function useInterviewChat(
         setIsTyping(false)
       }
     },
-    [jobData, style, user, activeResume, onXpAwarded, companyRoleId]
+    [jobData, style, user, activeResume, onXpAwarded, companyRoleId, trackEvent]
   )
 
   return { messages, isTyping, sendMessage, interviewSessionId, resumeSession, resetSession }
