@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { to: '/research', label: 'Research' },
   { to: '/resume', label: 'Resume' },
   { to: '/interview', label: 'Practice' },
+  { to: '/applications', label: 'Applications' },
 ]
 
 export default function AppShell() {
