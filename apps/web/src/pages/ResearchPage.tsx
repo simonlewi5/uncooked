@@ -3,19 +3,26 @@ import {
   Plus,
   Search,
   Send,
-  GripVertical,
   X,
   Paperclip,
   Star,
   Trash2,
+  ChevronRight,
+  ChevronDown,
+  Play,
+  Briefcase,
   FileText,
 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Button } from '@/components/ui'
 import { useAuth } from '@/contexts/AuthContext'
 import { useResearchChat } from '@/hooks/useResearchChat'
 import { useResearchCompanies } from '@/hooks/useResearchCompanies'
+import { useCompanyRoles } from '@/hooks/useCompanyRoles'
+import { StandardToast } from '@/components/interview/Toast'
+import AddCompanyModal from './AddCompanyPage'
 import { cn } from '@/utils/cn'
+import { ConfirmModal } from '@/utils/ConfirmModal'
+import type { CompanyRole } from '@/types'
 import styles from './ResearchPage.module.css'
 
 interface CompanyProfile {
@@ -24,6 +31,11 @@ interface CompanyProfile {
   category: string
   isFavorite: boolean
   company_website?: string
+}
+
+interface ActiveContextItem {
+  company: CompanyProfile
+  role?: CompanyRole
 }
 
 const CATEGORY_STYLE: Record<string, string> = {
@@ -36,13 +48,7 @@ const CATEGORY_STYLE: Record<string, string> = {
   SaaS: styles.categorySaas,
 }
 
-function CompanyLogo({
-  company,
-  styles,
-}: {
-  company: CompanyProfile
-  styles: Record<string, string>
-}) {
+function CompanyLogo({ company, styles }: { company: CompanyProfile; styles: Record<string, string> }) {
   const [hasError, setHasError] = useState(false)
 
   if (!company.company_website || hasError) {
@@ -62,20 +68,58 @@ function CompanyLogo({
 export default function ResearchPage() {
   const navigate = useNavigate()
   const location = useLocation()
+
   const [searchQuery, setSearchQuery] = useState(() => {
     return location.state?.companyName || ''
   })
-  const [activeContext, setActiveContext] = useState<CompanyProfile[]>([])
+
+  const [activeContext, setActiveContext] = useState<ActiveContextItem[]>([])
   const [input, setInput] = useState('')
+  const [isDragOver, setIsDragOver] = useState(false)
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [toastConfig, setToastConfig] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
+  const [companyToDelete, setCompanyToDelete] = useState<{ id: string; name: string } | null>(null)
+
+  // File upload state for issue #116
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [fileAlert, setFileAlert] = useState<string | null>(null)
-  const [isDragOver, setIsDragOver] = useState(false)
-  const draggingCompany = useRef<CompanyProfile | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
+  const draggingCompany = useRef<CompanyProfile | null>(null)
   const { user } = useAuth()
-  const { companies: dbCompanies, isLoading, toggleFavorite, deleteCompany } =
+  const { companies: dbCompanies, isLoading, toggleFavorite, deleteCompany, refreshCompanies } =
     useResearchCompanies()
+
+  // Expandable roles state
+  const [expandedCompanyId, setExpandedCompanyId] = useState<string | null>(
+    (location.state as { companyProfileId?: string } | null)?.companyProfileId || null
+  )
+  const { roles, isLoading: rolesLoading, addRole, deleteRole } = useCompanyRoles(expandedCompanyId)
+
+  // Add role inline form state
+  const [isAddingRole, setIsAddingRole] = useState(false)
+  const [newRoleTitle, setNewRoleTitle] = useState('')
+  const [newRoleJd, setNewRoleJd] = useState('')
+  const roleInputRef = useRef<HTMLInputElement>(null)
+
+  // Auto-expand and select role from location state
+  const appliedLocationState = useRef(false)
+  useEffect(() => {
+    if (appliedLocationState.current) return
+
+    const state = location.state as { companyProfileId?: string; roleId?: string } | null
+    if (state?.roleId && roles.length > 0) {
+      appliedLocationState.current = true
+      const role = roles.find((r) => r.id === state.roleId)
+
+      if (role && dbCompanies.length > 0) {
+        const company = dbCompanies.find((c) => c.id === state.companyProfileId)
+        if (company && !activeContext.find((ctx) => ctx.role?.id === role.id)) {
+          setActiveContext((prev) => [...prev, { company, role }])
+        }
+      }
+    }
+  }, [location.state, roles, dbCompanies, activeContext])
 
   useEffect(() => {
     if (location.state?.newCompanyId && dbCompanies.length > 0) {
@@ -91,10 +135,15 @@ export default function ResearchPage() {
 
   const userInitial = user?.email?.[0].toUpperCase() ?? '?'
 
-  const companyNames = activeContext.map((c) => c.name)
-  const { messages, isStreaming, sendMessage, resetMessages } = useResearchChat({
+  const activeRole = activeContext.length === 1 ? activeContext[0].role : undefined
+  const activeCompanyProfileId = activeContext.length === 1 ? activeContext[0].company.id : undefined
+  const companyNames = activeContext.map((ctx) => ctx.company.name)
+
+  const { messages, isStreaming, sendMessage } = useResearchChat({
     companies: companyNames,
-    jobDescription: undefined,
+    jobDescription: activeRole?.jobDescription || undefined,
+    companyProfileId: activeCompanyProfileId || null,
+    roleId: activeRole?.id || null,
   })
 
   const filteredCompanies = dbCompanies
@@ -105,10 +154,21 @@ export default function ResearchPage() {
     toggleFavorite(id)
   }
 
-  const handleDeleteCompany = async (id: string, name: string) => {
-    if (confirm(`Delete "${name}" from your saved companies?`)) {
+  const handleDeleteCompany = async () => {
+    if (!companyToDelete) return
+
+    const { id, name } = companyToDelete
+
+    try {
       await deleteCompany(id)
+      setToastConfig({ message: `Removed ${name} from your board`, variant: 'error' })
+    } catch (error) {
+      console.error(`Failed to delete company ${id}:`, error)
+      const errorMessage = error instanceof Error ? error.message : 'Please try again later.'
+      setToastConfig({ message: `Failed to delete ${name}: ${errorMessage}`, variant: 'error' })
     }
+
+    setCompanyToDelete(null)
   }
 
   function handleDragStart(company: CompanyProfile) {
@@ -118,11 +178,14 @@ export default function ResearchPage() {
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
     setIsDragOver(false)
+
     const company = draggingCompany.current
     if (!company) return
-    if (!activeContext.find((c) => c.id === company.id)) {
-      setActiveContext((prev) => [...prev, company])
+
+    if (!activeContext.find((ctx) => ctx.company.id === company.id && !ctx.role)) {
+      setActiveContext((prev) => [...prev, { company }])
     }
+
     draggingCompany.current = null
   }
 
@@ -137,16 +200,69 @@ export default function ResearchPage() {
     }
   }
 
-  function removeFromContext(id: string) {
-    setActiveContext((prev) => prev.filter((c) => c.id !== id))
+  function removeFromContext(companyId: string, roleId?: string) {
+    setActiveContext((prev) =>
+      prev.filter((ctx) => !(ctx.company.id === companyId && ctx.role?.id === roleId))
+    )
   }
 
-  function handleNewBoard() {
-    setActiveContext([])
-    resetMessages()
+  function handleSend() {
+    const trimmed = input.trim()
+    if (!trimmed || isStreaming) return
     setInput('')
-    setSelectedFile(null)
-    setFileAlert(null)
+    sendMessage(trimmed)
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
+
+  function handleToggleExpand(companyId: string) {
+    setExpandedCompanyId((prev) => (prev === companyId ? null : companyId))
+    setIsAddingRole(false)
+    setNewRoleTitle('')
+    setNewRoleJd('')
+  }
+
+  function handleSelectRole(company: CompanyProfile, role: CompanyRole) {
+    if (!activeContext.find((ctx) => ctx.role?.id === role.id)) {
+      setActiveContext((prev) => [...prev, { company, role }])
+    }
+  }
+
+  function handleStartInterview(company: CompanyProfile, role: CompanyRole) {
+    navigate('/interview', {
+      state: {
+        companyName: company.name,
+        companyProfileId: company.id,
+        roleId: role.id,
+        roleTitle: role.roleTitle,
+        jobDescription: role.jobDescription || '',
+      },
+    })
+  }
+
+  async function handleAddRole() {
+    const title = newRoleTitle.trim()
+    if (!title) return
+
+    const result = await addRole(title, newRoleJd || undefined)
+    if (result) {
+      setToastConfig({ message: `Added role "${title}"`, variant: 'success' })
+    }
+
+    setNewRoleTitle('')
+    setNewRoleJd('')
+    setIsAddingRole(false)
+  }
+
+  async function handleDeleteRole(roleId: string, roleTitle: string) {
+    await deleteRole(roleId)
+    setActiveContext((prev) => prev.filter((ctx) => ctx.role?.id !== roleId))
+    setToastConfig({ message: `Removed role "${roleTitle}"`, variant: 'error' })
   }
 
   function handleAttachClick() {
@@ -176,20 +292,6 @@ export default function ResearchPage() {
     setFileAlert(null)
   }
 
-  function handleSend() {
-    const trimmed = input.trim()
-    if (!trimmed || isStreaming) return
-    setInput('')
-    sendMessage(trimmed)
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
-    }
-  }
-
   return (
     <div className={styles.page}>
       <div className={styles.header}>
@@ -199,10 +301,6 @@ export default function ResearchPage() {
             Chat with AI to analyze companies, compare roles, and build your knowledge base
           </p>
         </div>
-        <Button variant="primary" size="sm" onClick={handleNewBoard}>
-          <Plus size={14} />
-          New Board
-        </Button>
       </div>
 
       <div className={styles.layout}>
@@ -217,55 +315,172 @@ export default function ResearchPage() {
             />
           </div>
 
-          <p className={styles.sidebarLabel}>Saved Profiles (Drag to Chat)</p>
+          <p className={styles.sidebarLabel}>Saved Profiles</p>
 
           <div className={styles.companyList}>
             {filteredCompanies.map((company) => (
-              <div
-                key={company.id}
-                className={styles.companyCard}
-                draggable
-                onDragStart={() => handleDragStart(company)}
-              >
-                <GripVertical size={14} className={styles.dragHandle} />
-                <CompanyLogo company={company} styles={styles} />
-                <div className={styles.companyInfo}>
-                  <span className={styles.companyName}>{company.name}</span>
-                  <span
-                    className={cn(
-                      styles.categoryBadge,
-                      CATEGORY_STYLE[company.category] ?? styles.categoryDefault,
-                    )}
+              <div key={company.id}>
+                <div
+                  className={styles.companyCard}
+                  draggable
+                  onDragStart={() => handleDragStart(company)}
+                >
+                  <button
+                    className={styles.expandBtn}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleToggleExpand(company.id)
+                    }}
+                    aria-label={expandedCompanyId === company.id ? 'Collapse' : 'Expand'}
                   >
-                    {company.category}
-                  </span>
+                    {expandedCompanyId === company.id ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                  </button>
+
+                  <CompanyLogo company={company} styles={styles} />
+
+                  <div className={styles.companyInfo}>
+                    <span className={styles.companyName}>{company.name}</span>
+                    <span
+                      className={cn(
+                        styles.categoryBadge,
+                        CATEGORY_STYLE[company.category] ?? styles.categoryDefault
+                      )}
+                    >
+                      {company.category}
+                    </span>
+                  </div>
+
+                  <button
+                    className={cn(styles.starBtn, company.isFavorite && styles.starBtnActive)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleToggleFavorite(company.id)
+                    }}
+                    aria-label={company.isFavorite ? 'Unfavorite' : 'Favorite'}
+                  >
+                    <Star size={13} />
+                  </button>
+
+                  <button
+                    className={styles.deleteBtn}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setCompanyToDelete({ id: company.id, name: company.name })
+                    }}
+                    aria-label={`Delete ${company.name}`}
+                  >
+                    <Trash2 size={13} />
+                  </button>
                 </div>
-                <button
-                  className={cn(styles.starBtn, company.isFavorite && styles.starBtnActive)}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleToggleFavorite(company.id)
-                  }}
-                  aria-label={company.isFavorite ? 'Unfavorite' : 'Favorite'}
-                >
-                  <Star size={13} />
-                </button>
-                <button
-                  className={styles.deleteBtn}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleDeleteCompany(company.id, company.name)
-                  }}
-                  aria-label={`Delete ${company.name}`}
-                >
-                  <Trash2 size={13} />
-                </button>
+
+                {expandedCompanyId === company.id && (
+                  <div className={styles.roleList}>
+                    {rolesLoading && roles.length === 0 && <p className={styles.roleEmpty}>Loading roles...</p>}
+
+                    {!rolesLoading && roles.length === 0 && !isAddingRole && (
+                      <p className={styles.roleEmpty}>No roles yet</p>
+                    )}
+
+                    {roles.map((role) => (
+                      <div
+                        key={role.id}
+                        className={cn(
+                          styles.roleItem,
+                          activeContext.find((ctx) => ctx.role?.id === role.id) && styles.roleItemActive
+                        )}
+                      >
+                        <button
+                          className={styles.roleSelectBtn}
+                          onClick={() => handleSelectRole(company, role)}
+                          title="Add to research context"
+                        >
+                          <Briefcase size={11} />
+                          <span className={styles.roleName}>{role.roleTitle}</span>
+                        </button>
+
+                        <div className={styles.roleActions}>
+                          <button
+                            className={styles.roleInterviewBtn}
+                            onClick={() => handleStartInterview(company, role)}
+                            title="Start interview"
+                          >
+                            <Play size={11} />
+                          </button>
+
+                          <button
+                            className={styles.roleDeleteBtn}
+                            onClick={() => handleDeleteRole(role.id, role.roleTitle)}
+                            title="Delete role"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {isAddingRole ? (
+                      <div className={styles.addRoleForm}>
+                        <input
+                          ref={roleInputRef}
+                          className={styles.addRoleInput}
+                          placeholder="Role title (e.g. SWE Intern)"
+                          value={newRoleTitle}
+                          onChange={(e) => setNewRoleTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleAddRole()
+                            if (e.key === 'Escape') {
+                              setIsAddingRole(false)
+                              setNewRoleTitle('')
+                              setNewRoleJd('')
+                            }
+                          }}
+                          autoFocus
+                        />
+                        <textarea
+                          className={styles.addRoleJdInput}
+                          placeholder="Job description (optional)"
+                          value={newRoleJd}
+                          onChange={(e) => setNewRoleJd(e.target.value)}
+                          rows={2}
+                        />
+                        <div className={styles.addRoleFormActions}>
+                          <button
+                            className={styles.addRoleSaveBtn}
+                            onClick={handleAddRole}
+                            disabled={!newRoleTitle.trim()}
+                          >
+                            Add
+                          </button>
+                          <button
+                            className={styles.addRoleCancelBtn}
+                            onClick={() => {
+                              setIsAddingRole(false)
+                              setNewRoleTitle('')
+                              setNewRoleJd('')
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        className={styles.addRoleBtn}
+                        onClick={() => {
+                          setIsAddingRole(true)
+                          setTimeout(() => roleInputRef.current?.focus(), 0)
+                        }}
+                      >
+                        <Plus size={11} />
+                        Add Role
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
 
-            {isLoading && filteredCompanies.length === 0 && (
-              <p className={styles.noResults}>Loading companies...</p>
-            )}
+            {isLoading && filteredCompanies.length === 0 && <p className={styles.noResults}>Loading companies...</p>}
 
             {filteredCompanies.length === 0 && !isLoading && (
               <div className={styles.noResultsContainer}>
@@ -275,10 +490,7 @@ export default function ResearchPage() {
 
             {searchQuery.trim() && (
               <div className={styles.persistentAddContainer}>
-                <button
-                  className={styles.addCompanyBtn}
-                  onClick={() => navigate('/add-company', { state: { companyName: searchQuery } })}
-                >
+                <button className={styles.addCompanyBtn} onClick={() => setIsAddModalOpen(true)}>
                   + Add "{searchQuery}" as new company
                 </button>
               </div>
@@ -295,52 +507,44 @@ export default function ResearchPage() {
           >
             <span className={styles.contextLabel}>Active Context:</span>
             <div className={styles.contextChips}>
-              {activeContext.map((company) => (
-                <span key={company.id} className={styles.chip}>
-                  {company.name}
+              {activeContext.map((ctx) => (
+                <span key={`${ctx.company.id}-${ctx.role?.id || 'no-role'}`} className={styles.chip}>
+                  {ctx.role ? `${ctx.company.name} — ${ctx.role.roleTitle}` : ctx.company.name}
                   <button
                     className={styles.chipRemove}
-                    onClick={() => removeFromContext(company.id)}
-                    aria-label={`Remove ${company.name} from context`}
+                    onClick={() => removeFromContext(ctx.company.id, ctx.role?.id)}
+                    aria-label={`Remove ${ctx.company.name} from context`}
                   >
                     <X size={10} />
                   </button>
                 </span>
               ))}
-              <span
-                className={cn(styles.dropHint, activeContext.length > 0 && styles.dropHintSmall)}
-              >
+              <span className={cn(styles.dropHint, activeContext.length > 0 && styles.dropHintSmall)}>
                 + Drop company here
               </span>
             </div>
           </div>
 
           <div className={styles.messages}>
-            {messages.length === 0 ? (
-              <div className={styles.emptyChat}>
-                <p>Hi! I&apos;m your AI researcher. Drag a company into the context bar above, then ask anything.</p>
-              </div>
-            ) : (
-              messages.map((msg) => (
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={cn(
+                  styles.messageRow,
+                  msg.role === 'user' ? styles.messageRowUser : styles.messageRowAssistant
+                )}
+              >
                 <div
-                  key={msg.id}
                   className={cn(
-                    styles.messageRow,
-                    msg.role === 'user' ? styles.messageRowUser : styles.messageRowAssistant,
+                    styles.message,
+                    msg.role === 'user' ? styles.messageUser : styles.messageAssistant
                   )}
                 >
-                  <div
-                    className={cn(
-                      styles.message,
-                      msg.role === 'user' ? styles.messageUser : styles.messageAssistant,
-                    )}
-                  >
-                    {msg.content}
-                  </div>
-                  {msg.role === 'user' && <span className={styles.avatar}>{userInitial}</span>}
+                  {msg.content}
                 </div>
-              ))
-            )}
+                {msg.role === 'user' && <span className={styles.avatar}>{userInitial}</span>}
+              </div>
+            ))}
           </div>
 
           <div className={styles.inputArea}>
@@ -396,7 +600,7 @@ export default function ResearchPage() {
               <button
                 className={cn(
                   styles.sendBtn,
-                  input.trim() && activeContext.length > 0 && !isStreaming && styles.sendBtnActive,
+                  input.trim() && activeContext.length > 0 && !isStreaming && styles.sendBtnActive
                 )}
                 onClick={handleSend}
                 disabled={!input.trim() || activeContext.length === 0 || isStreaming}
@@ -408,6 +612,35 @@ export default function ResearchPage() {
           </div>
         </div>
       </div>
+
+      <AddCompanyModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        initialCompanyName={searchQuery}
+        onSuccess={async (_newId, newName) => {
+          setIsAddModalOpen(false)
+          setSearchQuery(newName)
+          await refreshCompanies()
+          setToastConfig({ message: `Added ${newName} to your board!`, variant: 'success' })
+        }}
+      />
+
+      <ConfirmModal
+        isOpen={!!companyToDelete}
+        title="Delete Company"
+        message={`Are you sure you want to remove "${companyToDelete?.name}" from your board? This action cannot be undone.`}
+        confirmText="Delete"
+        onCancel={() => setCompanyToDelete(null)}
+        onConfirm={handleDeleteCompany}
+      />
+
+      {toastConfig && (
+        <StandardToast
+          message={toastConfig.message}
+          variant={toastConfig.variant}
+          onDone={() => setToastConfig(null)}
+        />
+      )}
     </div>
   )
 }
