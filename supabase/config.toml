@@ -87,3 +87,5 @@ verify_jwt = false
 verify_jwt = false
 [functions.hello]
 verify_jwt = false
+[functions.activity-events]
+verify_jwt = false

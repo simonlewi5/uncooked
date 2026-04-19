@@ -4,6 +4,7 @@ import type { ResumeRecordDto } from '@/types'
 import { parsePdfToTailorContent } from '@/lib/openResumeParser/parsePdfToTailorContent'
 import { validateResumeFile } from '@/utils/resumeFileValidation'
 import { useResumePersistence } from '@/hooks/useResumePersistence'
+import { useTrackActivity } from '@/hooks/useTrackActivity'
 
 export type ResumeUploadPhase =
   | 'idle'
@@ -34,6 +35,7 @@ export function useResumeUploadAndParse(): UseResumeUploadAndParseReturn {
   const [error, setError] = useState<string | null>(null)
 
   const { createResumeFromParse } = useResumePersistence()
+  const { trackEvent } = useTrackActivity('resume')
 
   const clearError = useCallback(() => {
     setError(null)
@@ -70,6 +72,11 @@ export function useResumeUploadAndParse(): UseResumeUploadAndParseReturn {
         return null
       }
 
+      trackEvent('edit_committed', {
+        source: 'upload_parse',
+        parseStatus: parseResult.status,
+      })
+
       setPhase('saving')
       try {
         const saved = await createResumeFromParse({
@@ -84,6 +91,11 @@ export function useResumeUploadAndParse(): UseResumeUploadAndParseReturn {
           status: parseResult.status,
         })
 
+        trackEvent('version_created', {
+          source: 'upload_parse',
+          parseStatus: parseResult.status,
+        })
+
         setPhase('success')
         return saved
       } catch (err) {
@@ -92,7 +104,7 @@ export function useResumeUploadAndParse(): UseResumeUploadAndParseReturn {
         return null
       }
     },
-    [createResumeFromParse]
+    [createResumeFromParse, trackEvent]
   )
 
   return {

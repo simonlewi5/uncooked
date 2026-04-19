@@ -287,17 +287,17 @@ export default function InterviewPage(): JSX.Element {
         .select('id, title, is_primary, updated_at, structured_content, source_file_path')
         .eq('id', data.resume_id)
         .single()
-        
+
       if (resumeData) {
         setActiveResume(resumeData)
-        setSelectedResumeId(resumeData.id) 
+        setSelectedResumeId(resumeData.id)
       }
     } else {
       // Ensure it's cleared if this past session didn't use a resume
       setActiveResume(null)
       setSelectedResumeId(null)
     }
-    
+
     saveSession({
       sessionId: session.id,
       companyName: data.company_name as string,
@@ -374,7 +374,7 @@ export default function InterviewPage(): JSX.Element {
           onResumeSelect={setSelectedResumeId}
         />
         {showCompanyModal && (
-          <AddCompanyModal 
+          <AddCompanyModal
             initialCompanyName={companyName}
             message="You have not researched this company yet. Please fill out their profile to prepare for your interview!"
             onClose={() => setShowCompanyModal(false)}
@@ -442,12 +442,12 @@ export default function InterviewPage(): JSX.Element {
         ))}
       </div>
       {toastConfig && (
-          <StandardToast
-            message={toastConfig.message}
-            variant={toastConfig.variant}
-            onDone={() => setToastConfig(null)}
-          />
-        )}
+        <StandardToast
+          message={toastConfig.message}
+          variant={toastConfig.variant}
+          onDone={() => setToastConfig(null)}
+        />
+      )}
     </div>
   )
 }

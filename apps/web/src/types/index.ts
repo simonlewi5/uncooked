@@ -123,6 +123,32 @@ export interface DashboardData {
   practiceConsistency: PracticeConsistencyData
 }
 
+export type ActivityType = 'resume' | 'interview' | 'research'
+
+export type StructuredErrorResponse = {
+  message: string
+  code?: string
+}
+
+export type DailyDuration = {
+  date: string
+  minutes: number
+}
+
+export type ActivityMetric = {
+  activityType: ActivityType
+  currentStreakDays: number
+  longestStreakDays: number
+  sessionsLast7d: number
+  sessionsLast30d: number
+  lastActiveDate: string | null
+  dailyMinutes: DailyDuration[]
+}
+
+export type ConsistencyMetric = ActivityMetric
+
+export type ConsistencyMetrics = Record<ActivityType, ActivityMetric>
+
 export type ResumeNode = { text?: string }
 
 export interface StructuredResumeData {

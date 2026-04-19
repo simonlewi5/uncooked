@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTrackActivity } from '@/hooks/useTrackActivity'
 import { supabase } from '@/lib/supabase'
 import type { Message } from '@/types'
 import { stripResearchChatMarkdown } from '@/utils/stripResearchChatMarkdown'
@@ -76,6 +77,7 @@ export function useResearchChat({
   roleId?: string | null
 }) {
   const { session, user } = useAuth()
+  const { trackEvent } = useTrackActivity('research')
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE])
   const [isStreaming, setIsStreaming] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -198,7 +200,11 @@ export function useResearchChat({
       setMessages((prev) => [...prev, userMsg, placeholder])
       setIsStreaming(true)
 
-      const history = messages.map((m) => ({ role: m.role, content: m.content }))
+      trackEvent('board_write', {
+        contextCount: companies.length,
+      })
+
+      const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }))
       const companyNames = companies.map((c) =>
         typeof c === 'string' ? c : (c as { name: string }).name,
       )
@@ -287,7 +293,7 @@ export function useResearchChat({
         setIsStreaming(false)
       }
     },
-    [session?.access_token, companies, jobDescription, messages, persistMessages],
+    [session?.access_token, companies, jobDescription, messages, persistMessages, trackEvent],
   )
 
   return { messages, isStreaming, sendMessage, resetMessages, sessionId }

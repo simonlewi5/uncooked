@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useTrackActivity } from '@/hooks/useTrackActivity'
 import type { ResumeTailorRequest, ResumeTailorResponse, ResumeTailorNormalizedResponse } from '@/types'
 
 const DEBUG_ENABLED = import.meta.env.VITE_RESUME_TAILOR_DEBUG === 'true'
@@ -126,6 +127,7 @@ function normalizeBackendResponse(
 export function useResumeTailor(): UseResumeTailorReturn {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { trackEvent } = useTrackActivity('resume')
 
   const clearError = useCallback(() => {
     setError(null)
@@ -134,6 +136,10 @@ export function useResumeTailor(): UseResumeTailorReturn {
   const runTailor = useCallback(async (payload: ResumeTailorRequest) => {
     setIsLoading(true)
     setError(null)
+
+    trackEvent('ai_tailor_triggered', {
+      mode: payload.mode ?? 'delta_only',
+    })
 
     const clientRequestId = Math.random().toString(36).slice(2, 10)
     debugLog('request_start', {
@@ -189,6 +195,11 @@ export function useResumeTailor(): UseResumeTailorReturn {
         editCount: data.edits.length,
       })
 
+      trackEvent('version_created', {
+        source: 'auto_tailor',
+        editCount: data.edits.length,
+      })
+
       // Normalize successful response
       result = normalizeBackendResponse(data, null, null)
     } catch (caughtError) {
@@ -207,7 +218,7 @@ export function useResumeTailor(): UseResumeTailorReturn {
     }
 
     return result
-  }, [])
+  }, [trackEvent])
 
   return { runTailor, isLoading, error, clearError }
 }

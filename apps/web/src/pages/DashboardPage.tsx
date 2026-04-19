@@ -32,6 +32,7 @@ function formatTimeAgo(isoString: string): string {
   return `${diffDays}d ago`
 }
 
+
 interface RecentResearchCardProps {
   sessions: ResearchSessionSummary[]
 }
