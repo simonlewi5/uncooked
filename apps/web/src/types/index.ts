@@ -49,10 +49,21 @@ export interface Message {
   timestamp: Date
 }
 
+export interface CompanyRole {
+  id: string
+  companyProfileId: string
+  roleTitle: string
+  jobDescription: string | null
+  isActive: boolean
+  createdAt: string
+}
+
 export interface InterviewSessionSummary {
   id: string
   companyName: string
   companyProfileId: string | null
+  companyRoleId: string | null
+  roleTitle: string | null
   interviewStyle: string | null
   createdAt: string
   resumeId?: string | null
