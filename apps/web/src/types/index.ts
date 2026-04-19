@@ -16,6 +16,13 @@ export interface PastJobDescription {
   jobDescription: string
 }
 
+export interface CompanyRole {
+  id: string
+  roleTitle: string
+  jobDescription: string | null
+  companyProfileId: string
+  createdAt: string
+}
 
 export type {
   ResumeAllowedExtension,
