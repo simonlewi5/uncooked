@@ -39,14 +39,10 @@ const CATEGORY_STYLE: Record<string, string> = {
   SaaS: styles.categorySaas,
 }
 
-function CompanyLogo({ company, styles }: { company: CompanyProfile, styles: Record<string, string> }) {
-  const [hasError, setHasError] = useState(false);
+function CompanyLogo({ company, styles }: { company: CompanyProfile; styles: Record<string, string> }) {
+  const [hasError, setHasError] = useState(false)
   if (!company.company_website || hasError) {
-    return (
-      <div className={styles.logoFallback}>
-        {company.name.charAt(0).toUpperCase()}
-      </div>
-    );
+    return <div className={styles.logoFallback}>{company.name.charAt(0).toUpperCase()}</div>
   }
   return (
     <img
@@ -55,33 +51,32 @@ function CompanyLogo({ company, styles }: { company: CompanyProfile, styles: Rec
       className={styles.logoImage}
       onError={() => setHasError(true)}
     />
-  );
+  )
 }
 
 export default function ResearchPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [searchQuery, setSearchQuery] = useState(() => {
-    return location.state?.companyName || '';
-  });
+  const [searchQuery, setSearchQuery] = useState(() => location.state?.companyName || '')
   const CONTEXT_KEY = 'research_active_context'
   const [activeContext, setActiveContext] = useState<ActiveContextItem[]>([])
   const [input, setInput] = useState('')
   const [attachment, setAttachment] = useState<{ name: string; excerpt: string } | null>(null)
   const [attachmentError, setAttachmentError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  // const [companies, setCompanies] = useState<CompanyProfile[]>(MOCK_COMPANIES)
-  const [isDragOver, setIsDragOver] = useState(false)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const draggingCompany = useRef<CompanyProfile | null>(null)
   const { user } = useAuth()
-  const { companies: dbCompanies, isLoading, toggleFavorite, deleteCompany, refreshCompanies } = useResearchCompanies()
-  const [toastConfig, setToastConfig] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
-  const [companyToDelete, setCompanyToDelete] = useState<{ id: string, name: string } | null>(null)
+  const { companies: dbCompanies, isLoading, toggleFavorite, deleteCompany, refreshCompanies } =
+    useResearchCompanies()
+  const [toastConfig, setToastConfig] = useState<{
+    message: string
+    variant: 'success' | 'error'
+  } | null>(null)
+  const [companyToDelete, setCompanyToDelete] = useState<{ id: string; name: string } | null>(null)
 
   // Expandable roles state
   const [expandedCompanyId, setExpandedCompanyId] = useState<string | null>(
-    (location.state as { companyProfileId?: string } | null)?.companyProfileId || null
+    (location.state as { companyProfileId?: string } | null)?.companyProfileId || null,
   )
   const { roles, isLoading: rolesLoading, addRole, deleteRole } = useCompanyRoles(expandedCompanyId)
 
@@ -91,8 +86,7 @@ export default function ResearchPage() {
   const [newRoleJd, setNewRoleJd] = useState('')
   const roleInputRef = useRef<HTMLInputElement>(null)
 
-  // Set context from location state (dashboard links or interview back-nav).
-  // Role-based: waits for roles to load. Company-only: fires as soon as dbCompanies loads.
+  // Set context from location state (dashboard links).
   const appliedLocationState = useRef(false)
   useEffect(() => {
     if (appliedLocationState.current) return
@@ -119,13 +113,12 @@ export default function ResearchPage() {
         setSearchQuery(newCompany.name)
         const newState = { ...location.state }
         delete newState.newCompanyId
-        navigate(location.pathname, { replace: true, state: newState });
+        navigate(location.pathname, { replace: true, state: newState })
       }
     }
   }, [location.state, dbCompanies, navigate, location.pathname, searchQuery])
 
-  // Persist active context chips to sessionStorage.
-  // Guard prevents clearing storage on the initial empty render before restore runs.
+  // Persist active context to sessionStorage.
   const hasSavedContextRef = useRef(false)
   useEffect(() => {
     if (!hasSavedContextRef.current && activeContext.length === 0) return
@@ -138,14 +131,13 @@ export default function ResearchPage() {
   }, [activeContext])
 
   // Restore active context from sessionStorage on mount once DB companies load.
-  // Skipped when navigating via a location.state link (that effect sets context instead).
   const restoredContextRef = useRef(false)
   useEffect(() => {
     if (restoredContextRef.current || dbCompanies.length === 0) return
     restoredContextRef.current = true
     hasSavedContextRef.current = true
     const state = location.state as { companyProfileId?: string } | null
-    if (state?.companyProfileId) return  // location state effect handles this
+    if (state?.companyProfileId) return
     const raw = sessionStorage.getItem(CONTEXT_KEY)
     if (!raw) return
     try {
@@ -159,11 +151,12 @@ export default function ResearchPage() {
 
   const userInitial = user?.email?.[0].toUpperCase() ?? '?'
 
-  // Derive active context for the chat hook
-  const activeRole = activeContext.length === 1 ? activeContext[0].role : undefined
-  const activeCompanyProfileId = activeContext.length === 1 ? activeContext[0].company.id : undefined
+  const activeItem = activeContext.length === 1 ? activeContext[0] : null
+  const activeRole = activeItem?.role
+  const activeCompanyProfileId = activeItem?.company.id
   const companyNames = activeContext.map((ctx) => ctx.company.name)
-  const { messages, isStreaming, sendMessage, resetMessages } = useResearchChat({
+
+  const { messages, isStreaming, sendMessage, resetMessages, clearSession } = useResearchChat({
     companies: companyNames,
     jobDescription: activeRole?.jobDescription || undefined,
     companyProfileId: activeCompanyProfileId || null,
@@ -179,52 +172,35 @@ export default function ResearchPage() {
   }
 
   const handleDeleteCompany = async () => {
-    if (!companyToDelete) return;
-    const { id, name } = companyToDelete;
+    if (!companyToDelete) return
+    const { id, name } = companyToDelete
     try {
-        await deleteCompany(id)
-        setToastConfig({ message: `Removed ${name} from your board`, variant: 'error' })
+      await deleteCompany(id)
+      if (activeItem?.company.id === id) {
+        setActiveContext([])
+      }
+      setToastConfig({ message: `Removed ${name} from your board`, variant: 'error' })
     } catch (error) {
-        console.error(`Failed to delete company ${id}:`, error);
-        const errorMessage = error instanceof Error ? error.message : 'Please try again later.';
-        setToastConfig({ message: `Failed to delete ${name}: ${errorMessage}`, variant: 'error' })
+      console.error(`Failed to delete company ${id}:`, error)
+      const errorMessage = error instanceof Error ? error.message : 'Please try again later.'
+      setToastConfig({ message: `Failed to delete ${name}: ${errorMessage}`, variant: 'error' })
     }
-    setCompanyToDelete(null);
+    setCompanyToDelete(null)
   }
 
-  function handleDragStart(company: CompanyProfile) {
-    draggingCompany.current = company
-  }
-
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault()
-    setIsDragOver(false)
-    const company = draggingCompany.current
-    if (!company) return
-    if (!activeContext.find((ctx) => ctx.company.id === company.id && !ctx.role)) {
-      setActiveContext((prev) => [...prev, { company }])
-    }
-    draggingCompany.current = null
-  }
-
-  function handleDragOver(e: React.DragEvent) {
-    e.preventDefault()
-    setIsDragOver(true)
-  }
-
-  function handleDragLeave(e: React.DragEvent) {
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-      setIsDragOver(false)
-    }
-  }
-
-  function handleNewBoard() {
-    setActiveContext([])
+  function handleSelectCompany(company: CompanyProfile) {
+    const alreadySelected = activeItem?.company.id === company.id && !activeItem?.role
+    if (alreadySelected) return
     resetMessages()
+    setActiveContext([{ company }])
+    setExpandedCompanyId(company.id)
+  }
+
+  async function handleClearChat() {
+    await clearSession()
     setInput('')
     setAttachment(null)
     setAttachmentError(null)
-    sessionStorage.removeItem(CONTEXT_KEY)
   }
 
   async function handleAttachmentChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -239,12 +215,6 @@ export default function ResearchPage() {
       setAttachment(null)
       setAttachmentError(err instanceof Error ? err.message : 'Could not read that file.')
     }
-  }
-
-  function removeFromContext(companyId: string, roleId?: string) {
-    setActiveContext((prev) =>
-      prev.filter((ctx) => !(ctx.company.id === companyId && ctx.role?.id === roleId))
-    )
   }
 
   function handleSend() {
@@ -278,10 +248,10 @@ export default function ResearchPage() {
   }
 
   function handleSelectRole(company: CompanyProfile, role: CompanyRole) {
-    // Add role to context if not already there
-    if (!activeContext.find((ctx) => ctx.role?.id === role.id)) {
-      setActiveContext((prev) => [...prev, { company, role }])
-    }
+    const alreadySelected = activeItem?.company.id === company.id && activeItem?.role?.id === role.id
+    if (alreadySelected) return
+    resetMessages()
+    setActiveContext([{ company, role }])
   }
 
   function handleStartInterview(company: CompanyProfile, role: CompanyRole) {
@@ -310,10 +280,15 @@ export default function ResearchPage() {
 
   async function handleDeleteRole(roleId: string, roleTitle: string) {
     await deleteRole(roleId)
-    // Remove from active context if present
-    setActiveContext((prev) => prev.filter((ctx) => ctx.role?.id !== roleId))
+    if (activeItem?.role?.id === roleId) {
+      resetMessages()
+      setActiveContext(activeItem ? [{ company: activeItem.company }] : [])
+    }
     setToastConfig({ message: `Removed role "${roleTitle}"`, variant: 'error' })
   }
+
+  const selectedCompanyId = activeItem?.company.id
+  const selectedRoleId = activeItem?.role?.id
 
   return (
     <div className={styles.page}>
@@ -324,9 +299,6 @@ export default function ResearchPage() {
             Chat with AI to analyze companies, compare roles, and build your knowledge base
           </p>
         </div>
-        <button type="button" className={styles.newBoardBtn} onClick={handleNewBoard}>
-          New board
-        </button>
       </div>
 
       <div className={styles.layout}>
@@ -348,16 +320,25 @@ export default function ResearchPage() {
             {filteredCompanies.map((company) => (
               <div key={company.id}>
                 <div
-                  className={styles.companyCard}
-                  draggable
-                  onDragStart={() => handleDragStart(company)}
+                  className={cn(
+                    styles.companyCard,
+                    selectedCompanyId === company.id && styles.companyCardSelected,
+                  )}
+                  onClick={() => handleSelectCompany(company)}
                 >
                   <button
                     className={styles.expandBtn}
-                    onClick={(e) => { e.stopPropagation(); handleToggleExpand(company.id) }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleToggleExpand(company.id)
+                    }}
                     aria-label={expandedCompanyId === company.id ? 'Collapse' : 'Expand'}
                   >
-                    {expandedCompanyId === company.id ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    {expandedCompanyId === company.id ? (
+                      <ChevronDown size={12} />
+                    ) : (
+                      <ChevronRight size={12} />
+                    )}
                   </button>
                   <CompanyLogo company={company} styles={styles} />
                   <div className={styles.companyInfo}>
@@ -373,7 +354,10 @@ export default function ResearchPage() {
                   </div>
                   <button
                     className={cn(styles.starBtn, company.isFavorite && styles.starBtnActive)}
-                    onClick={(e) => { e.stopPropagation(); handleToggleFavorite(company.id) }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleToggleFavorite(company.id)
+                    }}
                     aria-label={company.isFavorite ? 'Unfavorite' : 'Favorite'}
                   >
                     <Star size={13} />
@@ -381,8 +365,8 @@ export default function ResearchPage() {
                   <button
                     className={styles.deleteBtn}
                     onClick={(e) => {
-                      e.stopPropagation();
-                      setCompanyToDelete({ id: company.id, name: company.name });
+                      e.stopPropagation()
+                      setCompanyToDelete({ id: company.id, name: company.name })
                     }}
                     aria-label={`Delete ${company.name}`}
                   >
@@ -404,13 +388,15 @@ export default function ResearchPage() {
                         key={role.id}
                         className={cn(
                           styles.roleItem,
-                          activeContext.find((ctx) => ctx.role?.id === role.id) && styles.roleItemActive,
+                          selectedCompanyId === company.id &&
+                            selectedRoleId === role.id &&
+                            styles.roleItemActive,
                         )}
                       >
                         <button
                           className={styles.roleSelectBtn}
                           onClick={() => handleSelectRole(company, role)}
-                          title="Add to research context"
+                          title="Switch to this role's chat"
                         >
                           <Briefcase size={11} />
                           <span className={styles.roleName}>{role.roleTitle}</span>
@@ -445,7 +431,11 @@ export default function ResearchPage() {
                           onChange={(e) => setNewRoleTitle(e.target.value)}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') handleAddRole()
-                            if (e.key === 'Escape') { setIsAddingRole(false); setNewRoleTitle(''); setNewRoleJd('') }
+                            if (e.key === 'Escape') {
+                              setIsAddingRole(false)
+                              setNewRoleTitle('')
+                              setNewRoleJd('')
+                            }
                           }}
                           autoFocus
                         />
@@ -457,10 +447,21 @@ export default function ResearchPage() {
                           rows={2}
                         />
                         <div className={styles.addRoleFormActions}>
-                          <button className={styles.addRoleSaveBtn} onClick={handleAddRole} disabled={!newRoleTitle.trim()}>
+                          <button
+                            className={styles.addRoleSaveBtn}
+                            onClick={handleAddRole}
+                            disabled={!newRoleTitle.trim()}
+                          >
                             Add
                           </button>
-                          <button className={styles.addRoleCancelBtn} onClick={() => { setIsAddingRole(false); setNewRoleTitle(''); setNewRoleJd('') }}>
+                          <button
+                            className={styles.addRoleCancelBtn}
+                            onClick={() => {
+                              setIsAddingRole(false)
+                              setNewRoleTitle('')
+                              setNewRoleJd('')
+                            }}
+                          >
                             Cancel
                           </button>
                         </div>
@@ -468,7 +469,10 @@ export default function ResearchPage() {
                     ) : (
                       <button
                         className={styles.addRoleBtn}
-                        onClick={() => { setIsAddingRole(true); setTimeout(() => roleInputRef.current?.focus(), 0) }}
+                        onClick={() => {
+                          setIsAddingRole(true)
+                          setTimeout(() => roleInputRef.current?.focus(), 0)
+                        }}
                       >
                         <Plus size={11} />
                         Add Role
@@ -491,10 +495,7 @@ export default function ResearchPage() {
 
             {searchQuery.trim() && (
               <div className={styles.persistentAddContainer}>
-                <button
-                  className={styles.addCompanyBtn}
-                  onClick={() => setIsAddModalOpen(true)}
-                >
+                <button className={styles.addCompanyBtn} onClick={() => setIsAddModalOpen(true)}>
                   + Add "{searchQuery}" as new company
                 </button>
               </div>
@@ -504,62 +505,63 @@ export default function ResearchPage() {
 
         {/* Chat panel */}
         <div className={styles.chatPanel}>
-          {/* Active Context bar */}
-          <div
-            className={cn(styles.contextBar, isDragOver && styles.contextBarOver)}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-          >
-            <span className={styles.contextLabel}>Active Context:</span>
-            <div className={styles.contextChips}>
-              {activeContext.map((ctx) => (
-                <span key={`${ctx.company.id}-${ctx.role?.id || 'no-role'}`} className={styles.chip}>
-                  {ctx.role ? `${ctx.company.name} \u2014 ${ctx.role.roleTitle}` : ctx.company.name}
-                  <button
-                    className={styles.chipRemove}
-                    onClick={() => removeFromContext(ctx.company.id, ctx.role?.id)}
-                    aria-label={`Remove ${ctx.company.name} from context`}
-                  >
-                    <X size={10} />
-                  </button>
-                </span>
-              ))}
-              <span
-                className={cn(
-                  styles.dropHint,
-                  activeContext.length > 0 && styles.dropHintSmall,
-                )}
-              >
-                + Drop company here
+          {/* Chat header */}
+          <div className={styles.chatHeader}>
+            {activeItem ? (
+              <>
+                <div className={styles.chatHeaderInfo}>
+                  <CompanyLogo company={activeItem.company} styles={styles} />
+                  <div className={styles.chatHeaderText}>
+                    <span className={styles.chatHeaderName}>{activeItem.company.name}</span>
+                    {activeItem.role && (
+                      <span className={styles.chatHeaderRole}>{activeItem.role.roleTitle}</span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className={styles.clearChatBtn}
+                  onClick={handleClearChat}
+                  disabled={isStreaming}
+                >
+                  Clear chat
+                </button>
+              </>
+            ) : (
+              <span className={styles.chatHeaderEmpty}>
+                Select a company to start researching
               </span>
-            </div>
+            )}
           </div>
 
           {/* Messages area */}
-          <div className={styles.messages}>
-            {messages.map((msg) => (
+          {activeItem ? (
+            <div className={styles.messages}>
+              {messages.map((m) => (
                 <div
-                  key={msg.id}
+                  key={m.id}
                   className={cn(
                     styles.messageRow,
-                    msg.role === 'user' ? styles.messageRowUser : styles.messageRowAssistant,
+                    m.role === 'user' ? styles.messageRowUser : styles.messageRowAssistant,
                   )}
                 >
                   <div
                     className={cn(
                       styles.message,
-                      msg.role === 'user' ? styles.messageUser : styles.messageAssistant,
+                      m.role === 'user' ? styles.messageUser : styles.messageAssistant,
                     )}
                   >
-                    {msg.content}
+                    {m.content}
                   </div>
-                  {msg.role === 'user' && (
-                    <span className={styles.avatar}>{userInitial}</span>
-                  )}
+                  {m.role === 'user' && <span className={styles.avatar}>{userInitial}</span>}
                 </div>
               ))}
-          </div>
+            </div>
+          ) : (
+            <div className={styles.emptyChatState}>
+              <p>Select a company from the sidebar to start your research chat</p>
+            </div>
+          )}
 
           <div className={styles.inputArea}>
             {attachment && (
@@ -596,17 +598,22 @@ export default function ResearchPage() {
                 type="button"
                 className={styles.attachBtn}
                 aria-label="Attach file"
-                disabled={isStreaming}
+                disabled={!activeItem || isStreaming}
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Paperclip size={16} />
               </button>
               <input
                 className={styles.chatInput}
-                placeholder="Ask about culture, prep for interviews, or drag a company here..."
+                placeholder={
+                  activeItem
+                    ? `Ask about ${activeItem.company.name}…`
+                    : 'Select a company to start chatting…'
+                }
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
+                disabled={!activeItem || isStreaming}
               />
               <button
                 type="button"
@@ -633,9 +640,9 @@ export default function ResearchPage() {
         onClose={() => setIsAddModalOpen(false)}
         initialCompanyName={searchQuery}
         onSuccess={async (_newId, newName) => {
-          setIsAddModalOpen(false);
-          setSearchQuery(newName);
-          await refreshCompanies();
+          setIsAddModalOpen(false)
+          setSearchQuery(newName)
+          await refreshCompanies()
           setToastConfig({ message: `Added ${newName} to your board!`, variant: 'success' })
         }}
       />
@@ -647,7 +654,6 @@ export default function ResearchPage() {
         onCancel={() => setCompanyToDelete(null)}
         onConfirm={handleDeleteCompany}
       />
-      {/* Toast Component */}
       {toastConfig && (
         <StandardToast
           message={toastConfig.message}
