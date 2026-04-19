@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Bell, ChevronDown, LogOut, Moon, Search, Star, Sun } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -65,6 +65,8 @@ export default function AppShell(): JSX.Element {
     })
   }, [])
 
+  const { pathname } = useLocation()
+
   useEffect(() => {
     const raf = requestAnimationFrame(measureUnderline)
     window.addEventListener('resize', measureUnderline)
@@ -72,7 +74,7 @@ export default function AppShell(): JSX.Element {
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', measureUnderline)
     }
-  }, [measureUnderline])
+  }, [measureUnderline, pathname])
 
   useEffect(() => {
     const handler = (event: MouseEvent): void => {
@@ -116,7 +118,6 @@ export default function AppShell(): JSX.Element {
               className={({ isActive }) =>
                 [styles.navLink, isActive ? styles.active : ''].join(' ')
               }
-              onClick={() => requestAnimationFrame(measureUnderline)}
             >
               {label}
             </NavLink>
