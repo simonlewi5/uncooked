@@ -91,22 +91,26 @@ export default function ResearchPage() {
   const [newRoleJd, setNewRoleJd] = useState('')
   const roleInputRef = useRef<HTMLInputElement>(null)
 
-  // Auto-expand and select role from location state (e.g., coming back from interview)
+  // Set context from location state (dashboard links or interview back-nav).
+  // Role-based: waits for roles to load. Company-only: fires as soon as dbCompanies loads.
   const appliedLocationState = useRef(false)
   useEffect(() => {
     if (appliedLocationState.current) return
     const state = location.state as { companyProfileId?: string; roleId?: string } | null
-    if (state?.roleId && roles.length > 0) {
+    if (!state?.companyProfileId || dbCompanies.length === 0) return
+
+    if (state.roleId) {
+      if (roles.length === 0) return
       appliedLocationState.current = true
+      const company = dbCompanies.find((c) => c.id === state.companyProfileId)
       const role = roles.find((r) => r.id === state.roleId)
-      if (role && dbCompanies.length > 0) {
-        const company = dbCompanies.find((c) => c.id === state.companyProfileId)
-        if (company && !activeContext.find((ctx) => ctx.role?.id === role.id)) {
-          setActiveContext((prev) => [...prev, { company, role }])
-        }
-      }
+      if (company && role) setActiveContext([{ company, role }])
+    } else {
+      appliedLocationState.current = true
+      const company = dbCompanies.find((c) => c.id === state.companyProfileId)
+      if (company) setActiveContext([{ company }])
     }
-  }, [location.state, roles, dbCompanies, activeContext])
+  }, [location.state, roles, dbCompanies])
 
   useEffect(() => {
     if (location.state?.newCompanyId && dbCompanies.length > 0) {
@@ -120,8 +124,12 @@ export default function ResearchPage() {
     }
   }, [location.state, dbCompanies, navigate, location.pathname, searchQuery])
 
-  // Persist active context chips across navigation
+  // Persist active context chips to sessionStorage.
+  // Guard prevents clearing storage on the initial empty render before restore runs.
+  const hasSavedContextRef = useRef(false)
   useEffect(() => {
+    if (!hasSavedContextRef.current && activeContext.length === 0) return
+    hasSavedContextRef.current = true
     if (activeContext.length > 0) {
       sessionStorage.setItem(CONTEXT_KEY, JSON.stringify(activeContext))
     } else {
@@ -129,11 +137,15 @@ export default function ResearchPage() {
     }
   }, [activeContext])
 
-  // Restore active context on mount once DB companies are loaded
+  // Restore active context from sessionStorage on mount once DB companies load.
+  // Skipped when navigating via a location.state link (that effect sets context instead).
   const restoredContextRef = useRef(false)
   useEffect(() => {
     if (restoredContextRef.current || dbCompanies.length === 0) return
     restoredContextRef.current = true
+    hasSavedContextRef.current = true
+    const state = location.state as { companyProfileId?: string } | null
+    if (state?.companyProfileId) return  // location state effect handles this
     const raw = sessionStorage.getItem(CONTEXT_KEY)
     if (!raw) return
     try {
@@ -143,7 +155,7 @@ export default function ResearchPage() {
     } catch {
       // ignore malformed data
     }
-  }, [dbCompanies])
+  }, [dbCompanies, location.state])
 
   const userInitial = user?.email?.[0].toUpperCase() ?? '?'
 

@@ -95,6 +95,9 @@ export interface ResearchSessionSummary {
   createdAt: string
   companyName: string | null
   industry: string | null
+  companyProfileId: string | null
+  companyRoleId: string | null
+  companyWebsite: string | null
 }
 
 export interface CompanySummary {

@@ -25,7 +25,9 @@ interface RawResearchSession {
   id: string
   title: string | null
   created_at: string
-  company_profiles: { company_name: string; industry: string | null } | null
+  company_profile_id: string | null
+  company_role_id: string | null
+  company_profiles: { company_name: string; industry: string | null; company_website: string | null } | null
 }
 
 interface RawPracticeSession {
@@ -253,7 +255,7 @@ export function useDashboardData({
         const [sessionsRes, companiesRes] = await Promise.all([
           supabase
             .from('research_sessions')
-            .select('id, title, created_at, company_profiles(company_name, industry)')
+            .select('id, title, created_at, company_profile_id, company_role_id, company_profiles(company_name, industry, company_website)')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
             .limit(3)
@@ -277,6 +279,9 @@ export function useDashboardData({
           createdAt: row.created_at,
           companyName: row.company_profiles?.company_name ?? null,
           industry: row.company_profiles?.industry ?? null,
+          companyProfileId: row.company_profile_id ?? null,
+          companyRoleId: row.company_role_id ?? null,
+          companyWebsite: row.company_profiles?.company_website ?? null,
         })))
 
         setCompanies((companiesRes.data ?? []).map((row) => ({
