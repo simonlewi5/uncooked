@@ -318,12 +318,15 @@ export default function ResearchPage() {
 
           <div className={styles.companyList}>
             {filteredCompanies.map((company) => (
-              <div key={company.id}>
+              <div
+                key={company.id}
+                className={cn(
+                  styles.companyGroup,
+                  selectedCompanyId === company.id && styles.companyGroupSelected,
+                )}
+              >
                 <div
-                  className={cn(
-                    styles.companyCard,
-                    selectedCompanyId === company.id && styles.companyCardSelected,
-                  )}
+                  className={styles.companyCard}
                   onClick={() => handleSelectCompany(company)}
                 >
                   <button
