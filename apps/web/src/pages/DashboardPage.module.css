@@ -189,6 +189,10 @@
   transition: height 0.3s;
 }
 
+.barActive {
+  background-color: var(--color-primary);
+}
+
 .barToday {
   background-color: var(--color-text);
 }
