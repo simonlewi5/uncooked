@@ -264,7 +264,7 @@ export default function PipelinePage() {
                   {cards.map((app) => (
                     <div
                       key={app.id}
-                      className={styles.card}
+                      className={cn(styles.card, col.key === 'offer' && 'iris-glow')}
                       draggable
                       onClick={() => openEdit(app)}
                       onDragStart={() => handleDragStart(app.id)}
