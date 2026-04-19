@@ -8,6 +8,7 @@ import { useCompanyRoles } from '@/hooks/useCompanyRoles'
 import { StandardToast } from '@/components/interview/Toast'
 import AddCompanyModal from './AddCompanyPage'
 import { cn } from '@/utils/cn'
+import { readResearchChatAttachment } from '@/utils/readResearchChatAttachment'
 import { ConfirmModal } from '@/utils/ConfirmModal'
 import type { CompanyRole } from '@/types'
 import styles from './ResearchPage.module.css'
@@ -24,6 +25,9 @@ interface ActiveContextItem {
   company: CompanyProfile
   role?: CompanyRole
 }
+
+const DEFAULT_ATTACHMENT_PROMPT =
+  'Use the attached file as context and respond in relation to the companies in context.'
 
 const CATEGORY_STYLE: Record<string, string> = {
   Technology: styles.categoryTechnology,
@@ -62,6 +66,10 @@ export default function ResearchPage() {
   });
   const [activeContext, setActiveContext] = useState<ActiveContextItem[]>([])
   const [input, setInput] = useState('')
+  const [attachment, setAttachment] = useState<{ name: string; excerpt: string } | null>(null)
+  const [attachmentError, setAttachmentError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  // const [companies, setCompanies] = useState<CompanyProfile[]>(MOCK_COMPANIES)
   const [isDragOver, setIsDragOver] = useState(false)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const draggingCompany = useRef<CompanyProfile | null>(null)
@@ -116,7 +124,7 @@ export default function ResearchPage() {
   const activeRole = activeContext.length === 1 ? activeContext[0].role : undefined
   const activeCompanyProfileId = activeContext.length === 1 ? activeContext[0].company.id : undefined
   const companyNames = activeContext.map((ctx) => ctx.company.name)
-  const { messages, isStreaming, sendMessage } = useResearchChat({
+  const { messages, isStreaming, sendMessage, resetMessages } = useResearchChat({
     companies: companyNames,
     jobDescription: activeRole?.jobDescription || undefined,
     companyProfileId: activeCompanyProfileId || null,
@@ -171,6 +179,28 @@ export default function ResearchPage() {
     }
   }
 
+  function handleNewBoard() {
+    setActiveContext([])
+    resetMessages()
+    setInput('')
+    setAttachment(null)
+    setAttachmentError(null)
+  }
+
+  async function handleAttachmentChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setAttachmentError(null)
+    try {
+      const excerpt = await readResearchChatAttachment(file)
+      setAttachment({ name: file.name, excerpt })
+    } catch (err) {
+      setAttachment(null)
+      setAttachmentError(err instanceof Error ? err.message : 'Could not read that file.')
+    }
+  }
+
   function removeFromContext(companyId: string, roleId?: string) {
     setActiveContext((prev) =>
       prev.filter((ctx) => !(ctx.company.id === companyId && ctx.role?.id === roleId))
@@ -179,9 +209,18 @@ export default function ResearchPage() {
 
   function handleSend() {
     const trimmed = input.trim()
-    if (!trimmed || isStreaming) return
+    if ((!trimmed && !attachment) || isStreaming) return
+    if (!activeContext.length) return
+
+    const line = trimmed || (attachment ? DEFAULT_ATTACHMENT_PROMPT : '')
+    const display = attachment ? `[Attached: ${attachment.name}]\n${line}` : line
+
     setInput('')
-    sendMessage(trimmed)
+    setAttachment(null)
+    sendMessage(display, {
+      prompt: line,
+      attachment: attachment ? { fileName: attachment.name, text: attachment.excerpt } : undefined,
+    })
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -245,6 +284,9 @@ export default function ResearchPage() {
             Chat with AI to analyze companies, compare roles, and build your knowledge base
           </p>
         </div>
+        <button type="button" className={styles.newBoardBtn} onClick={handleNewBoard}>
+          New board
+        </button>
       </div>
 
       <div className={styles.layout}>
@@ -479,29 +521,69 @@ export default function ResearchPage() {
               ))}
           </div>
 
-          {/* Input bar */}
-          <div className={styles.inputBar}>
-            <button className={styles.attachBtn} aria-label="Attach file">
-              <Paperclip size={16} />
-            </button>
-            <input
-              className={styles.chatInput}
-              placeholder="Ask about culture, prep for interviews, or drag a company here..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            <button
-              className={cn(
-                styles.sendBtn,
-                input.trim() && activeContext.length > 0 && !isStreaming && styles.sendBtnActive,
-              )}
-              onClick={handleSend}
-              disabled={!input.trim() || activeContext.length === 0 || isStreaming}
-              aria-label="Send message"
-            >
-              <Send size={16} />
-            </button>
+          <div className={styles.inputArea}>
+            {attachment && (
+              <div className={styles.attachRow}>
+                <span className={styles.attachChip}>
+                  <Paperclip size={12} aria-hidden />
+                  <span className={styles.attachChipName}>{attachment.name}</span>
+                  <button
+                    type="button"
+                    className={styles.attachChipRemove}
+                    onClick={() => {
+                      setAttachment(null)
+                      setAttachmentError(null)
+                    }}
+                    aria-label="Remove attachment"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              </div>
+            )}
+            {attachmentError && <p className={styles.attachError}>{attachmentError}</p>}
+            <div className={styles.inputBar}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className={styles.fileInputHidden}
+                accept=".pdf,.txt,.md,.csv,.json,.tsv,.markdown,text/*,application/pdf,application/json"
+                aria-hidden
+                tabIndex={-1}
+                onChange={handleAttachmentChange}
+              />
+              <button
+                type="button"
+                className={styles.attachBtn}
+                aria-label="Attach file"
+                disabled={isStreaming}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Paperclip size={16} />
+              </button>
+              <input
+                className={styles.chatInput}
+                placeholder="Ask about culture, prep for interviews, or drag a company here..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+              <button
+                type="button"
+                className={cn(
+                  styles.sendBtn,
+                  (input.trim() || attachment) &&
+                    activeContext.length > 0 &&
+                    !isStreaming &&
+                    styles.sendBtnActive,
+                )}
+                onClick={handleSend}
+                disabled={(!input.trim() && !attachment) || activeContext.length === 0 || isStreaming}
+                aria-label="Send message"
+              >
+                <Send size={16} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
