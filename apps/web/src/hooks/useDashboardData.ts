@@ -355,7 +355,7 @@ export function useDashboardData({
 
         const statuses = (data ?? []).map((row) => row.status).filter(isApplicationStatus)
         setPipeline({
-          total: statuses.length,
+          applied: statuses.filter((s) => s === 'applied').length,
           interviews: statuses.filter((s) => INTERVIEW_STATUSES.includes(s)).length,
           offers: statuses.filter((s) => s === 'offer').length,
         })

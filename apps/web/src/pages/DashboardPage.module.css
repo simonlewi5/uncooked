@@ -432,25 +432,24 @@
 .progressTrack {
   height: 8px;
   border-radius: var(--radius-full);
-  background-color: var(--color-bg-muted);
-  position: relative;
   overflow: hidden;
+  display: flex;
 }
 
-.progressLayer {
-  position: absolute;
-  left: 0;
-  top: 0;
+.progressSegment {
   height: 100%;
-  border-radius: var(--radius-full);
-  transition: width 0.4s ease;
+  transition: flex 0.4s ease;
 }
 
-.progressLayerMid {
+.progressSegmentApplied {
+  background-color: #3b82f6;
+}
+
+.progressSegmentInterviews {
   background-color: #f59e0b;
 }
 
-.progressLayerTop {
+.progressSegmentOffers {
   background-color: #10b981;
 }
 
