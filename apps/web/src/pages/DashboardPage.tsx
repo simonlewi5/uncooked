@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom'
 import { Badge, Spinner } from '@/components/ui'
 import { GamificationCard } from '@/components/dashboard/GamificationCard'
 import { useDashboardData } from '@/hooks/useDashboardData'
-import { formatMinutes } from '@/utils/formatMinutes'
 import { cn } from '@/utils/cn'
 import type {
   ResearchSessionSummary,
