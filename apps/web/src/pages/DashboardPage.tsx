@@ -245,15 +245,15 @@ function ApplicationPipelineCard({
                 ? 'No applications tracked this week'
                 : 'No applications tracked this month'}
             </p>
-            <Link to="/research" className={styles.emptyAction}>
-              Find companies to apply to
+            <Link to="/applications" className={styles.emptyAction}>
+              Start tracking applications
             </Link>
           </div>
         ) : (
           <>
             <div className={styles.pipelineStats}>
               <div className={styles.pipelineStat}>
-                <span className={styles.pipelineLabel}>Total</span>
+                <span className={styles.pipelineLabel}>Applied</span>
                 <span className={styles.pipelineValue}>{pipeline.total}</span>
               </div>
               <div className={styles.pipelineStat}>
@@ -275,6 +275,12 @@ function ApplicationPipelineCard({
                 className={cn(styles.progressLayer, styles.progressLayerTop)}
                 style={{ width: `${(pipeline.offers / pipeline.total) * 100}%` }}
               />
+            </div>
+
+            <div className={styles.pipelineFooter}>
+              <Link to="/applications" className={styles.pipelineManageLink}>
+                Manage in Applications <ChevronRight size={12} />
+              </Link>
             </div>
           </>
         )}

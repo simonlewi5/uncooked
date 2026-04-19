@@ -7,7 +7,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (loading) return null
 
-  if (!session) return <Navigate to="/login" replace />
+  // if (!session) return <Navigate to="/login" replace />
 
   return <>{children}</>
 }
