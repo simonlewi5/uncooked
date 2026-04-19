@@ -1,24 +1,35 @@
+import { useState } from 'react'
 import { TrendingUp, Building2, Calendar, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Badge, Spinner } from '@/components/ui'
 import { GamificationCard } from '@/components/dashboard/GamificationCard'
-import { useConsistencyMetrics } from '@/contexts/ConsistencyMetricsContext'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatMinutes } from '@/utils/formatMinutes'
 import { cn } from '@/utils/cn'
-import type { ResearchSessionSummary, CompanySummary, PipelineCounts } from '@/types'
+import type {
+  ResearchSessionSummary,
+  CompanySummary,
+  PipelineCounts,
+  DashboardRange,
+  PracticeConsistencyData,
+} from '@/types'
 import styles from './DashboardPage.module.css'
 
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const WEEK_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const
+const MONTH_BUCKET_LABELS = ['W1', 'W2', 'W3', 'W4', 'W5'] as const
 
 function formatTimeAgo(isoString: string): string {
   const diffMs = Date.now() - new Date(isoString).getTime()
   const diffMins = Math.floor(diffMs / 60000)
+
   if (diffMins < 1) return 'just now'
+
   const diffHours = Math.floor(diffMins / 60)
   if (diffHours < 1) return `${diffMins}m ago`
+
   const diffDays = Math.floor(diffHours / 24)
   if (diffDays < 1) return `${diffHours}h ago`
+
   return `${diffDays}d ago`
 }
 
@@ -31,39 +42,53 @@ interface TargetCompaniesCardProps {
   companies: CompanySummary[]
 }
 
+interface RangePillsProps {
+  value: DashboardRange
+  onChange: (value: DashboardRange) => void
+}
+
+interface PracticeConsistencyCardProps {
+  range: DashboardRange
+  onRangeChange: (value: DashboardRange) => void
+  data: PracticeConsistencyData
+}
+
 interface ApplicationPipelineCardProps {
+  range: DashboardRange
+  onRangeChange: (value: DashboardRange) => void
   pipeline: PipelineCounts
 }
 
-function PracticeConsistencyCard(): JSX.Element {
-  const { data, isLoading } = useConsistencyMetrics()
-  const todayDow = new Date().getDay() // 0 = Sun, 6 = Sat
-
-  // Sum minutes across all three activity types for each date in the rolling window.
-  const minutesByDate = new Map<string, number>()
-  for (const activity of ['resume', 'interview', 'research'] as const) {
-    for (const { date, minutes } of data?.[activity].dailyMinutes ?? []) {
-      minutesByDate.set(date, (minutesByDate.get(date) ?? 0) + minutes)
-    }
-  }
-
-  // Sun–Sat dates for the current calendar week.
-  const weekDates = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() - todayDow + i)
-    return d.toISOString().slice(0, 10)
-  })
-
-  // Future days in the week always show 0.
-  
-  const weekMinutes = weekDates.map((date, i) =>
-    i <= todayDow ? (minutesByDate.get(date) ?? 0) : 0
+function RangePills({ value, onChange }: RangePillsProps): JSX.Element {
+  return (
+    <div className={styles.rangePills}>
+      <button
+        type="button"
+        className={cn(styles.rangePillBtn, value === 'week' && styles.rangePillBtnActive)}
+        onClick={() => onChange('week')}
+      >
+        This Week
+      </button>
+      <button
+        type="button"
+        className={cn(styles.rangePillBtn, value === 'month' && styles.rangePillBtnActive)}
+        onClick={() => onChange('month')}
+      >
+        This Month
+      </button>
+    </div>
   )
+}
 
-  // Demo-day mock: const weekMinutes = [12, 45, 90, 25, 120, 0, 65]
-
-  const totalMinutes = weekMinutes.reduce((sum, m) => sum + m, 0)
-  const maxMinutes = Math.max(...weekMinutes, 1)
+function PracticeConsistencyCard({
+  range,
+  onRangeChange,
+  data,
+}: PracticeConsistencyCardProps): JSX.Element {
+  const labels = range === 'week' ? WEEK_LABELS : MONTH_BUCKET_LABELS
+  const buckets = data.buckets
+  const maxMinutes = Math.max(...buckets, 1)
+  const totalHours = (data.totalMinutes / 60).toFixed(data.totalMinutes % 60 === 0 ? 0 : 1)
 
   return (
     <div className={styles.card}>
@@ -73,33 +98,26 @@ function PracticeConsistencyCard(): JSX.Element {
             <TrendingUp size={16} className={styles.cardMetaIcon} />
             <span className={styles.cardTitle}>Practice Consistency</span>
           </div>
-          <div className={styles.weekPill}>
-            <span>This Week</span>
-          </div>
+          <RangePills value={range} onChange={onRangeChange} />
         </div>
-        <div className={styles.statValue}>
-          {isLoading ? '...' : totalMinutes === 0 ? '0h' : formatMinutes(totalMinutes)}
-        </div>
+
+        <div className={styles.statValue}>{totalHours}h</div>
         <p className={styles.statEmpty}>
-          {isLoading
-            ? 'Loading consistency metrics...'
-            : totalMinutes > 0
-              ? 'Total practice time this week'
-              : 'Start your first session to track consistency'}
+          {data.totalMinutes === 0
+            ? 'Start your first session to track consistency'
+            : range === 'week'
+              ? 'Practice time recorded this ISO week'
+              : 'Practice time recorded this month'}
         </p>
+
         <div className={styles.barChart}>
-          {DAY_LABELS.map((label, i) => {
-            const heightPx = Math.max((weekMinutes[i] / maxMinutes) * 80, 4)
-            const tooltip = weekMinutes[i] === 0 ? 'No activity' : formatMinutes(weekMinutes[i])
+          {labels.map((label, i) => {
+            const heightPct = `${Math.max((buckets[i] / maxMinutes) * 100, 4)}%`
+
             return (
-              <div key={label} className={styles.barGroup} data-tooltip={tooltip}>
-                <div
-                  className={cn(styles.bar, i === todayDow && styles.barToday)}
-                  style={{ height: heightPx }}
-                />
-                <span className={cn(styles.barLabel, i === todayDow && styles.barLabelToday)}>
-                  {label}
-                </span>
+              <div key={`bucket-${i}`} className={styles.barGroup}>
+                <div className={styles.bar} style={{ height: heightPct }} />
+                <span className={styles.barLabel}>{label}</span>
               </div>
             )
           })}
@@ -119,6 +137,7 @@ function RecentResearchCard({ sessions }: RecentResearchCardProps): JSX.Element 
             See all <ChevronRight size={12} />
           </Link>
         </div>
+
         {sessions.length === 0 ? (
           <div className={styles.emptyState}>
             <Building2 size={24} className={styles.emptyIcon} />
@@ -164,6 +183,7 @@ function TargetCompaniesCard({ companies }: TargetCompaniesCardProps): JSX.Eleme
             See all <ChevronRight size={12} />
           </Link>
         </div>
+
         {companies.length === 0 ? (
           <div className={styles.emptyState}>
             <p className={styles.emptyText}>No target companies saved</p>
@@ -189,20 +209,41 @@ function TargetCompaniesCard({ companies }: TargetCompaniesCardProps): JSX.Eleme
   )
 }
 
+//function AiPromoCard(): JSX.Element {
+  //return (
+  //  <div className={styles.promoCard}>
+    //  <Zap size={20} className={styles.promoIcon} />
+     // <p className={styles.promoTitle}>Unlock AI Mock Interviews</p>
+      //<p className={styles.promoSubtitle}>
+        //Practice with an AI interviewer tailored to your target role and company.
+     // <p>
+    //  <Link to="/interview" className={styles.promoBtn}>
+     //   Upgrade Now
+     // </Link>
+   // </div>
+ // )
+//}
 
-function ApplicationPipelineCard({ pipeline }: ApplicationPipelineCardProps): JSX.Element {
+function ApplicationPipelineCard({
+  range,
+  onRangeChange,
+  pipeline,
+}: ApplicationPipelineCardProps): JSX.Element {
   return (
     <div className={styles.card}>
       <div className={styles.cardInner}>
         <div className={styles.cardHeaderRow}>
           <span className={styles.cardTitle}>Application Pipeline</span>
-          <div className={styles.weekPill}>
-            <span>This Month</span>
-          </div>
+          <RangePills value={range} onChange={onRangeChange} />
         </div>
+
         {pipeline.total === 0 ? (
           <div className={styles.emptyState}>
-            <p className={styles.emptyText}>No applications tracked yet</p>
+            <p className={styles.emptyText}>
+              {range === 'week'
+                ? 'No applications tracked this week'
+                : 'No applications tracked this month'}
+            </p>
             <Link to="/research" className={styles.emptyAction}>
               Find companies to apply to
             </Link>
@@ -223,6 +264,7 @@ function ApplicationPipelineCard({ pipeline }: ApplicationPipelineCardProps): JS
                 <span className={styles.pipelineValue}>{pipeline.offers}</span>
               </div>
             </div>
+
             <div className={styles.progressTrack}>
               <div
                 className={cn(styles.progressLayer, styles.progressLayerMid)}
@@ -241,9 +283,23 @@ function ApplicationPipelineCard({ pipeline }: ApplicationPipelineCardProps): JS
 }
 
 export default function DashboardPage(): JSX.Element {
-  const { data, isLoading, fetchError } = useDashboardData()
+  const [practiceRange, setPracticeRange] = useState<DashboardRange>('week')
+  const [pipelineRange, setPipelineRange] = useState<DashboardRange>('month')
 
-  if (isLoading) {
+  const { data, isLoading, fetchError } = useDashboardData({
+    practiceRange,
+    pipelineRange,
+  })
+
+  const practiceFallback =
+    practiceRange === 'week'
+      ? { totalMinutes: 0, buckets: [0, 0, 0, 0, 0, 0, 0] }
+      : { totalMinutes: 0, buckets: [0, 0, 0, 0, 0] }
+
+  const shouldShowInitialLoader = isLoading && !data
+  const shouldShowFullPageError = fetchError && !data
+
+  if (shouldShowInitialLoader) {
     return (
       <div className={styles.loadingState}>
         <Spinner size="lg" />
@@ -251,7 +307,7 @@ export default function DashboardPage(): JSX.Element {
     )
   }
 
-  if (fetchError) {
+  if (shouldShowFullPageError) {
     return (
       <div className={styles.errorState}>
         <p className={styles.errorText}>{fetchError}</p>
@@ -264,15 +320,22 @@ export default function DashboardPage(): JSX.Element {
       <div className={styles.grid}>
         <div className={styles.leftCol}>
           <GamificationCard />
-          <PracticeConsistencyCard />
+          <PracticeConsistencyCard
+            range={practiceRange}
+            onRangeChange={setPracticeRange}
+            data={data?.practiceConsistency ?? practiceFallback}
+          />
           <div className={styles.bottomRow}>
             <TargetCompaniesCard companies={data?.companies ?? []} />
-
+            
           </div>
         </div>
+
         <div className={styles.rightCol}>
           <RecentResearchCard sessions={data?.recentSessions ?? []} />
           <ApplicationPipelineCard
+            range={pipelineRange}
+            onRangeChange={setPipelineRange}
             pipeline={data?.pipeline ?? { total: 0, interviews: 0, offers: 0 }}
           />
         </div>

@@ -84,16 +84,37 @@
   color: var(--color-text);
 }
 
-.weekPill {
-  display: flex;
+.rangePills {
+  display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+  padding: 2px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
-  /* sub-grid pill sizing: 2px vertical sits below --space-1 (4px), intentional compact design */
-  padding: 2px 10px;
-  font-size: var(--font-sm);
+  background-color: var(--color-bg);
+}
+
+.rangePillBtn {
+  border: none;
+  background: transparent;
   color: var(--color-text-secondary);
+  border-radius: var(--radius-full);
+  padding: 6px 10px;
+  font-size: var(--font-sm);
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.rangePillBtn:hover {
+  color: var(--color-text);
+}
+
+.rangePillBtnActive {
+  background-color: var(--color-text);
+  color: var(--color-bg);
 }
 
 .cardMeta {

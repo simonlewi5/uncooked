@@ -5,6 +5,22 @@ interface ResearchChatRequest {
   message: string
   jobDescription?: string
   history?: Array<{ role: 'user' | 'assistant'; content: string }>
+  attachment?: { fileName: string; text: string }
+}
+
+function buildUserTurnText(message: string, attachment?: { fileName: string; text: string }): string {
+  const m = message.trim()
+  const doc = attachment?.text?.trim()
+  if (!doc || !attachment) return m
+
+  return `${m}
+
+USER_UPLOADED_DOCUMENT (${attachment.fileName})
+Use chat history above plus this excerpt and the selected companies. Ground file-specific answers in the text below; use prior turns for follow-ups. Quote or paraphrase; do not contradict the document. Say briefly if it does not apply.
+
+--- document start ---
+${doc}
+--- document end ---`
 }
 
 function requireAuth(req: Request): Response | null {
@@ -43,9 +59,11 @@ Deno.serve(async (req) => {
       message,
       jobDescription,
       history = [],
+      attachment,
     } = body
 
-    if (!companies?.length || !message?.trim()) {
+    const hasAttachment = Boolean(attachment?.text?.trim())
+    if (!companies?.length || (!message?.trim() && !hasAttachment)) {
       return new Response(
         JSON.stringify({
           error: 'Missing required fields: companies (non-empty array) and message',
@@ -77,10 +95,12 @@ ${companyList}
 ${jobDescription?.trim() ? `## Job description context (use to tailor answers about fit, skills, or role)\n${jobDescription.trim()}` : ''}
 
 ## Guidelines
-- Answer based on the specified company/companies only.
-- Be concise and factual; cite public knowledge where relevant.
-- If they ask about culture, engineering challenges, or interview prep, tailor to the company and any job description context above.
-- Maintain conversation context from the chat history.`
+- Answer based on the specified company/companies only; be concise and factual.
+- Use chat history on every turn; do not ignore prior user or assistant messages.
+- If a USER_UPLOADED_DOCUMENT block appears in this turn, treat it as the source for file-specific claims and combine it with history and companies.
+- Plain text only: never use asterisks, underscores for emphasis, backticks, # headings, or list markers (- * •) at line starts. Short paragraphs; blank lines between ideas.`
+
+    const userTurnText = buildUserTurnText(message, attachment)
 
     const contents = [
       ...history.map((msg) => ({
@@ -89,7 +109,7 @@ ${jobDescription?.trim() ? `## Job description context (use to tailor answers ab
       })),
       {
         role: 'user',
-        parts: [{ text: message.trim() }],
+        parts: [{ text: userTurnText }],
       },
     ]
 

@@ -14,6 +14,7 @@ interface InterviewSidebarProps {
   selectedCompanyId: string | null
   onCompanyProfileSelect: (profile: CompanyProfile) => void
   companyProfile: CompanyProfile | null
+  companyWebsite?: string | null
   style: InterviewStyle
   jobDescription: string
   onJobDescriptionChange: (value: string) => void
@@ -57,6 +58,7 @@ export function InterviewSidebar({
   selectedCompanyId,
   onCompanyProfileSelect,
   companyProfile,
+  companyWebsite,
   style,
   jobDescription,
   onJobDescriptionChange,
@@ -79,12 +81,12 @@ export function InterviewSidebar({
   const [resumeOpen, setResumeOpen] = useState(false)
   const [zoomedResume, setZoomedResume] = useState<ResumeSummary | null>(null)
 
-  const logoProfile: CompanyProfile = companyProfile ?? {
-    id: '',
-    companyName: companyName,
-    companyWebsite: null,
-    industry: null,
-    companySize: null,
+const logoProfile: CompanyProfile = {
+    id: companyProfile?.id || selectedCompanyId || '',
+    companyName: companyProfile?.companyName || companyName || 'Company',
+    companyWebsite: companyWebsite || companyProfile?.companyWebsite || null, 
+    industry: companyProfile?.industry || null,
+    companySize: companyProfile?.companySize || null,
   }
 
   function handleViewResearch() {

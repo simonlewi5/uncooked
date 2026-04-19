@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useTrackActivity } from '@/hooks/useTrackActivity'
 import { supabase } from '@/lib/supabase'
 import type { Message } from '@/types'
+import { stripResearchChatMarkdown } from '@/utils/stripResearchChatMarkdown'
 
 const RATE_LIMIT_FRIENDLY_MESSAGE =
   'You are sending requests too quickly right now. Please wait a minute and try again.'
@@ -56,6 +57,14 @@ function msg(role: Message['role'], content: string, id = `${role}-${Date.now()}
   return { id, role, content, timestamp: new Date() }
 }
 
+type AttachmentPayload = { fileName: string; text: string }
+
+function trimmedAttachment(a: AttachmentPayload | null | undefined): AttachmentPayload | null {
+  if (!a) return null
+  const text = a.text.trim()
+  return text ? { fileName: a.fileName, text } : null
+}
+
 export function useResearchChat({
   companies,
   jobDescription,
@@ -73,6 +82,7 @@ export function useResearchChat({
   const [isStreaming, setIsStreaming] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const sessionIdRef = useRef<string | null>(null)
+  const sessionAttachmentRef = useRef<AttachmentPayload | null>(null)
   const loadedRoleRef = useRef<string | null>(null)
 
   // Load existing research session for this role
@@ -153,6 +163,7 @@ export function useResearchChat({
   )
 
   const resetMessages = useCallback(() => {
+    sessionAttachmentRef.current = null
     setMessages([{ ...INITIAL_MESSAGE, timestamp: new Date() }])
     sessionIdRef.current = null
     setSessionId(null)
@@ -160,7 +171,10 @@ export function useResearchChat({
   }, [])
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (
+      displayContent: string,
+      options?: { prompt?: string; attachment?: AttachmentPayload },
+    ) => {
       const pushError = (text: string) =>
         setMessages((prev) => [...prev, msg('assistant', text, `err-${Date.now()}`)])
 
@@ -169,7 +183,19 @@ export function useResearchChat({
         return
       }
 
-      const userMsg = msg('user', content.trim())
+      const prompt = (options?.prompt ?? displayContent).trim()
+
+      const uploaded = trimmedAttachment(options?.attachment ?? null)
+      if (uploaded) sessionAttachmentRef.current = uploaded
+
+      const attachment = uploaded ?? trimmedAttachment(sessionAttachmentRef.current)
+      const hasDoc = Boolean(attachment)
+      if (!prompt && !hasDoc) {
+        pushError('Enter a message or attach a file.')
+        return
+      }
+
+      const userMsg = msg('user', displayContent.trim())
       const placeholder = msg('assistant', '')
       setMessages((prev) => [...prev, userMsg, placeholder])
       setIsStreaming(true)
@@ -189,7 +215,11 @@ export function useResearchChat({
         )
       const appendPlaceholder = (chunk: string) =>
         setMessages((prev) =>
-          prev.map((m) => (m.id === placeholder.id ? { ...m, content: m.content + chunk } : m)),
+          prev.map((m) =>
+            m.id === placeholder.id
+              ? { ...m, content: stripResearchChatMarkdown(m.content + chunk) }
+              : m,
+          ),
         )
 
       try {
@@ -205,9 +235,10 @@ export function useResearchChat({
             },
             body: JSON.stringify({
               companies: companyNames,
-              message: content.trim(),
+              message: prompt,
               jobDescription: jobDescription?.trim() || undefined,
               history,
+              ...(attachment ? { attachment } : {}),
             }),
           },
         )
