@@ -49,7 +49,7 @@ function mapResearchHttpError(status: number, details?: string): string {
 const INITIAL_MESSAGE: Message = {
   id: 'init',
   role: 'assistant',
-  content: 'Hi! I\'m your AI researcher. Drag a company into the context bar above, then ask anything.',
+  content: "Hi! I'm your AI researcher. Ask me anything about this company — culture, interview prep, how to stand out, or anything else.",
   timestamp: new Date(),
 }
 
@@ -205,6 +205,16 @@ export function useResearchChat({
     loadedCompanyRef.current = null
   }, [])
 
+  const clearSession = useCallback(async () => {
+    if (sessionIdRef.current && user) {
+      await supabase
+        .from('research_sessions')
+        .update({ messages: [] })
+        .eq('id', sessionIdRef.current)
+    }
+    resetMessages()
+  }, [user, resetMessages])
+
   const sendMessage = useCallback(
     async (
       displayContent: string,
@@ -331,5 +341,5 @@ export function useResearchChat({
     [session?.access_token, companies, jobDescription, messages, persistMessages, trackEvent],
   )
 
-  return { messages, isStreaming, sendMessage, resetMessages, sessionId }
+  return { messages, isStreaming, sendMessage, resetMessages, clearSession, sessionId }
 }
