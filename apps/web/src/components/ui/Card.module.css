@@ -1,22 +1,32 @@
 .card {
-  background-color: var(--color-bg);
-  border: 1px solid var(--color-border);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-xs);
+  transition:
+    transform var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out);
+}
+
+.hoverLift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--hairline-strong);
 }
 
 .header {
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--color-border);
+  padding: 0.875rem 1.125rem;
+  border-bottom: 1px solid var(--hairline);
 }
 
 .body {
-  padding: 1.25rem;
+  padding: 1.125rem;
 }
 
 .footer {
-  padding: 1rem 1.25rem;
-  border-top: 1px solid var(--color-border);
-  background-color: var(--color-bg-subtle);
+  padding: 0.875rem 1.125rem;
+  border-top: 1px solid var(--hairline);
+  background: var(--surface-2);
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
