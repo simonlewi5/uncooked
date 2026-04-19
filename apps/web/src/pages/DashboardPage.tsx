@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { Badge, Spinner } from '@/components/ui'
 import { GamificationCard } from '@/components/dashboard/GamificationCard'
 import { useDashboardData } from '@/hooks/useDashboardData'
+import { formatMinutes } from '@/utils/formatMinutes'
 import { cn } from '@/utils/cn'
 import type {
   ResearchSessionSummary,
@@ -111,11 +112,15 @@ function PracticeConsistencyCard({
 
         <div className={styles.barChart}>
           {labels.map((label, i) => {
-            const heightPct = `${Math.max((buckets[i] / maxMinutes) * 100, 4)}%`
+            const heightPx = Math.max((buckets[i] / maxMinutes) * 80, 4)
+            const tooltip = buckets[i] === 0 ? 'No activity' : formatMinutes(buckets[i])
 
             return (
-              <div key={`bucket-${i}`} className={styles.barGroup}>
-                <div className={styles.bar} style={{ height: heightPct }} />
+              <div key={`bucket-${i}`} className={styles.barGroup} data-tooltip={tooltip}>
+                <div
+                  className={cn(styles.bar, buckets[i] > 0 && styles.barActive)}
+                  style={{ height: heightPx }}
+                />
                 <span className={styles.barLabel}>{label}</span>
               </div>
             )
