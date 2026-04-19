@@ -6,9 +6,11 @@
 --   4. Adds a sanity-check assertion so the migration fails loudly if the revoke didn't land
 
 -- ---------------------------------------------------------------------------
--- 1. Lock down direct client access to the materialized view
+-- 1. Drop the old materialized view (revoke first in case it exists)
 -- ---------------------------------------------------------------------------
 
+-- Revoke before drop in case MV already exists from a prior migration run.
+-- The critical revoke after CREATE below is what actually seals the new object.
 REVOKE ALL ON public.user_activity_sessions FROM anon, authenticated;
 
 -- ---------------------------------------------------------------------------
@@ -78,6 +80,10 @@ CREATE INDEX user_activity_sessions_user_date_idx
   ON public.user_activity_sessions (user_id, session_date DESC);
 
 REFRESH MATERIALIZED VIEW public.user_activity_sessions;
+
+-- Lock down the newly created MV. Supabase's default grants restore SELECT on
+-- every new object in the public schema, so this REVOKE MUST come after CREATE.
+REVOKE ALL ON public.user_activity_sessions FROM anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- 3. Drop old parameter-based RPCs and replace with SECURITY DEFINER versions
@@ -159,7 +165,15 @@ $$;
 REVOKE ALL ON FUNCTION public.get_consistency_metrics() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_consistency_metrics() TO authenticated;
 
-CREATE OR REPLACE FUNCTION public.get_daily_duration()
+-- Drop the no-arg version before recreating with a parameterised signature.
+DROP FUNCTION IF EXISTS public.get_daily_duration();
+
+-- p_start_date / p_end_date default to the last 7 days so that
+-- ConsistencyMetricsContext can continue calling this with no arguments.
+CREATE FUNCTION public.get_daily_duration(
+  p_start_date date DEFAULT current_date - 6,
+  p_end_date   date DEFAULT current_date + 1
+)
 RETURNS TABLE (
   activity_type    text,
   practice_date    date,
@@ -172,17 +186,18 @@ SET search_path = public
 AS $$
   SELECT
     activity_type,
-    session_date AS practice_date,
-    ROUND(COALESCE(SUM(session_duration_seconds), 0) / 60.0)::int AS duration_minutes
+    session_date                                                         AS practice_date,
+    ROUND(COALESCE(SUM(session_duration_seconds), 0) / 60.0)::int       AS duration_minutes
   FROM public.user_activity_sessions
-  WHERE user_id = auth.uid()
-    AND session_date >= current_date - 6
+  WHERE user_id      = auth.uid()
+    AND session_date >= p_start_date
+    AND session_date  < p_end_date
   GROUP BY activity_type, session_date
   ORDER BY activity_type, session_date ASC;
 $$;
 
-REVOKE ALL ON FUNCTION public.get_daily_duration() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.get_daily_duration() TO authenticated;
+REVOKE ALL ON FUNCTION public.get_daily_duration(date, date) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_daily_duration(date, date) TO authenticated;
 
 -- ---------------------------------------------------------------------------
 -- 4. Sanity check — fail fast if the revoke didn't take effect

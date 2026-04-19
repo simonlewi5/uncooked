@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { toLocalDateString } from '@/utils/localDate'
 import type {
   DashboardData,
   ResearchSessionSummary,
@@ -30,8 +31,8 @@ interface RawResearchSession {
   company_profiles: { company_name: string; industry: string | null; company_website: string | null } | null
 }
 
-interface RawPracticeSession {
-  created_at: string
+interface RawDailyMinutes {
+  practice_date: string
   duration_minutes: number
 }
 
@@ -101,40 +102,29 @@ function getRangeBounds(range: DashboardRange): { start: Date; end: Date } {
 }
 
 function buildPracticeBuckets(
-  rows: RawPracticeSession[],
+  rows: RawDailyMinutes[],
   range: DashboardRange,
 ): PracticeConsistencyData {
+  const totalMinutes = rows.reduce((sum, row) => sum + row.duration_minutes, 0)
+
   if (range === 'week') {
     const buckets = Array.from({ length: 7 }, () => 0)
-
     for (const row of rows) {
-      const createdAt = new Date(row.created_at)
-      // getDay() uses the user's local timezone (0=Sun … 6=Sat).
-      // Remap to ISO week order (Mon=0 … Sun=6) to match WEEK_LABELS.
-      const localDay = createdAt.getDay()
-      const isoDay = localDay === 0 ? 6 : localDay - 1
+      // Append T00:00:00 (no Z) so the date is parsed in local time.
+      const localDay = new Date(row.practice_date + 'T00:00:00').getDay()
+      const isoDay = localDay === 0 ? 6 : localDay - 1 // Mon=0 … Sun=6
       buckets[isoDay] += row.duration_minutes
     }
-
-    return {
-      totalMinutes: rows.reduce((sum, row) => sum + row.duration_minutes, 0),
-      buckets,
-    }
+    return { totalMinutes, buckets }
   }
 
   const buckets = Array.from({ length: 5 }, () => 0)
-
   for (const row of rows) {
-    const createdAt = new Date(row.created_at)
-    const dayOfMonth = createdAt.getDate()
+    const dayOfMonth = new Date(row.practice_date + 'T00:00:00').getDate()
     const weekIndex = Math.min(Math.floor((dayOfMonth - 1) / 7), 4)
     buckets[weekIndex] += row.duration_minutes
   }
-
-  return {
-    totalMinutes: rows.reduce((sum, row) => sum + row.duration_minutes, 0),
-    buckets,
-  }
+  return { totalMinutes, buckets }
 }
 
 export function useDashboardData({
@@ -302,24 +292,18 @@ export function useDashboardData({
   useEffect(() => {
     if (!user) return
     const controller = new AbortController()
-    const userId = user.id
 
     async function fetchPractice() {
       try {
         const bounds = getRangeBounds(practiceRange)
-        const { data, error } = await supabase
-          .from('practice_sessions')
-          .select('created_at, duration_minutes')
-          .eq('user_id', userId)
-          .gte('created_at', bounds.start.toISOString())
-          .lt('created_at', bounds.end.toISOString())
-          .order('created_at', { ascending: true })
-          .abortSignal(controller.signal)
+        const { data, error } = await supabase.rpc('get_daily_duration', {
+          p_start_date: toLocalDateString(bounds.start),
+          p_end_date:   toLocalDateString(bounds.end),
+        })
 
         if (error) throw error
 
-        const practiceRows = (data ?? []) as RawPracticeSession[]
-        setPracticeConsistency(buildPracticeBuckets(practiceRows, practiceRange))
+        setPracticeConsistency(buildPracticeBuckets((data ?? []) as RawDailyMinutes[], practiceRange))
       } catch (err) {
         if (!controller.signal.aborted) {
           setFetchError(err instanceof Error ? err.message : 'Failed to load practice data')

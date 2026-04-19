@@ -89,7 +89,7 @@ function PracticeConsistencyCard({
   const buckets = data.buckets
   const maxMinutes = Math.max(...buckets, 1)
   const m = data.totalMinutes
-  const statLabel = m === 0 ? '0h' : m < 60 ? `${m}m` : m % 60 === 0 ? `${m / 60}h` : `${Math.floor(m / 60)}h ${m % 60}m`
+  const statLabel = m === 0 ? '0m' : m < 60 ? `${m}m` : m % 60 === 0 ? `${m / 60}h` : `${Math.floor(m / 60)}h ${m % 60}m`
 
   return (
     <div className={styles.card}>
@@ -327,6 +327,13 @@ export default function DashboardPage(): JSX.Element {
     pipelineRange,
   })
 
+  // Demo-day mock — swap this in place of `data?.practiceConsistency ?? practiceFallback`
+  // to show realistic week/month activity without needing real DB data.
+  // const MOCK_PRACTICE: Record<DashboardRange, { totalMinutes: number; buckets: number[] }> = {
+  //   week:  { totalMinutes: 285, buckets: [45, 0, 90, 30, 60, 0, 60] },  // M–Su
+  //   month: { totalMinutes: 720, buckets: [180, 210, 150, 120, 60] },      // W1–W5
+  // }
+
   const practiceFallback =
     practiceRange === 'week'
       ? { totalMinutes: 0, buckets: [0, 0, 0, 0, 0, 0, 0] }
@@ -360,6 +367,8 @@ export default function DashboardPage(): JSX.Element {
             range={practiceRange}
             onRangeChange={setPracticeRange}
             data={data?.practiceConsistency ?? practiceFallback}
+            // data={MOCK_PRACTICE[practiceRange]}
+
           />
           <div className={styles.bottomRow}>
             <TargetCompaniesCard companies={data?.companies ?? []} />
