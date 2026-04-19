@@ -261,7 +261,7 @@ function ApplicationPipelineCard({
           <RangePills value={range} onChange={onRangeChange} />
         </div>
 
-        {pipeline.total === 0 ? (
+        {pipeline.applied === 0 && pipeline.interviews === 0 && pipeline.offers === 0 ? (
           <div className={styles.emptyState}>
             <p className={styles.emptyText}>
               {range === 'week'
@@ -277,7 +277,7 @@ function ApplicationPipelineCard({
             <div className={styles.pipelineStats}>
               <div className={styles.pipelineStat}>
                 <span className={styles.pipelineLabel}>Applied</span>
-                <span className={cn(styles.pipelineValue, styles.pipelineValueApplied)}>{pipeline.total}</span>
+                <span className={cn(styles.pipelineValue, styles.pipelineValueApplied)}>{pipeline.applied}</span>
               </div>
               <div className={styles.pipelineStat}>
                 <span className={styles.pipelineLabel}>Interviews</span>
@@ -291,12 +291,16 @@ function ApplicationPipelineCard({
 
             <div className={styles.progressTrack}>
               <div
-                className={cn(styles.progressLayer, styles.progressLayerMid)}
-                style={{ width: `${(pipeline.interviews / pipeline.total) * 100}%` }}
+                className={cn(styles.progressSegment, styles.progressSegmentApplied)}
+                style={{ flex: pipeline.applied }}
               />
               <div
-                className={cn(styles.progressLayer, styles.progressLayerTop)}
-                style={{ width: `${(pipeline.offers / pipeline.total) * 100}%` }}
+                className={cn(styles.progressSegment, styles.progressSegmentInterviews)}
+                style={{ flex: pipeline.interviews }}
+              />
+              <div
+                className={cn(styles.progressSegment, styles.progressSegmentOffers)}
+                style={{ flex: pipeline.offers }}
               />
             </div>
 
@@ -366,7 +370,7 @@ export default function DashboardPage(): JSX.Element {
           <ApplicationPipelineCard
             range={pipelineRange}
             onRangeChange={setPipelineRange}
-            pipeline={data?.pipeline ?? { total: 0, interviews: 0, offers: 0 }}
+            pipeline={data?.pipeline ?? { applied: 0, interviews: 0, offers: 0 }}
           />
         </div>
       </div>
