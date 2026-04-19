@@ -113,10 +113,10 @@ export function ConsistencyMetricsProvider({ children }: { children: React.React
     StructuredErrorResponse
   >(
     user?.id ? ['consistency-metrics', user.id] : null,
-    async ([, userId]) => {
+    async () => {
       const [metricsResult, durationResult] = await Promise.all([
-        supabase.rpc('get_consistency_metrics', { p_user_id: userId }),
-        supabase.rpc('get_daily_duration', { p_user_id: userId }),
+        supabase.rpc('get_consistency_metrics'),
+        supabase.rpc('get_daily_duration'),
       ])
 
       if (metricsResult.error) {
