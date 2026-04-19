@@ -21,6 +21,7 @@ interface JobApplication {
   jobTitle: string
   companyName: string
   jobUrl: string | null
+  jobDescription: string | null
   notes: string | null
   status: ApplicationStatus
   appliedAt: string | null
@@ -31,6 +32,7 @@ interface AddFormState {
   jobTitle: string
   companyName: string
   jobUrl: string
+  jobDescription: string
   notes: string
   status: ApplicationStatus
 }
@@ -69,12 +71,12 @@ export default function PipelinePage() {
   const [error, setError] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [addForm, setAddForm] = useState<AddFormState>({
-    jobTitle: '', companyName: '', jobUrl: '', notes: '', status: 'saved',
+    jobTitle: '', companyName: '', jobUrl: '', jobDescription: '', notes: '', status: 'saved',
   })
   const [isSaving, setIsSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<JobApplication | null>(null)
   const [editTarget, setEditTarget] = useState<JobApplication | null>(null)
-  const [editForm, setEditForm] = useState<AddFormState>({ jobTitle: '', companyName: '', jobUrl: '', notes: '', status: 'saved' })
+  const [editForm, setEditForm] = useState<AddFormState>({ jobTitle: '', companyName: '', jobUrl: '', jobDescription: '', notes: '', status: 'saved' })
   const [isUpdating, setIsUpdating] = useState(false)
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
@@ -88,7 +90,7 @@ export default function PipelinePage() {
       setError(null)
       const { data, error: err } = await supabase
         .from('job_applications')
-        .select('id, job_title, company_name, job_url, notes, status, applied_at, created_at')
+        .select('id, job_title, company_name, job_url, job_description, notes, status, applied_at, created_at')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
 
@@ -101,6 +103,7 @@ export default function PipelinePage() {
             jobTitle: row.job_title,
             companyName: row.company_name ?? '',
             jobUrl: row.job_url,
+            jobDescription: row.job_description,
             notes: row.notes,
             status: row.status as ApplicationStatus,
             appliedAt: row.applied_at,
@@ -124,10 +127,11 @@ export default function PipelinePage() {
         job_title: addForm.jobTitle.trim(),
         company_name: addForm.companyName.trim(),
         job_url: addForm.jobUrl.trim() || null,
+        job_description: addForm.jobDescription.trim() || null,
         notes: addForm.notes.trim() || null,
         status: addForm.status,
       })
-      .select('id, job_title, company_name, job_url, notes, status, applied_at, created_at')
+      .select('id, job_title, company_name, job_url, job_description, notes, status, applied_at, created_at')
       .single()
 
     if (!err && data) {
@@ -137,6 +141,7 @@ export default function PipelinePage() {
           jobTitle: data.job_title,
           companyName: data.company_name ?? '',
           jobUrl: data.job_url,
+          jobDescription: data.job_description,
           notes: data.notes,
           status: data.status as ApplicationStatus,
           appliedAt: data.applied_at,
@@ -145,7 +150,7 @@ export default function PipelinePage() {
         ...prev,
       ])
       setShowAddModal(false)
-      setAddForm({ jobTitle: '', companyName: '', jobUrl: '', notes: '', status: 'saved' })
+      setAddForm({ jobTitle: '', companyName: '', jobUrl: '', jobDescription: '', notes: '', status: 'saved' })
     }
     setIsSaving(false)
   }
@@ -161,6 +166,7 @@ export default function PipelinePage() {
       jobTitle: app.jobTitle,
       companyName: app.companyName,
       jobUrl: app.jobUrl ?? '',
+      jobDescription: app.jobDescription ?? '',
       notes: app.notes ?? '',
       status: app.status,
     })
@@ -175,6 +181,7 @@ export default function PipelinePage() {
         job_title: editForm.jobTitle.trim(),
         company_name: editForm.companyName.trim(),
         job_url: editForm.jobUrl.trim() || null,
+        job_description: editForm.jobDescription.trim() || null,
         notes: editForm.notes.trim() || null,
         status: editForm.status,
       })
@@ -184,7 +191,7 @@ export default function PipelinePage() {
       setApplications((prev) =>
         prev.map((a) =>
           a.id === editTarget.id
-            ? { ...a, jobTitle: editForm.jobTitle.trim(), companyName: editForm.companyName.trim(), jobUrl: editForm.jobUrl.trim() || null, notes: editForm.notes.trim() || null, status: editForm.status }
+            ? { ...a, jobTitle: editForm.jobTitle.trim(), companyName: editForm.companyName.trim(), jobUrl: editForm.jobUrl.trim() || null, jobDescription: editForm.jobDescription.trim() || null, notes: editForm.notes.trim() || null, status: editForm.status }
             : a
         )
       )
@@ -342,6 +349,15 @@ export default function PipelinePage() {
                 />
               </label>
               <label className={styles.fieldLabel}>
+                Job Description
+                <textarea
+                  className={cn(styles.fieldInput, styles.fieldTextarea)}
+                  placeholder="Paste the job description here..."
+                  value={addForm.jobDescription}
+                  onChange={(e) => setAddForm((f) => ({ ...f, jobDescription: e.target.value }))}
+                />
+              </label>
+              <label className={styles.fieldLabel}>
                 Status
                 <select
                   className={styles.fieldInput}
@@ -412,6 +428,15 @@ export default function PipelinePage() {
                   placeholder="https://..."
                   value={editForm.jobUrl}
                   onChange={(e) => setEditForm((f) => ({ ...f, jobUrl: e.target.value }))}
+                />
+              </label>
+              <label className={styles.fieldLabel}>
+                Job Description
+                <textarea
+                  className={cn(styles.fieldInput, styles.fieldTextarea)}
+                  placeholder="Paste the job description here..."
+                  value={editForm.jobDescription}
+                  onChange={(e) => setEditForm((f) => ({ ...f, jobDescription: e.target.value }))}
                 />
               </label>
               <label className={styles.fieldLabel}>
