@@ -259,7 +259,10 @@ export default function InterviewPage(): JSX.Element {
       return
     }
 
-    const rawProfiles = data.company_profiles as any;
+    const rawProfiles = data.company_profiles as unknown as 
+      | { company_website: string | null } 
+      | { company_website: string | null }[];
+      
     const fetchedWebsite = Array.isArray(rawProfiles) 
       ? rawProfiles[0]?.company_website 
       : rawProfiles?.company_website ?? null;
