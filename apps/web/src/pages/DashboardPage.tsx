@@ -325,7 +325,7 @@ export default function DashboardPage(): JSX.Element {
           />
           <div className={styles.bottomRow}>
             <TargetCompaniesCard companies={data?.companies ?? []} />
-            <AiPromoCard />
+            
           </div>
         </div>
 
