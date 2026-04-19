@@ -78,36 +78,38 @@ export default function PipelinePage() {
 
   useEffect(() => {
     if (!user?.id) return
+    const userId = user.id
+
+    async function loadApplications() {
+      setIsLoading(true)
+      setError(null)
+      const { data, error: err } = await supabase
+        .from('job_applications')
+        .select('id, job_title, company_name, job_url, notes, status, applied_at, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+
+      if (err) {
+        setError('Failed to load applications.')
+      } else {
+        setApplications(
+          (data ?? []).map((row) => ({
+            id: row.id,
+            jobTitle: row.job_title,
+            companyName: row.company_name ?? '',
+            jobUrl: row.job_url,
+            notes: row.notes,
+            status: row.status as ApplicationStatus,
+            appliedAt: row.applied_at,
+            createdAt: row.created_at,
+          }))
+        )
+      }
+      setIsLoading(false)
+    }
+
     void loadApplications()
   }, [user?.id])
-
-  async function loadApplications() {
-    setIsLoading(true)
-    setError(null)
-    const { data, error: err } = await supabase
-      .from('job_applications')
-      .select('id, job_title, company_name, job_url, notes, status, applied_at, created_at')
-      .eq('user_id', user!.id)
-      .order('created_at', { ascending: false })
-
-    if (err) {
-      setError('Failed to load applications.')
-    } else {
-      setApplications(
-        (data ?? []).map((row) => ({
-          id: row.id,
-          jobTitle: row.job_title,
-          companyName: row.company_name ?? '',
-          jobUrl: row.job_url,
-          notes: row.notes,
-          status: row.status as ApplicationStatus,
-          appliedAt: row.applied_at,
-          createdAt: row.created_at,
-        }))
-      )
-    }
-    setIsLoading(false)
-  }
 
   async function handleAdd() {
     if (!user?.id || !addForm.jobTitle.trim() || !addForm.companyName.trim()) return
