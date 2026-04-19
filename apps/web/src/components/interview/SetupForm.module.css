@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap');
-
 /* ── Setup Form ──────────────────────────────────────────────────────────── */
 
 .wrapper {
@@ -66,7 +64,7 @@
 
 .textarea:focus {
   border-color: var(--blue);
-  box-shadow: 0 0 0 3px var(--blue-soft);
+  box-shadow: var(--focus-ring);
 }
 
 .startBtn {
@@ -75,13 +73,13 @@
   justify-content: center;
   gap: var(--space-2);
   width: 100%;
-  padding: 14px 20px;
+  padding: var(--space-3) var(--space-5);
   border: 0;
   border-radius: var(--radius-md);
   background: var(--ink-1);
   color: var(--surface);
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: var(--font-sm);
   font-weight: 600;
   letter-spacing: -0.005em;
   cursor: pointer;
@@ -93,9 +91,8 @@
 }
 
 .startBtn:disabled {
-  opacity: 1;
-  background: color-mix(in oklch, var(--ink-1) 30%, var(--surface-2));
-  color: color-mix(in oklch, var(--surface) 70%, var(--ink-3));
+  background: var(--surface-2);
+  color: var(--ink-3);
   cursor: not-allowed;
 }
 

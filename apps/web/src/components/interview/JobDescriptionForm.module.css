@@ -34,7 +34,7 @@
 
 .textarea:focus {
   border-color: var(--blue);
-  box-shadow: 0 0 0 3px var(--blue-soft);
+  box-shadow: var(--focus-ring);
 }
 
 .pastJobs {
