@@ -117,10 +117,7 @@ function PracticeConsistencyCard({
 
             return (
               <div key={`bucket-${i}`} className={styles.barGroup} data-tooltip={tooltip}>
-                <div
-                  className={cn(styles.bar, buckets[i] > 0 && styles.barActive)}
-                  style={{ height: heightPx }}
-                />
+                <div className={styles.bar} style={{ height: heightPx }} />
                 <span className={styles.barLabel}>{label}</span>
               </div>
             )
