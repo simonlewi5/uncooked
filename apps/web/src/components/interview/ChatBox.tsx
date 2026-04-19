@@ -70,7 +70,9 @@ export function ChatBox({ messages, isTyping, onSend, disabled }: ChatBoxProps):
               )}
             >
               {msg.role === 'assistant' ? (
-                <ReactMarkdown className={styles.markdown}>{msg.content}</ReactMarkdown>
+                <div className={styles.markdown}>
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                </div>
               ) : (
                 msg.content
               )}
