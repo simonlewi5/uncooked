@@ -3,6 +3,9 @@
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs);
+}
+
+.hoverLift {
   transition:
     transform var(--dur-2) var(--ease-out),
     box-shadow var(--dur-2) var(--ease-out),

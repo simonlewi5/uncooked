@@ -35,7 +35,7 @@
 
 .button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ink-1) 10%, transparent);
+  box-shadow: var(--focus-ring);
 }
 
 .button:disabled {

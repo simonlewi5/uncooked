@@ -34,7 +34,7 @@
 
 .input:focus {
   border-color: var(--ink-3);
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ink-1) 8%, transparent);
+  box-shadow: var(--focus-ring);
 }
 
 .input.hasError {
@@ -42,7 +42,7 @@
 }
 
 .input.hasError:focus {
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--danger) 12%, transparent);
+  box-shadow: var(--focus-ring-danger);
 }
 
 .error {

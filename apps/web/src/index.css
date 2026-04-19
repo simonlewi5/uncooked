@@ -63,6 +63,10 @@
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
+  /* Focus ring — theme-aware; stronger in dark mode where --ink-1 is near-white */
+  --focus-ring: 0 0 0 3px color-mix(in oklch, var(--ink-1) 12%, transparent);
+  --focus-ring-danger: 0 0 0 3px color-mix(in oklch, var(--danger) 14%, transparent);
+
   /* Spacing (preserved from legacy) */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -131,6 +135,10 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 1px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
+
+  /* Focus ring: bump mix in dark mode so the nearly-white --ink-1 reads on dark surface. */
+  --focus-ring: 0 0 0 3px color-mix(in oklch, var(--ink-1) 30%, transparent);
+  --focus-ring-danger: 0 0 0 3px color-mix(in oklch, var(--danger) 35%, transparent);
 
   /* Legacy alias overrides — keep hover/active/subtle/text semantics coherent in dark mode. */
   --color-primary-hover: oklch(0.80 0.16 260);
