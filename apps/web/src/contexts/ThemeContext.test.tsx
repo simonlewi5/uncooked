@@ -79,6 +79,20 @@ describe('ThemeContext', () => {
     expect(screen.getByTestId('density').textContent).toBe('cozy')
   })
 
+  it('falls back to defaults when localStorage holds invalid values', () => {
+    localStorage.setItem('un_theme', 'midnight')
+    localStorage.setItem('un_motion', 'frantic')
+    localStorage.setItem('un_density', 'humongous')
+    render(
+      <ThemeProvider>
+        <TestHarness />
+      </ThemeProvider>
+    )
+    expect(screen.getByTestId('theme').textContent).toBe('light')
+    expect(screen.getByTestId('motion').textContent).toBe('default')
+    expect(screen.getByTestId('density').textContent).toBe('default')
+  })
+
   it('throws if useTheme is used without provider', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     expect(() => render(<TestHarness />)).toThrow(/ThemeProvider/)
