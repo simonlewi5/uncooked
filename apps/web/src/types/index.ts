@@ -21,7 +21,7 @@ export interface CompanyRole {
   roleTitle: string
   jobDescription: string | null
   companyProfileId: string
-  createdAt?: string
+  createdAt: string
 }
 
 export type {
