@@ -134,6 +134,7 @@ export default function ResumePage() {
   const [tailorRunState, setTailorRunState] = useState<'idle' | 'complete'>('idle')
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
+  const [isExportingPDF, setIsExportingPDF] = useState(false)
   const [activeResumeId, setActiveResumeId] = useState<string | null>(null)
   const { runTailor, isLoading, error: tailorError, clearError } = useResumeTailor()
   const {
@@ -353,16 +354,31 @@ export default function ResumePage() {
 
   async function handleExportPDF() {
     if (!resumeRef.current) return
-    await html2pdf()
-      .set({
-        margin: [10, 10, 10, 10],
-        filename: 'resume_export.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+
+    try {
+      setIsExportingPDF(true)
+
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve())
       })
-      .from(resumeRef.current)
-      .save()
+
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve())
+      })
+
+      await html2pdf()
+        .set({
+          margin: [10, 10, 10, 10],
+          filename: 'resume_export.pdf',
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        })
+        .from(resumeRef.current)
+        .save()
+    } finally {
+      setIsExportingPDF(false)
+    }
   }
 
   async function handleSaveResume() {
@@ -381,7 +397,7 @@ export default function ResumePage() {
     }
   }
 
-  const editable = !isPreviewMode
+  const editable = !isPreviewMode && !isExportingPDF
   const suggestionItems: ResumeSuggestionViewModel[] = buildResumeSuggestionViewModels(resumeContent, pendingEdits)
   const suggestionPanelState = tailorRunState === 'idle' ? 'idle' : tailorRunState
   const pageError = submitError ?? uploadError ?? persistenceError ?? tailorError
