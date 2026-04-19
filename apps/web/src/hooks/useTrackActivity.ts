@@ -138,7 +138,7 @@ export function useTrackActivity(activityType: ActivityType) {
   }, [flushNow])
 
   const trackEvent = useCallback(
-    (eventType: string, metadata?: Record<string, unknown>) => {
+    (eventType: string, metadata?: Record<string, unknown>, durationOverride?: number) => {
       if (!user?.id || !enabled) return
 
       queueMicrotask(() => {
@@ -146,7 +146,7 @@ export function useTrackActivity(activityType: ActivityType) {
           sessionStartedAtRef.current = Date.now()
         }
 
-        const elapsedSeconds = Math.max(
+        const elapsedSeconds = durationOverride ?? Math.max(
           0,
           Math.floor((Date.now() - sessionStartedAtRef.current) / 1000)
         )
