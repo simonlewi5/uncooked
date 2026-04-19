@@ -72,6 +72,11 @@
   opacity: 1;
 }
 
+.stepPending .stepMarker {
+  border: 1px dashed var(--hairline-strong);
+  background: transparent;
+}
+
 .stepActive .stepLabel {
   font-weight: 600;
 }
