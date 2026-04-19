@@ -270,7 +270,7 @@ export function SetupForm({
             </div>
 
             <button
-              className={styles.startBtn}
+              className={`${styles.startBtn} ${canStart ? 'iris-glow' : ''}`}
               disabled={!canStart}
               onClick={handleStartInterview}
             >

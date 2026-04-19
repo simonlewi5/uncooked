@@ -44,15 +44,15 @@
 }
 
 .bubbleUser {
-  background-color: var(--color-primary);
-  color: #fff;
+  background-color: var(--blue);
+  color: var(--surface);
   border-bottom-right-radius: var(--radius-sm);
   white-space: pre-wrap;
 }
 
 .bubbleAssistant {
-  background-color: var(--color-bg-muted);
-  color: var(--color-text);
+  background-color: var(--surface-2);
+  color: var(--ink-1);
   border-bottom-left-radius: var(--radius-sm);
 }
 
@@ -101,14 +101,14 @@
 
 .markdown code {
   font-family: monospace;
-  background-color: var(--color-border);
+  background-color: var(--hairline);
   padding: 0.1em 0.3em;
   border-radius: var(--radius-sm);
   font-size: 0.85em;
 }
 
 .markdown pre {
-  background-color: var(--color-border);
+  background-color: var(--hairline);
   padding: var(--space-3);
   border-radius: var(--radius-md);
   overflow-x: auto;
@@ -122,14 +122,14 @@
 
 .timestamp {
   font-size: var(--font-xs);
-  color: var(--color-text-tertiary);
+  color: var(--ink-3);
   padding: 0 var(--space-1);
 }
 
 .typing {
   align-self: flex-start;
   padding: 0.625rem 0.875rem;
-  background-color: var(--color-bg-muted);
+  background-color: var(--surface-2);
   border-radius: var(--radius-lg);
   border-bottom-left-radius: var(--radius-sm);
   display: flex;
@@ -140,7 +140,7 @@
 .typingDot {
   width: 6px;
   height: 6px;
-  background-color: var(--color-text-tertiary);
+  background-color: var(--ink-3);
   border-radius: 50%;
   animation: bounce 1.2s infinite;
 }
@@ -173,8 +173,8 @@
   display: flex;
   align-items: flex-end;
   gap: var(--space-2);
-  background-color: var(--color-bg);
-  border: 1px solid var(--color-border-strong);
+  background-color: var(--surface);
+  border: 1px solid var(--hairline-strong);
   border-radius: var(--radius-xl);
   padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
   box-shadow: var(--shadow-sm);
@@ -182,15 +182,15 @@
 }
 
 .inputBox:focus-within {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-subtle);
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-soft);
 }
 
 .inputField {
   flex: 1;
   font-size: var(--font-sm);
   font-family: inherit;
-  color: var(--color-text);
+  color: var(--ink-1);
   background: transparent;
   border: none;
   outline: none;
@@ -201,7 +201,7 @@
 }
 
 .inputField::placeholder {
-  color: var(--color-text-tertiary);
+  color: var(--ink-3);
 }
 
 .sendBtn {
@@ -214,8 +214,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--color-bg-muted);
-  color: var(--color-text-tertiary);
+  background-color: var(--surface-2);
+  color: var(--ink-3);
   transition: background-color 0.15s, color 0.15s;
 }
 
@@ -224,17 +224,17 @@
 }
 
 .sendBtnActive {
-  background-color: var(--color-primary);
-  color: #fff;
+  background-color: var(--blue);
+  color: var(--surface);
 }
 
 .sendBtnActive:hover {
-  background-color: var(--color-primary-hover);
+  background-color: color-mix(in oklch, var(--blue) 90%, var(--ink-1));
 }
 
 .hint {
   font-size: var(--font-xs);
-  color: var(--color-text-tertiary);
+  color: var(--ink-3);
   text-align: center;
   margin: 0;
 }
