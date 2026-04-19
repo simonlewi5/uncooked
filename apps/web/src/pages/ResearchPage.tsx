@@ -124,7 +124,7 @@ export default function ResearchPage() {
   const activeRole = activeContext.length === 1 ? activeContext[0].role : undefined
   const activeCompanyProfileId = activeContext.length === 1 ? activeContext[0].company.id : undefined
   const companyNames = activeContext.map((ctx) => ctx.company.name)
-  const { messages, isStreaming, sendMessage } = useResearchChat({
+  const { messages, isStreaming, sendMessage, resetMessages } = useResearchChat({
     companies: companyNames,
     jobDescription: activeRole?.jobDescription || undefined,
     companyProfileId: activeCompanyProfileId || null,
@@ -199,7 +199,8 @@ export default function ResearchPage() {
       setAttachment(null)
       setAttachmentError(err instanceof Error ? err.message : 'Could not read that file.')
     }
-  
+  }
+
   function removeFromContext(companyId: string, roleId?: string) {
     setActiveContext((prev) =>
       prev.filter((ctx) => !(ctx.company.id === companyId && ctx.role?.id === roleId))
@@ -283,6 +284,9 @@ export default function ResearchPage() {
             Chat with AI to analyze companies, compare roles, and build your knowledge base
           </p>
         </div>
+        <button type="button" className={styles.newBoardBtn} onClick={handleNewBoard}>
+          New board
+        </button>
       </div>
 
       <div className={styles.layout}>

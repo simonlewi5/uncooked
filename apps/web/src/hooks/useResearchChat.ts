@@ -80,6 +80,7 @@ export function useResearchChat({
   const [isStreaming, setIsStreaming] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const sessionIdRef = useRef<string | null>(null)
+  const sessionAttachmentRef = useRef<AttachmentPayload | null>(null)
   const loadedRoleRef = useRef<string | null>(null)
 
   // Load existing research session for this role
