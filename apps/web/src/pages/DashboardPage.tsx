@@ -128,6 +128,25 @@ function PracticeConsistencyCard({
   )
 }
 
+function SessionLogo({ companyWebsite, companyName }: { companyWebsite: string | null; companyName: string | null }): JSX.Element {
+  const [hasError, setHasError] = useState(false)
+  if (companyWebsite && !hasError) {
+    return (
+      <img
+        src={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/company-logo?domain=${encodeURIComponent(companyWebsite)}`}
+        alt={companyName ?? ''}
+        className={styles.sessionLogo}
+        onError={() => setHasError(true)}
+      />
+    )
+  }
+  return (
+    <div className={styles.iconBox}>
+      <Building2 size={16} />
+    </div>
+  )
+}
+
 function RecentResearchCard({ sessions }: RecentResearchCardProps): JSX.Element {
   return (
     <div className={styles.card}>
@@ -150,21 +169,25 @@ function RecentResearchCard({ sessions }: RecentResearchCardProps): JSX.Element 
         ) : (
           <ul className={styles.itemList}>
             {sessions.map((session) => (
-              <li key={session.id} className={styles.itemRow}>
-                <div className={styles.iconBox}>
-                  <Building2 size={16} />
-                </div>
-                <div className={styles.itemInfo}>
-                  <p className={styles.itemTitle}>{session.title ?? 'Research session'}</p>
-                  <p className={styles.itemSub}>{session.companyName ?? '—'}</p>
-                </div>
-                <div className={styles.itemMeta}>
-                  {session.industry && <Badge>{session.industry}</Badge>}
-                  <span className={styles.timeStamp}>
-                    <Calendar size={12} />
-                    {formatTimeAgo(session.createdAt)}
-                  </span>
-                </div>
+              <li key={session.id}>
+                <Link
+                  to="/research"
+                  state={{ companyProfileId: session.companyProfileId, roleId: session.companyRoleId }}
+                  className={styles.itemRow}
+                >
+                  <SessionLogo companyWebsite={session.companyWebsite} companyName={session.companyName} />
+                  <div className={styles.itemInfo}>
+                    <p className={styles.itemTitle}>{session.title ?? 'Research session'}</p>
+                    <p className={styles.itemSub}>{session.companyName ?? '—'}</p>
+                  </div>
+                  <div className={styles.itemMeta}>
+                    {session.industry && <Badge>{session.industry}</Badge>}
+                    <span className={styles.timeStamp}>
+                      <Calendar size={12} />
+                      {formatTimeAgo(session.createdAt)}
+                    </span>
+                  </div>
+                </Link>
               </li>
             ))}
           </ul>
