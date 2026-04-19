@@ -16,12 +16,6 @@
   gap: 20px;
 }
 
-.bottomRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-
 .rightCol {
   display: flex;
   flex-direction: column;
@@ -381,9 +375,5 @@
 
   .rightCol {
     order: -1;
-  }
-
-  .bottomRow {
-    grid-template-columns: 1fr;
   }
 }

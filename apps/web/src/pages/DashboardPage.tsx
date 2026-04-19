@@ -347,10 +347,7 @@ export default function DashboardPage(): JSX.Element {
             onRangeChange={setPracticeRange}
             data={data?.practiceConsistency ?? practiceFallback}
           />
-          <div className={styles.bottomRow}>
-            <TargetCompaniesCard companies={data?.companies ?? []} />
-            
-          </div>
+          <TargetCompaniesCard companies={data?.companies ?? []} />
         </div>
 
         <div className={styles.rightCol}>
