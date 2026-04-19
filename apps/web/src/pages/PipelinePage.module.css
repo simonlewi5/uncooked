@@ -31,7 +31,7 @@
 
 .errorBanner {
   background: color-mix(in oklch, var(--danger) 12%, var(--surface));
-  color: var(--danger);
+  color: color-mix(in oklch, var(--danger) 80%, var(--ink-1));
   font-size: var(--font-sm);
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);
@@ -73,7 +73,7 @@
 
 .columnOver {
   border-color: var(--blue);
-  background: var(--blue-soft);
+  background: color-mix(in oklch, var(--blue) 14%, var(--surface-2));
 }
 
 .colHeader {
@@ -139,7 +139,7 @@
   cursor: grabbing;
 }
 
-.card:hover {
+.card:hover:not(:active) {
   transform: translateY(-2px);
   box-shadow: var(--shadow-sm);
   border-color: var(--hairline-strong);
@@ -184,8 +184,8 @@
 }
 
 .cardDelete:hover {
-  background: color-mix(in oklch, var(--danger) 12%, var(--surface));
-  color: var(--danger);
+  background: color-mix(in oklch, var(--danger) 18%, var(--surface-2));
+  color: color-mix(in oklch, var(--danger) 80%, var(--ink-1));
 }
 
 .cardCompany {
@@ -339,7 +339,7 @@
 }
 
 .required {
-  color: var(--danger);
+  color: color-mix(in oklch, var(--danger) 80%, var(--ink-1));
 }
 
 .fieldInput {
