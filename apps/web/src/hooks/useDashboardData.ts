@@ -36,6 +36,7 @@ interface RawPracticeSession {
 }
 
 type ApplicationStatus =
+  | 'saved'
   | 'applied'
   | 'phone_screen'
   | 'interviewing'
@@ -44,6 +45,7 @@ type ApplicationStatus =
   | 'withdrawn'
 
 const KNOWN_STATUSES: readonly ApplicationStatus[] = [
+  'saved',
   'applied',
   'phone_screen',
   'interviewing',
