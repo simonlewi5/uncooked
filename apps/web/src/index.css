@@ -1,48 +1,69 @@
+/* ============================================================
+   UNCOOKED — design tokens
+   Attio × Linear aesthetic. Fraktion Mono (headings/UI) + Inter (body).
+============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap');
+
 :root {
-  /* Neutrals */
-  --color-bg: #ffffff;
-  --color-bg-subtle: #f9fafb;
-  --color-bg-muted: #f3f4f6;
-  --color-border: #e5e7eb;
-  --color-border-strong: #d1d5db;
-  --color-text: #111827;
-  --color-text-secondary: #6b7280;
-  --color-text-tertiary: #9ca3af;
+  /* Type stacks */
+  --font-mono: 'Fraktion Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 
-  /* Primary */
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
-  --color-primary-active: #1e40af;
-  --color-primary-subtle: #eff6ff;
-  --color-primary-text: #1d4ed8;
+  /* Neutrals — warm hue 90 canvas, cool hue 260 ink */
+  --canvas: oklch(0.985 0.003 90);
+  --surface: oklch(1 0 0);
+  --surface-2: oklch(0.975 0.004 90);
+  --hairline: oklch(0.92 0.005 260);
+  --hairline-strong: oklch(0.86 0.006 260);
+  --ink-1: oklch(0.18 0.008 260);
+  --ink-2: oklch(0.40 0.010 260);
+  --ink-3: oklch(0.58 0.010 260);
+  --ink-4: oklch(0.72 0.008 260);
 
-  /* Status */
-  --color-success: #16a34a;
-  --color-success-subtle: #f0fdf4;
-  --color-success-text: #15803d;
-  --color-warning: #d97706;
-  --color-warning-subtle: #fffbeb;
-  --color-warning-text: #b45309;
-  --color-error: #dc2626;
-  --color-error-subtle: #fef2f2;
-  --color-error-text: #b91c1c;
-  --color-info: #0891b2;
-  --color-info-subtle: #ecfeff;
-  --color-info-text: #0e7490;
+  /* Accent */
+  --blue: oklch(0.58 0.18 260);
+  --blue-soft: oklch(0.94 0.04 260);
+  --blue-ink: oklch(0.38 0.15 260);
 
-  /* Radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
+  /* Iris palette (green → cyan → periwinkle → lilac) */
+  --iris-1: oklch(0.88 0.14 150);
+  --iris-2: oklch(0.86 0.11 200);
+  --iris-3: oklch(0.80 0.14 260);
+  --iris-4: oklch(0.82 0.13 310);
+
+  /* Semantic */
+  --success: oklch(0.62 0.14 155);
+  --warn: oklch(0.74 0.14 75);
+  --danger: oklch(0.58 0.19 25);
+
+  /* Shape */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
   --radius-full: 9999px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xs: 0 1px 0 rgba(17, 24, 39, 0.04);
+  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.05), 0 1px 1px rgba(17, 24, 39, 0.03);
+  --shadow-md: 0 2px 6px rgba(17, 24, 39, 0.06), 0 6px 18px rgba(17, 24, 39, 0.06);
+  --shadow-lg: 0 12px 40px rgba(17, 24, 39, 0.10), 0 2px 4px rgba(17, 24, 39, 0.04);
 
-  /* Spacing */
+  /* Density (overridable by [data-density]) */
+  --pad-x: 20px;
+  --pad-y: 16px;
+  --gap: 16px;
+
+  /* Motion (overridable by [data-motion]) */
+  --motion-scale: 1;
+  --dur-1: calc(140ms * var(--motion-scale));
+  --dur-2: calc(260ms * var(--motion-scale));
+  --dur-3: calc(460ms * var(--motion-scale));
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Spacing (preserved from legacy) */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -53,7 +74,7 @@
   --space-10: 2.5rem;
   --space-12: 3rem;
 
-  /* Typography */
+  /* Typography sizes (preserved from legacy) */
   --font-xs: 0.75rem;
   --font-sm: 0.875rem;
   --font-base: 1rem;
@@ -61,18 +82,164 @@
   --font-xl: 1.25rem;
   --font-2xl: 1.5rem;
   --font-3xl: 1.875rem;
+
+  /* Legacy aliases — remove in final cleanup task once every page is migrated */
+  --color-bg: var(--canvas);
+  --color-bg-subtle: var(--surface);
+  --color-bg-muted: var(--surface-2);
+  --color-border: var(--hairline);
+  --color-border-strong: var(--hairline-strong);
+  --color-text: var(--ink-1);
+  --color-text-secondary: var(--ink-2);
+  --color-text-tertiary: var(--ink-3);
+  --color-primary: var(--blue);
+  --color-primary-hover: oklch(0.52 0.18 260);
+  --color-primary-active: oklch(0.46 0.17 260);
+  --color-primary-subtle: var(--blue-soft);
+  --color-primary-text: var(--blue-ink);
+  --color-success: var(--success);
+  --color-success-subtle: oklch(0.95 0.04 155);
+  --color-success-text: oklch(0.42 0.12 155);
+  --color-warning: var(--warn);
+  --color-warning-subtle: oklch(0.96 0.04 75);
+  --color-warning-text: oklch(0.48 0.13 75);
+  --color-error: var(--danger);
+  --color-error-subtle: oklch(0.96 0.04 25);
+  --color-error-text: oklch(0.44 0.17 25);
+  --color-info: oklch(0.62 0.12 200);
+  --color-info-subtle: oklch(0.95 0.04 200);
+  --color-info-text: oklch(0.40 0.12 200);
 }
 
+/* Dark theme */
+[data-theme="dark"] {
+  --canvas: oklch(0.17 0.006 260);
+  --surface: oklch(0.21 0.008 260);
+  --surface-2: oklch(0.23 0.010 260);
+  --hairline: oklch(0.30 0.012 260);
+  --hairline-strong: oklch(0.38 0.014 260);
+  --ink-1: oklch(0.97 0.005 90);
+  --ink-2: oklch(0.82 0.010 260);
+  --ink-3: oklch(0.66 0.012 260);
+  --ink-4: oklch(0.50 0.014 260);
+
+  --blue: oklch(0.72 0.17 260);
+  --blue-soft: oklch(0.32 0.10 260);
+  --blue-ink: oklch(0.85 0.14 260);
+
+  --shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 1px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Density */
+[data-density="cozy"]    { --pad-x: 24px; --pad-y: 20px; --gap: 20px; }
+[data-density="default"] { --pad-x: 20px; --pad-y: 16px; --gap: 16px; }
+[data-density="compact"] { --pad-x: 14px; --pad-y: 10px; --gap: 12px; }
+
+/* Motion */
+[data-motion="off"]        { --motion-scale: 0.01; }
+[data-motion="subtle"]     { --motion-scale: 0.7; }
+[data-motion="default"]    { --motion-scale: 1; }
+[data-motion="expressive"] { --motion-scale: 1.2; }
+
+/* ============================================================
+   Resets
+============================================================ */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+html, body {
+  background: var(--canvas);
+  color: var(--ink-1);
+  font-family: var(--font-sans);
+  font-feature-settings: 'ss01', 'cv11';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  text-rendering: optimizeLegibility;
 }
+
+/* ============================================================
+   Utility classes
+============================================================ */
+.mono { font-family: var(--font-mono); letter-spacing: -0.01em; }
+.caps { text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; font-weight: 500; }
+
+/* ============================================================
+   Keyframes
+============================================================ */
+@keyframes iris-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 0.85; transform: scale(1.015); }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes xp-sheen {
+  0%   { transform: translateX(-100%); opacity: 0; }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.2); }
+}
+@keyframes shimmer-num {
+  0%   { background-position: -120% 0; }
+  100% { background-position: 220% 0; }
+}
+
+/* ============================================================
+   Iris glow (single accent moment per screen)
+   Apply `.iris-glow` to an element with `position: relative` context.
+============================================================ */
+.iris-glow {
+  position: relative;
+  isolation: isolate;
+}
+.iris-glow::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+  z-index: -1;
+  border-radius: inherit;
+  background:
+    radial-gradient(closest-side at 15% 50%, var(--iris-1), transparent 70%),
+    radial-gradient(closest-side at 85% 50%, var(--iris-3), transparent 70%),
+    radial-gradient(closest-side at 50% 120%, var(--iris-4), transparent 70%);
+  filter: blur(18px);
+  opacity: 0.6;
+  animation: iris-breathe calc(4200ms * var(--motion-scale)) ease-in-out infinite;
+  pointer-events: none;
+}
+[data-motion="off"] .iris-glow::before { animation: none; }
+
+/* ============================================================
+   Staggered entry
+============================================================ */
+.enter { animation: fade-up var(--dur-3) var(--ease-out) both; }
+.enter-1 { animation-delay: calc(60ms  * var(--motion-scale)); }
+.enter-2 { animation-delay: calc(140ms * var(--motion-scale)); }
+.enter-3 { animation-delay: calc(220ms * var(--motion-scale)); }
+.enter-4 { animation-delay: calc(300ms * var(--motion-scale)); }
+.enter-5 { animation-delay: calc(380ms * var(--motion-scale)); }
+.enter-6 { animation-delay: calc(460ms * var(--motion-scale)); }
+.enter-7 { animation-delay: calc(540ms * var(--motion-scale)); }
+
+/* ============================================================
+   Scrollbar
+============================================================ */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--hairline-strong); border-radius: 999px; border: 2px solid var(--canvas); }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-4); }
+::-webkit-scrollbar-track { background: transparent; }
