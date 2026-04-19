@@ -111,11 +111,11 @@ function PracticeConsistencyCard({
 
         <div className={styles.barChart}>
           {labels.map((label, i) => {
-            const heightPct = `${Math.max((buckets[i] / maxMinutes) * 100, 4)}%`
+            const heightPx = Math.max((buckets[i] / maxMinutes) * 80, 4)
 
             return (
               <div key={`bucket-${i}`} className={styles.barGroup}>
-                <div className={styles.bar} style={{ height: heightPct }} />
+                <div className={styles.bar} style={{ height: heightPx }} />
                 <span className={styles.barLabel}>{label}</span>
               </div>
             )
