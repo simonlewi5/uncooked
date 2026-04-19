@@ -115,7 +115,6 @@ export function SetupForm({
       })
   }, [])
 
-  // 1. Keep our helper function to pass the object
   const handleStartInterview = () => {
     const selectedResumeObj = resumes.find(r => r.id === selectedResumeId)
     onStart(selectedResumeObj)

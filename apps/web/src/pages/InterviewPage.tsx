@@ -4,10 +4,13 @@ import { SetupForm } from '@/components/interview/SetupForm'
 import { InterviewSidebar } from '@/components/interview/InterviewSidebar'
 import { ChatBox } from '@/components/interview/ChatBox'
 import { XpToast } from '@/components/interview/XpToast'
+import { StandardToast } from '@/components/interview/Toast'
 import { useInterviewChat } from '@/hooks/useInterviewChat'
+import { useInterviewSetup } from '@/hooks/useInterviewSetup'
 import { useInterviewQuestions } from '@/hooks/useInterviewQuestions'
 import { supabase } from '@/lib/supabase'
 import type { CompanyProfile, InterviewStyle, InterviewSessionSummary, ResumeSummary } from '@/types'
+import AddCompanyModal from './AddCompanyPage'
 import styles from './InterviewPage.module.css'
 
 type Phase = 'setup' | 'interview'
@@ -21,6 +24,7 @@ interface PersistedSession {
   style: InterviewStyle
   sidebarWidth?: number
   questionCooldownEnd?: number
+  companyWebsite?: string | null
 }
 
 function saveSession(data: PersistedSession): void {
@@ -70,6 +74,7 @@ export default function InterviewPage(): JSX.Element {
   )
   const [companyRoleId, setCompanyRoleId] = useState<string | null>(roleState?.roleId || null)
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null)
+  const [companyWebsite, setCompanyWebsite] = useState<string | null>(initialState.current?.companyWebsite || null)
   const [style, setStyle] = useState<InterviewStyle | null>(initialState.current?.style ?? 'mixed')
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null)
   const [activeResume, setActiveResume] = useState<ResumeSummary | null>(null)
@@ -99,6 +104,7 @@ export default function InterviewPage(): JSX.Element {
 
   // XP toast state
   const [xpToasts, setXpToasts] = useState<Array<{ id: number; xp: number; label: string }>>([])
+  const [toastConfig, setToastConfig] = useState<{ message: string; variant?: 'success' | 'error' } | null>(null)
 
   const handleXpAwarded = useCallback((xp: number, eventType: string) => {
     const label = eventType === 'interview_start' ? 'Session Started!'
@@ -115,6 +121,7 @@ export default function InterviewPage(): JSX.Element {
       activeResume,
       handleXpAwarded,
       companyRoleId,
+      selectedCompanyId
     )
 
   // Keep activeSessionId in sync and persist to sessionStorage
@@ -126,6 +133,7 @@ export default function InterviewPage(): JSX.Element {
         companyName,
         jobDescription,
         style: style ?? 'mixed',
+        companyWebsite,
       })
     }
   }
@@ -185,32 +193,44 @@ export default function InterviewPage(): JSX.Element {
       })
   }, [resumeSession])
 
-  function handleCompanyProfileSelect(profile: CompanyProfile): void {
-    setCompanyName(profile.companyName)
-    setSelectedCompanyId(profile.id)
-    setCompanyProfile(profile)
-  }
-
-  function handleCompanyNameChange(value: string): void {
-    setCompanyName(value)
-    setSelectedCompanyId(null)
-    setCompanyProfile(null)
-  }
-
-function handleStart(resumeObject?: ResumeSummary | null): void {
-    if (resumeObject) {
-      setActiveResume(resumeObject)
-    }
-
+  const transitionToInterview = useCallback(() => {
     saveSession({
       sessionId: null,
       companyName,
       jobDescription,
       style: style ?? 'mixed',
     })
-
     setPhase('interview')
+  }, [companyName, jobDescription, style])
+
+  const {
+    showCompanyModal,
+    setShowCompanyModal,
+    handleStart,
+    handleModalSuccess
+  } = useInterviewSetup(
+    companyName,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    setActiveResume,
+    transitionToInterview
+  )
+
+  function handleCompanyProfileSelect(profile: CompanyProfile): void {
+    setCompanyName(profile.companyName)
+    setSelectedCompanyId(profile.id)
+    setCompanyProfile(profile)
+    setCompanyWebsite(profile.companyWebsite)
   }
+
+  function handleCompanyNameChange(value: string): void {
+    setCompanyName(value)
+    setSelectedCompanyId(null)
+    setCompanyProfile(null)
+    setCompanyWebsite(null)
+  }
+
+
 
   function handleBack(): void {
     resetSession()
@@ -220,6 +240,7 @@ function handleStart(resumeObject?: ResumeSummary | null): void {
     setSelectedCompanyId(null)
     setCompanyRoleId(null)
     setCompanyProfile(null)
+    setCompanyWebsite(null)
     setStyle('mixed')
     setActiveResume(null)
     clearSession()
@@ -229,7 +250,7 @@ function handleStart(resumeObject?: ResumeSummary | null): void {
   const handleLoadSession = useCallback(async (session: InterviewSessionSummary) => {
     const { data, error } = await supabase
       .from('interview_sessions')
-      .select('messages, job_description, interview_style, company_name, resume_id')
+      .select('messages, job_description, interview_style, company_name, resume_id, company_profiles(company_website)')
       .eq('id', session.id)
       .single()
 
@@ -238,6 +259,13 @@ function handleStart(resumeObject?: ResumeSummary | null): void {
       return
     }
 
+    const rawProfiles = data.company_profiles as unknown as 
+      | { company_website: string | null } 
+      | { company_website: string | null }[];
+      
+    const fetchedWebsite = Array.isArray(rawProfiles) 
+      ? rawProfiles[0]?.company_website 
+      : rawProfiles?.company_website ?? null;
     const loaded = (data.messages as Array<{ role: string; content: string; timestamp: string }>)
       .map((m, i) => ({
         id: `past-${i}`,
@@ -249,6 +277,7 @@ function handleStart(resumeObject?: ResumeSummary | null): void {
     autoGeneratedForRef.current = session.id
     resumeSession(session.id, loaded)
     setCompanyName(data.company_name as string)
+    setCompanyWebsite(fetchedWebsite)
     if (data.job_description) setJobDescription(data.job_description as string)
     if (data.interview_style) setStyle(data.interview_style as InterviewStyle)
 
@@ -274,6 +303,7 @@ function handleStart(resumeObject?: ResumeSummary | null): void {
       companyName: data.company_name as string,
       jobDescription: (data.job_description as string) ?? '',
       style: (data.interview_style as InterviewStyle) ?? 'mixed',
+      companyWebsite: fetchedWebsite,
     })
     setPhase('interview')
   }, [resumeSession])
@@ -343,6 +373,25 @@ function handleStart(resumeObject?: ResumeSummary | null): void {
           selectedResumeId={selectedResumeId}
           onResumeSelect={setSelectedResumeId}
         />
+        {showCompanyModal && (
+          <AddCompanyModal 
+            initialCompanyName={companyName}
+            message="You have not researched this company yet. Please fill out their profile to prepare for your interview!"
+            onClose={() => setShowCompanyModal(false)}
+            onSuccess={(newId, newName, newWebsite) => {
+              const newProfile = { id: newId, companyName: newName, companyWebsite: newWebsite } as CompanyProfile;
+              handleModalSuccess(newProfile, handleCompanyProfileSelect);
+              setToastConfig({ message: `Added ${newName} to your research board!`, variant: 'success' });
+            }}
+          />
+        )}
+        {toastConfig && (
+          <StandardToast
+            message={toastConfig.message}
+            variant={toastConfig.variant}
+            onDone={() => setToastConfig(null)}
+          />
+        )}
       </div>
     )
   }
@@ -358,7 +407,7 @@ function handleStart(resumeObject?: ResumeSummary | null): void {
         selectedCompanyId={selectedCompanyId}
         companyProfile={companyProfile}
         onCompanyProfileSelect={handleCompanyProfileSelect}
-
+        companyWebsite={companyWebsite}
         style={style ?? 'mixed'}
         jobDescription={jobDescription}
         onJobDescriptionChange={setJobDescription}
@@ -392,6 +441,13 @@ function handleStart(resumeObject?: ResumeSummary | null): void {
           />
         ))}
       </div>
+      {toastConfig && (
+          <StandardToast
+            message={toastConfig.message}
+            variant={toastConfig.variant}
+            onDone={() => setToastConfig(null)}
+          />
+        )}
     </div>
   )
 }
