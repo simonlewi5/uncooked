@@ -105,18 +105,15 @@ function buildPracticeBuckets(
   range: DashboardRange,
 ): PracticeConsistencyData {
   if (range === 'week') {
-    const start = getStartOfIsoWeek(new Date())
     const buckets = Array.from({ length: 7 }, () => 0)
 
     for (const row of rows) {
       const createdAt = new Date(row.created_at)
-      const diffDays = Math.floor(
-        (createdAt.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
-      )
-
-      if (diffDays >= 0 && diffDays < 7) {
-        buckets[diffDays] += row.duration_minutes
-      }
+      // getDay() uses the user's local timezone (0=Sun … 6=Sat).
+      // Remap to ISO week order (Mon=0 … Sun=6) to match WEEK_LABELS.
+      const localDay = createdAt.getDay()
+      const isoDay = localDay === 0 ? 6 : localDay - 1
+      buckets[isoDay] += row.duration_minutes
     }
 
     return {

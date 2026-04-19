@@ -88,7 +88,8 @@ function PracticeConsistencyCard({
   const labels = range === 'week' ? WEEK_LABELS : MONTH_BUCKET_LABELS
   const buckets = data.buckets
   const maxMinutes = Math.max(...buckets, 1)
-  const totalHours = (data.totalMinutes / 60).toFixed(data.totalMinutes % 60 === 0 ? 0 : 1)
+  const m = data.totalMinutes
+  const statLabel = m === 0 ? '0h' : m < 60 ? `${m}m` : m % 60 === 0 ? `${m / 60}h` : `${Math.floor(m / 60)}h ${m % 60}m`
 
   return (
     <div className={styles.card}>
@@ -101,19 +102,20 @@ function PracticeConsistencyCard({
           <RangePills value={range} onChange={onRangeChange} />
         </div>
 
-        <div className={styles.statValue}>{totalHours}h</div>
+        <div className={styles.statValue}>{statLabel}</div>
         <p className={styles.statEmpty}>
           {data.totalMinutes === 0
             ? 'Start your first session to track consistency'
             : range === 'week'
-              ? 'Practice time recorded this ISO week'
+              ? 'Practice time recorded this week'
               : 'Practice time recorded this month'}
         </p>
 
         <div className={styles.barChart}>
           {labels.map((label, i) => {
-            const heightPx = Math.max((buckets[i] / maxMinutes) * 80, 4)
-            const tooltip = buckets[i] === 0 ? 'No activity' : formatMinutes(buckets[i])
+            const minutes = buckets[i] ?? 0
+            const heightPx = Math.max((minutes / maxMinutes) * 80, 4)
+            const tooltip = minutes === 0 ? 'No activity' : formatMinutes(minutes)
 
             return (
               <div key={`bucket-${i}`} className={styles.barGroup} data-tooltip={tooltip}>
