@@ -84,6 +84,7 @@ export function useResearchChat({
   const sessionIdRef = useRef<string | null>(null)
   const sessionAttachmentRef = useRef<AttachmentPayload | null>(null)
   const loadedRoleRef = useRef<string | null>(null)
+  const loadedCompanyRef = useRef<string | null>(null)
 
   // Load existing research session for this role
   useEffect(() => {
@@ -116,12 +117,45 @@ export function useResearchChat({
       })
   }, [user, roleId])
 
+  // Load existing research session for a company when no role is selected
+  useEffect(() => {
+    if (!user || !companyProfileId || roleId) return
+    if (loadedCompanyRef.current === companyProfileId) return
+    loadedCompanyRef.current = companyProfileId
+
+    supabase
+      .from('research_sessions')
+      .select('id, messages')
+      .eq('user_id', user.id)
+      .eq('company_profile_id', companyProfileId)
+      .is('company_role_id', null)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .then(({ data, error }) => {
+        if (error || !data || data.length === 0) return
+        const row = data[0]
+        const saved = row.messages as Array<{ role: string; content: string; timestamp: string }>
+        if (!saved || saved.length === 0) return
+
+        sessionIdRef.current = row.id as string
+        setSessionId(row.id as string)
+        setMessages(
+          saved.map((m, i) => ({
+            id: `saved-${i}`,
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+            timestamp: new Date(m.timestamp),
+          }))
+        )
+      })
+  }, [user, companyProfileId, roleId])
+
   // Persist messages to research_sessions after streaming completes
   const persistMessages = useCallback(
     async (allMessages: Message[]) => {
       if (!user) return
-      // Only persist if we have a role context
-      if (!roleId) return
+      // Only persist if we have at least a company or role context
+      if (!companyProfileId && !roleId) return
 
       const rows = allMessages
         .filter((m) => m.id !== 'init')
@@ -168,6 +202,7 @@ export function useResearchChat({
     sessionIdRef.current = null
     setSessionId(null)
     loadedRoleRef.current = null
+    loadedCompanyRef.current = null
   }, [])
 
   const sendMessage = useCallback(

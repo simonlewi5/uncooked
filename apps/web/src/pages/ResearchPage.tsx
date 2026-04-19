@@ -64,6 +64,7 @@ export default function ResearchPage() {
   const [searchQuery, setSearchQuery] = useState(() => {
     return location.state?.companyName || '';
   });
+  const CONTEXT_KEY = 'research_active_context'
   const [activeContext, setActiveContext] = useState<ActiveContextItem[]>([])
   const [input, setInput] = useState('')
   const [attachment, setAttachment] = useState<{ name: string; excerpt: string } | null>(null)
@@ -118,6 +119,32 @@ export default function ResearchPage() {
       }
     }
   }, [location.state, dbCompanies, navigate, location.pathname, searchQuery])
+
+  // Persist active context chips across navigation
+  useEffect(() => {
+    if (activeContext.length > 0) {
+      sessionStorage.setItem(CONTEXT_KEY, JSON.stringify(activeContext))
+    } else {
+      sessionStorage.removeItem(CONTEXT_KEY)
+    }
+  }, [activeContext])
+
+  // Restore active context on mount once DB companies are loaded
+  const restoredContextRef = useRef(false)
+  useEffect(() => {
+    if (restoredContextRef.current || dbCompanies.length === 0) return
+    restoredContextRef.current = true
+    const raw = sessionStorage.getItem(CONTEXT_KEY)
+    if (!raw) return
+    try {
+      const saved = JSON.parse(raw) as ActiveContextItem[]
+      const valid = saved.filter((item) => dbCompanies.some((c) => c.id === item.company.id))
+      if (valid.length > 0) setActiveContext(valid)
+    } catch {
+      // ignore malformed data
+    }
+  }, [dbCompanies])
+
   const userInitial = user?.email?.[0].toUpperCase() ?? '?'
 
   // Derive active context for the chat hook
@@ -185,6 +212,7 @@ export default function ResearchPage() {
     setInput('')
     setAttachment(null)
     setAttachmentError(null)
+    sessionStorage.removeItem(CONTEXT_KEY)
   }
 
   async function handleAttachmentChange(e: React.ChangeEvent<HTMLInputElement>) {
