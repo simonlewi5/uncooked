@@ -40,7 +40,6 @@
   border-radius: var(--radius-lg);
   font-size: var(--font-sm);
   line-height: 1.5;
-  white-space: pre-wrap;
   word-break: break-word;
 }
 
@@ -48,12 +47,77 @@
   background-color: var(--color-primary);
   color: #fff;
   border-bottom-right-radius: var(--radius-sm);
+  white-space: pre-wrap;
 }
 
 .bubbleAssistant {
   background-color: var(--color-bg-muted);
   color: var(--color-text);
   border-bottom-left-radius: var(--radius-sm);
+}
+
+/* Markdown content inside assistant bubbles */
+.markdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.markdown p {
+  margin: 0;
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.markdown li {
+  margin: 0;
+}
+
+.markdown strong {
+  font-weight: 600;
+}
+
+.markdown em {
+  font-style: italic;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3 {
+  font-weight: 600;
+  margin: 0;
+}
+
+.markdown h1 { font-size: var(--font-lg); }
+.markdown h2 { font-size: var(--font-base); }
+.markdown h3 { font-size: var(--font-sm); }
+
+.markdown code {
+  font-family: monospace;
+  background-color: var(--color-border);
+  padding: 0.1em 0.3em;
+  border-radius: var(--radius-sm);
+  font-size: 0.85em;
+}
+
+.markdown pre {
+  background-color: var(--color-border);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  margin: 0;
+}
+
+.markdown pre code {
+  background: none;
+  padding: 0;
 }
 
 .timestamp {
@@ -94,39 +158,83 @@
   30% { transform: translateY(-4px); }
 }
 
-.inputRow {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-8);
-  border-top: 1px solid var(--color-border);
-  background-color: var(--color-bg);
+/* Input area — floating card style */
+.inputArea {
+  padding: var(--space-3) var(--space-8) var(--space-4);
   max-width: 900px;
   margin: 0 auto;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
-.inputField {
-  flex: 1;
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--font-sm);
-  font-family: inherit;
-  color: var(--color-text);
+.inputBox {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
   background-color: var(--color-bg);
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
-  outline: none;
-  resize: none;
-  max-height: 120px;
-  line-height: 1.5;
-  transition: border-color 0.15s;
+  border-radius: var(--radius-xl);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.inputField:focus {
+.inputBox:focus-within {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px var(--color-primary-subtle);
 }
 
+.inputField {
+  flex: 1;
+  font-size: var(--font-sm);
+  font-family: inherit;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  max-height: 120px;
+  line-height: 1.5;
+  padding: var(--space-1) 0;
+}
+
 .inputField::placeholder {
   color: var(--color-text-tertiary);
+}
+
+.sendBtn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-bg-muted);
+  color: var(--color-text-tertiary);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.sendBtn:disabled {
+  cursor: default;
+}
+
+.sendBtnActive {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+
+.sendBtnActive:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.hint {
+  font-size: var(--font-xs);
+  color: var(--color-text-tertiary);
+  text-align: center;
+  margin: 0;
 }

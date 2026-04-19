@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, KeyboardEvent } from 'react'
 import { Send } from 'lucide-react'
-import { Button } from '@/components/ui'
+import ReactMarkdown from 'react-markdown'
 import { cn } from '@/utils/cn'
 import type { Message } from '@/types'
 import styles from './ChatBox.module.css'
@@ -69,7 +69,11 @@ export function ChatBox({ messages, isTyping, onSend, disabled }: ChatBoxProps):
                 msg.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant,
               )}
             >
-              {msg.content}
+              {msg.role === 'assistant' ? (
+                <ReactMarkdown className={styles.markdown}>{msg.content}</ReactMarkdown>
+              ) : (
+                msg.content
+              )}
             </div>
             <span className={styles.timestamp}>{formatTime(msg.timestamp)}</span>
           </div>
@@ -86,26 +90,29 @@ export function ChatBox({ messages, isTyping, onSend, disabled }: ChatBoxProps):
         <div ref={bottomRef} />
       </div>
 
-      <div className={styles.inputRow}>
-        <textarea
-          ref={textareaRef}
-          className={styles.inputField}
-          placeholder="Type your answer here…"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onInput={handleInput}
-          rows={1}
-          disabled={disabled || isTyping}
-        />
-        <Button
-          size="sm"
-          onClick={handleSend}
-          disabled={!input.trim() || disabled || isTyping}
-          aria-label="Send message"
-        >
-          <Send size={14} />
-        </Button>
+      <div className={styles.inputArea}>
+        <div className={styles.inputBox}>
+          <textarea
+            ref={textareaRef}
+            className={styles.inputField}
+            placeholder="Type your answer here…"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onInput={handleInput}
+            rows={1}
+            disabled={disabled || isTyping}
+          />
+          <button
+            className={cn(styles.sendBtn, input.trim() && !disabled && !isTyping && styles.sendBtnActive)}
+            onClick={handleSend}
+            disabled={!input.trim() || disabled || isTyping}
+            aria-label="Send message"
+          >
+            <Send size={15} />
+          </button>
+        </div>
+        <p className={styles.hint}>Enter to send · Shift+Enter for new line</p>
       </div>
     </div>
   )
