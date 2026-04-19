@@ -1,9 +1,11 @@
 export {
   GAMIFICATION_EVENT_TYPES,
   getResumeToastTitle,
+  getResearchToastTitle,
   getXpForEventType,
   XP_BY_EVENT_TYPE,
   type ResumeGamificationEventType,
+  type ResearchGamificationEventType,
 } from './eventCatalog'
 export {
   computeGamificationData,

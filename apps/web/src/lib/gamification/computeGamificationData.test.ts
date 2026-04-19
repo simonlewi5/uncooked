@@ -18,6 +18,13 @@ describe('eventCatalog (resume actions)', () => {
   })
 })
 
+describe('eventCatalog (research actions)', () => {
+  it('maps research event types to their configured XP', () => {
+    expect(getXpForEventType(GAMIFICATION_EVENT_TYPES.RESEARCH_COMPANY_ADDED)).toBe(20)
+    expect(getXpForEventType(GAMIFICATION_EVENT_TYPES.RESEARCH_CHAT_MESSAGE)).toBe(10)
+  })
+})
+
 describe('computeGamificationData', () => {
   it('sums resume ledger rows into total XP', () => {
     const data = computeGamificationData({
@@ -78,5 +85,40 @@ describe('computeGamificationData', () => {
       { event_type: GAMIFICATION_EVENT_TYPES.RESUME_SESSION_UPLOAD, xp_awarded: 30 },
     ]
     expect(sumLedgerXp(rows)).toBe(31)
+  })
+
+  it('earns company_scout after adding first company', () => {
+    const data = computeGamificationData({
+      practiceCount: 0,
+      researchCount: 0,
+      applicationCount: 0,
+      xpEvents: [{ event_type: GAMIFICATION_EVENT_TYPES.RESEARCH_COMPANY_ADDED, xp_awarded: 20 }],
+    })
+    expect(data.badges.find((b) => b.id === 'company_scout')?.earned).toBe(true)
+    expect(data.badges.find((b) => b.id === 'curious_researcher')?.earned).toBe(false)
+  })
+
+  it('earns curious_researcher after first research chat message', () => {
+    const data = computeGamificationData({
+      practiceCount: 0,
+      researchCount: 0,
+      applicationCount: 0,
+      xpEvents: [{ event_type: GAMIFICATION_EVENT_TYPES.RESEARCH_CHAT_MESSAGE, xp_awarded: 10 }],
+    })
+    expect(data.badges.find((b) => b.id === 'curious_researcher')?.earned).toBe(true)
+    expect(data.badges.find((b) => b.id === 'company_scout')?.earned).toBe(false)
+  })
+
+  it('includes research ledger XP in total', () => {
+    const data = computeGamificationData({
+      practiceCount: 0,
+      researchCount: 0,
+      applicationCount: 0,
+      xpEvents: [
+        { event_type: GAMIFICATION_EVENT_TYPES.RESEARCH_COMPANY_ADDED, xp_awarded: 20 },
+        { event_type: GAMIFICATION_EVENT_TYPES.RESEARCH_CHAT_MESSAGE, xp_awarded: 10 },
+      ],
+    })
+    expect(data.totalXp).toBe(30)
   })
 })
