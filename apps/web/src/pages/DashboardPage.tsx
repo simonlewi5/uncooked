@@ -207,20 +207,20 @@ function TargetCompaniesCard({ companies }: TargetCompaniesCardProps): JSX.Eleme
   )
 }
 
-function AiPromoCard(): JSX.Element {
-  return (
-    <div className={styles.promoCard}>
-      <Zap size={20} className={styles.promoIcon} />
-      <p className={styles.promoTitle}>Unlock AI Mock Interviews</p>
-      <p className={styles.promoSubtitle}>
-        Practice with an AI interviewer tailored to your target role and company.
-      </p>
-      <Link to="/interview" className={styles.promoBtn}>
-        Upgrade Now
-      </Link>
-    </div>
-  )
-}
+//function AiPromoCard(): JSX.Element {
+  //return (
+  //  <div className={styles.promoCard}>
+    //  <Zap size={20} className={styles.promoIcon} />
+     // <p className={styles.promoTitle}>Unlock AI Mock Interviews</p>
+      //<p className={styles.promoSubtitle}>
+        //Practice with an AI interviewer tailored to your target role and company.
+     // <p>
+    //  <Link to="/interview" className={styles.promoBtn}>
+     //   Upgrade Now
+     // </Link>
+   // </div>
+ // )
+//}
 
 function ApplicationPipelineCard({
   range,
