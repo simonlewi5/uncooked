@@ -48,6 +48,8 @@ function ledgerCounts(xpEvents: XpEventRow[]) {
     resumeTailorRuns: n(GAMIFICATION_EVENT_TYPES.RESUME_AUTO_TAILOR),
     resumeApplyEdits: n(GAMIFICATION_EVENT_TYPES.RESUME_APPLY_TAILOR_EDIT),
     resumeDeclineEdits: n(GAMIFICATION_EVENT_TYPES.RESUME_DECLINE_TAILOR_EDIT),
+    companiesAdded: n(GAMIFICATION_EVENT_TYPES.RESEARCH_COMPANY_ADDED),
+    researchMessages: n(GAMIFICATION_EVENT_TYPES.RESEARCH_CHAT_MESSAGE),
   }
 }
 
@@ -60,6 +62,8 @@ interface Counts {
   resumeTailorRuns: number
   resumeApplyEdits: number
   resumeDeclineEdits: number
+  companiesAdded: number
+  researchMessages: number
   totalXp: number
 }
 
@@ -143,6 +147,20 @@ const BADGE_DEFS: readonly BadgeDef[] = [
     icon: '🧭',
     check: ({ resumeDeclineEdits }) => resumeDeclineEdits >= 3,
   },
+  {
+    id: 'company_scout',
+    label: 'Company Scout',
+    description: 'Add your first company to your research board',
+    icon: '🏢',
+    check: ({ companiesAdded }) => companiesAdded >= 1,
+  },
+  {
+    id: 'curious_researcher',
+    label: 'Curious Researcher',
+    description: 'Ask your first research question',
+    icon: '🔍',
+    check: ({ researchMessages }) => researchMessages >= 1,
+  },
 ] as const
 
 /** Derives level, XP, and badges from session counts plus `user_xp_events` rows. */
@@ -171,6 +189,8 @@ export function computeGamificationData(sources: GamificationSources): Gamificat
     resumeTailorRuns: ledger.resumeTailorRuns,
     resumeApplyEdits: ledger.resumeApplyEdits,
     resumeDeclineEdits: ledger.resumeDeclineEdits,
+    companiesAdded: ledger.companiesAdded,
+    researchMessages: ledger.researchMessages,
     totalXp,
   }
 
