@@ -9,6 +9,7 @@ import DashboardPage from '@/pages/DashboardPage'
 import InterviewPage from '@/pages/InterviewPage'
 import ResearchPage from '@/pages/ResearchPage'
 import ResumePage from '@/pages/ResumePage'
+import PipelinePage from '@/pages/PipelinePage'
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
             <Route path="interview" element={<InterviewPage />} />
             <Route path="research" element={<ResearchPage />} />
             <Route path="resume" element={<ResumePage />} />
+            <Route path="applications" element={<PipelinePage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

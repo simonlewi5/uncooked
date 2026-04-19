@@ -437,6 +437,26 @@
   background-color: var(--color-text);
 }
 
+.pipelineFooter {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-3);
+}
+
+.pipelineManageLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-xs);
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.pipelineManageLink:hover {
+  color: var(--color-text);
+}
+
 .emptyState {
   display: flex;
   flex-direction: column;
