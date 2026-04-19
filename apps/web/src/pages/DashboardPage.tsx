@@ -277,15 +277,15 @@ function ApplicationPipelineCard({
             <div className={styles.pipelineStats}>
               <div className={styles.pipelineStat}>
                 <span className={styles.pipelineLabel}>Applied</span>
-                <span className={styles.pipelineValue}>{pipeline.total}</span>
+                <span className={cn(styles.pipelineValue, styles.pipelineValueApplied)}>{pipeline.total}</span>
               </div>
               <div className={styles.pipelineStat}>
                 <span className={styles.pipelineLabel}>Interviews</span>
-                <span className={styles.pipelineValue}>{pipeline.interviews}</span>
+                <span className={cn(styles.pipelineValue, styles.pipelineValueInterviews)}>{pipeline.interviews}</span>
               </div>
               <div className={styles.pipelineStat}>
                 <span className={styles.pipelineLabel}>Offers</span>
-                <span className={styles.pipelineValue}>{pipeline.offers}</span>
+                <span className={cn(styles.pipelineValue, styles.pipelineValueOffers)}>{pipeline.offers}</span>
               </div>
             </div>
 

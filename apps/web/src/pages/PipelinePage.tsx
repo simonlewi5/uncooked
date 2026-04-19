@@ -73,6 +73,9 @@ export default function PipelinePage() {
   })
   const [isSaving, setIsSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<JobApplication | null>(null)
+  const [editTarget, setEditTarget] = useState<JobApplication | null>(null)
+  const [editForm, setEditForm] = useState<AddFormState>({ jobTitle: '', companyName: '', jobUrl: '', notes: '', status: 'saved' })
+  const [isUpdating, setIsUpdating] = useState(false)
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
 
@@ -152,6 +155,44 @@ export default function PipelinePage() {
     await supabase.from('job_applications').update({ status }).eq('id', id)
   }
 
+  function openEdit(app: JobApplication) {
+    setEditTarget(app)
+    setEditForm({
+      jobTitle: app.jobTitle,
+      companyName: app.companyName,
+      jobUrl: app.jobUrl ?? '',
+      notes: app.notes ?? '',
+      status: app.status,
+    })
+  }
+
+  async function handleUpdate() {
+    if (!editTarget || !editForm.jobTitle.trim() || !editForm.companyName.trim()) return
+    setIsUpdating(true)
+    const { error: err } = await supabase
+      .from('job_applications')
+      .update({
+        job_title: editForm.jobTitle.trim(),
+        company_name: editForm.companyName.trim(),
+        job_url: editForm.jobUrl.trim() || null,
+        notes: editForm.notes.trim() || null,
+        status: editForm.status,
+      })
+      .eq('id', editTarget.id)
+
+    if (!err) {
+      setApplications((prev) =>
+        prev.map((a) =>
+          a.id === editTarget.id
+            ? { ...a, jobTitle: editForm.jobTitle.trim(), companyName: editForm.companyName.trim(), jobUrl: editForm.jobUrl.trim() || null, notes: editForm.notes.trim() || null, status: editForm.status }
+            : a
+        )
+      )
+      setEditTarget(null)
+    }
+    setIsUpdating(false)
+  }
+
   async function handleDelete() {
     if (!deleteTarget) return
     await supabase.from('job_applications').delete().eq('id', deleteTarget.id)
@@ -218,6 +259,7 @@ export default function PipelinePage() {
                       key={app.id}
                       className={styles.card}
                       draggable
+                      onClick={() => openEdit(app)}
                       onDragStart={() => handleDragStart(app.id)}
                       onDragEnd={() => { setDragId(null); setDragOverCol(null) }}
                     >
@@ -225,7 +267,7 @@ export default function PipelinePage() {
                         <p className={styles.cardTitle}>{app.jobTitle}</p>
                         <button
                           className={styles.cardDelete}
-                          onClick={() => setDeleteTarget(app)}
+                          onClick={(e) => { e.stopPropagation(); setDeleteTarget(app) }}
                           aria-label="Delete application"
                         >
                           <X size={12} />
@@ -245,19 +287,11 @@ export default function PipelinePage() {
                               rel="noopener noreferrer"
                               className={styles.cardLink}
                               aria-label="Open job posting"
+                              onClick={(e) => e.stopPropagation()}
                             >
                               <ExternalLink size={12} />
                             </a>
                           )}
-                          <select
-                            className={styles.statusSelect}
-                            value={app.status}
-                            onChange={(e) => handleStatusChange(app.id, e.target.value as ApplicationStatus)}
-                          >
-                            {ALL_STATUSES.map((s) => (
-                              <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                            ))}
-                          </select>
                         </div>
                       </div>
                     </div>
@@ -338,6 +372,79 @@ export default function PipelinePage() {
                 disabled={!addForm.jobTitle.trim() || !addForm.companyName.trim()}
               >
                 Add
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit application modal */}
+      {editTarget && (
+        <div className={styles.modalOverlay} onClick={() => setEditTarget(null)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Edit Application</h2>
+              <button className={styles.modalClose} onClick={() => setEditTarget(null)} aria-label="Close">
+                <X size={16} />
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <label className={styles.fieldLabel}>
+                <span>Job Title <span className={styles.required}>*</span></span>
+                <input
+                  className={styles.fieldInput}
+                  value={editForm.jobTitle}
+                  onChange={(e) => setEditForm((f) => ({ ...f, jobTitle: e.target.value }))}
+                />
+              </label>
+              <label className={styles.fieldLabel}>
+                <span>Company <span className={styles.required}>*</span></span>
+                <input
+                  className={styles.fieldInput}
+                  value={editForm.companyName}
+                  onChange={(e) => setEditForm((f) => ({ ...f, companyName: e.target.value }))}
+                />
+              </label>
+              <label className={styles.fieldLabel}>
+                Job URL
+                <input
+                  className={styles.fieldInput}
+                  placeholder="https://..."
+                  value={editForm.jobUrl}
+                  onChange={(e) => setEditForm((f) => ({ ...f, jobUrl: e.target.value }))}
+                />
+              </label>
+              <label className={styles.fieldLabel}>
+                Status
+                <select
+                  className={styles.fieldInput}
+                  value={editForm.status}
+                  onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value as ApplicationStatus }))}
+                >
+                  {ALL_STATUSES.map((s) => (
+                    <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.fieldLabel}>
+                Notes
+                <textarea
+                  className={cn(styles.fieldInput, styles.fieldTextarea)}
+                  placeholder="Any notes about this role..."
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                />
+              </label>
+            </div>
+            <div className={styles.modalFooter}>
+              <Button variant="secondary" onClick={() => setEditTarget(null)}>Cancel</Button>
+              <Button
+                variant="primary"
+                onClick={handleUpdate}
+                loading={isUpdating}
+                disabled={!editForm.jobTitle.trim() || !editForm.companyName.trim()}
+              >
+                Save
               </Button>
             </div>
           </div>
