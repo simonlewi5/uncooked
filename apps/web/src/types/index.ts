@@ -16,6 +16,13 @@ export interface PastJobDescription {
   jobDescription: string
 }
 
+export interface CompanyRole {
+  id: string
+  roleTitle: string
+  jobDescription: string | null
+  companyProfileId: string
+  createdAt: string
+}
 
 export type {
   ResumeAllowedExtension,
@@ -42,10 +49,21 @@ export interface Message {
   timestamp: Date
 }
 
+export interface CompanyRole {
+  id: string
+  companyProfileId: string
+  roleTitle: string
+  jobDescription: string | null
+  isActive: boolean
+  createdAt: string
+}
+
 export interface InterviewSessionSummary {
   id: string
   companyName: string
   companyProfileId: string | null
+  companyRoleId: string | null
+  roleTitle: string | null
   interviewStyle: string | null
   createdAt: string
   resumeId?: string | null
@@ -85,6 +103,13 @@ export interface CompanySummary {
   industry: string | null
 }
 
+export type DashboardRange = 'week' | 'month'
+
+export interface PracticeConsistencyData {
+  totalMinutes: number
+  buckets: number[]
+}
+
 export interface PipelineCounts {
   total: number
   interviews: number
@@ -95,6 +120,7 @@ export interface DashboardData {
   recentSessions: ResearchSessionSummary[]
   companies: CompanySummary[]
   pipeline: PipelineCounts
+  practiceConsistency: PracticeConsistencyData
 }
 
 export type ResumeNode = { text?: string }

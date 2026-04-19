@@ -1,18 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import {
-  Plus,
-  Search,
-  Send,
-  X,
-  Paperclip,
-  Star,
-  Trash2,
-  ChevronRight,
-  ChevronDown,
-  Play,
-  Briefcase,
-  FileText,
-} from 'lucide-react'
+import { Plus, Search, Send, X, Paperclip, Star, Trash2, ChevronRight, ChevronDown, Play, Briefcase, FileText } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useResearchChat } from '@/hooks/useResearchChat'
@@ -70,9 +57,8 @@ export default function ResearchPage() {
   const location = useLocation()
 
   const [searchQuery, setSearchQuery] = useState(() => {
-    return location.state?.companyName || ''
-  })
-
+    return location.state?.companyName || '';
+  });
   const [activeContext, setActiveContext] = useState<ActiveContextItem[]>([])
   const [input, setInput] = useState('')
   const [isDragOver, setIsDragOver] = useState(false)
@@ -102,16 +88,14 @@ export default function ResearchPage() {
   const [newRoleJd, setNewRoleJd] = useState('')
   const roleInputRef = useRef<HTMLInputElement>(null)
 
-  // Auto-expand and select role from location state
+  // Auto-expand and select role from location state (e.g., coming back from interview)
   const appliedLocationState = useRef(false)
   useEffect(() => {
     if (appliedLocationState.current) return
-
     const state = location.state as { companyProfileId?: string; roleId?: string } | null
     if (state?.roleId && roles.length > 0) {
       appliedLocationState.current = true
       const role = roles.find((r) => r.id === state.roleId)
-
       if (role && dbCompanies.length > 0) {
         const company = dbCompanies.find((c) => c.id === state.companyProfileId)
         if (company && !activeContext.find((ctx) => ctx.role?.id === role.id)) {
@@ -135,10 +119,10 @@ export default function ResearchPage() {
 
   const userInitial = user?.email?.[0].toUpperCase() ?? '?'
 
+  // Derive active context for the chat hook
   const activeRole = activeContext.length === 1 ? activeContext[0].role : undefined
   const activeCompanyProfileId = activeContext.length === 1 ? activeContext[0].company.id : undefined
   const companyNames = activeContext.map((ctx) => ctx.company.name)
-
   const { messages, isStreaming, sendMessage } = useResearchChat({
     companies: companyNames,
     jobDescription: activeRole?.jobDescription || undefined,
@@ -181,7 +165,6 @@ export default function ResearchPage() {
 
     const company = draggingCompany.current
     if (!company) return
-
     if (!activeContext.find((ctx) => ctx.company.id === company.id && !ctx.role)) {
       setActiveContext((prev) => [...prev, { company }])
     }
@@ -228,6 +211,7 @@ export default function ResearchPage() {
   }
 
   function handleSelectRole(company: CompanyProfile, role: CompanyRole) {
+    // Add role to context if not already there
     if (!activeContext.find((ctx) => ctx.role?.id === role.id)) {
       setActiveContext((prev) => [...prev, { company, role }])
     }
@@ -248,12 +232,10 @@ export default function ResearchPage() {
   async function handleAddRole() {
     const title = newRoleTitle.trim()
     if (!title) return
-
     const result = await addRole(title, newRoleJd || undefined)
     if (result) {
       setToastConfig({ message: `Added role "${title}"`, variant: 'success' })
     }
-
     setNewRoleTitle('')
     setNewRoleJd('')
     setIsAddingRole(false)
@@ -261,6 +243,7 @@ export default function ResearchPage() {
 
   async function handleDeleteRole(roleId: string, roleTitle: string) {
     await deleteRole(roleId)
+    // Remove from active context if present
     setActiveContext((prev) => prev.filter((ctx) => ctx.role?.id !== roleId))
     setToastConfig({ message: `Removed role "${roleTitle}"`, variant: 'error' })
   }
@@ -327,45 +310,35 @@ export default function ResearchPage() {
                 >
                   <button
                     className={styles.expandBtn}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleToggleExpand(company.id)
-                    }}
+                    onClick={(e) => { e.stopPropagation(); handleToggleExpand(company.id) }}
                     aria-label={expandedCompanyId === company.id ? 'Collapse' : 'Expand'}
                   >
                     {expandedCompanyId === company.id ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                   </button>
-
                   <CompanyLogo company={company} styles={styles} />
-
                   <div className={styles.companyInfo}>
                     <span className={styles.companyName}>{company.name}</span>
                     <span
                       className={cn(
                         styles.categoryBadge,
-                        CATEGORY_STYLE[company.category] ?? styles.categoryDefault
+                        CATEGORY_STYLE[company.category] ?? styles.categoryDefault,
                       )}
                     >
                       {company.category}
                     </span>
                   </div>
-
                   <button
                     className={cn(styles.starBtn, company.isFavorite && styles.starBtnActive)}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleToggleFavorite(company.id)
-                    }}
+                    onClick={(e) => { e.stopPropagation(); handleToggleFavorite(company.id) }}
                     aria-label={company.isFavorite ? 'Unfavorite' : 'Favorite'}
                   >
                     <Star size={13} />
                   </button>
-
                   <button
                     className={styles.deleteBtn}
                     onClick={(e) => {
-                      e.stopPropagation()
-                      setCompanyToDelete({ id: company.id, name: company.name })
+                      e.stopPropagation();
+                      setCompanyToDelete({ id: company.id, name: company.name });
                     }}
                     aria-label={`Delete ${company.name}`}
                   >
@@ -373,20 +346,21 @@ export default function ResearchPage() {
                   </button>
                 </div>
 
+                {/* Expandable roles list */}
                 {expandedCompanyId === company.id && (
                   <div className={styles.roleList}>
-                    {rolesLoading && roles.length === 0 && <p className={styles.roleEmpty}>Loading roles...</p>}
-
+                    {rolesLoading && roles.length === 0 && (
+                      <p className={styles.roleEmpty}>Loading roles...</p>
+                    )}
                     {!rolesLoading && roles.length === 0 && !isAddingRole && (
                       <p className={styles.roleEmpty}>No roles yet</p>
                     )}
-
                     {roles.map((role) => (
                       <div
                         key={role.id}
                         className={cn(
                           styles.roleItem,
-                          activeContext.find((ctx) => ctx.role?.id === role.id) && styles.roleItemActive
+                          activeContext.find((ctx) => ctx.role?.id === role.id) && styles.roleItemActive,
                         )}
                       >
                         <button
@@ -397,7 +371,6 @@ export default function ResearchPage() {
                           <Briefcase size={11} />
                           <span className={styles.roleName}>{role.roleTitle}</span>
                         </button>
-
                         <div className={styles.roleActions}>
                           <button
                             className={styles.roleInterviewBtn}
@@ -406,7 +379,6 @@ export default function ResearchPage() {
                           >
                             <Play size={11} />
                           </button>
-
                           <button
                             className={styles.roleDeleteBtn}
                             onClick={() => handleDeleteRole(role.id, role.roleTitle)}
@@ -418,6 +390,7 @@ export default function ResearchPage() {
                       </div>
                     ))}
 
+                    {/* Inline add role form */}
                     {isAddingRole ? (
                       <div className={styles.addRoleForm}>
                         <input
@@ -444,21 +417,10 @@ export default function ResearchPage() {
                           rows={2}
                         />
                         <div className={styles.addRoleFormActions}>
-                          <button
-                            className={styles.addRoleSaveBtn}
-                            onClick={handleAddRole}
-                            disabled={!newRoleTitle.trim()}
-                          >
+                          <button className={styles.addRoleSaveBtn} onClick={handleAddRole} disabled={!newRoleTitle.trim()}>
                             Add
                           </button>
-                          <button
-                            className={styles.addRoleCancelBtn}
-                            onClick={() => {
-                              setIsAddingRole(false)
-                              setNewRoleTitle('')
-                              setNewRoleJd('')
-                            }}
-                          >
+                          <button className={styles.addRoleCancelBtn} onClick={() => { setIsAddingRole(false); setNewRoleTitle(''); setNewRoleJd('') }}>
                             Cancel
                           </button>
                         </div>
@@ -466,10 +428,7 @@ export default function ResearchPage() {
                     ) : (
                       <button
                         className={styles.addRoleBtn}
-                        onClick={() => {
-                          setIsAddingRole(true)
-                          setTimeout(() => roleInputRef.current?.focus(), 0)
-                        }}
+                        onClick={() => { setIsAddingRole(true); setTimeout(() => roleInputRef.current?.focus(), 0) }}
                       >
                         <Plus size={11} />
                         Add Role
@@ -480,7 +439,9 @@ export default function ResearchPage() {
               </div>
             ))}
 
-            {isLoading && filteredCompanies.length === 0 && <p className={styles.noResults}>Loading companies...</p>}
+            {isLoading && filteredCompanies.length === 0 && (
+              <p className={styles.noResults}>Loading companies...</p>
+            )}
 
             {filteredCompanies.length === 0 && !isLoading && (
               <div className={styles.noResultsContainer}>
@@ -509,7 +470,7 @@ export default function ResearchPage() {
             <div className={styles.contextChips}>
               {activeContext.map((ctx) => (
                 <span key={`${ctx.company.id}-${ctx.role?.id || 'no-role'}`} className={styles.chip}>
-                  {ctx.role ? `${ctx.company.name} — ${ctx.role.roleTitle}` : ctx.company.name}
+                  {ctx.role ? `${ctx.company.name} \u2014 ${ctx.role.roleTitle}` : ctx.company.name}
                   <button
                     className={styles.chipRemove}
                     onClick={() => removeFromContext(ctx.company.id, ctx.role?.id)}
