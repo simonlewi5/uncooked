@@ -184,13 +184,9 @@
 .bar {
   width: 100%;
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  background-color: var(--color-bg-muted);
+  background-color: var(--color-border);
   min-height: 4px;
   transition: height 0.3s;
-}
-
-.barActive {
-  background-color: var(--color-primary);
 }
 
 .barToday {
