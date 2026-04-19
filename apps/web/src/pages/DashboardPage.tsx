@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TrendingUp, Building2, Calendar, ChevronRight, Zap } from 'lucide-react'
+import { TrendingUp, Building2, Calendar, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Badge, Spinner } from '@/components/ui'
 import { GamificationCard } from '@/components/dashboard/GamificationCard'
