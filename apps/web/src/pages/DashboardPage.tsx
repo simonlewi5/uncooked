@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { TrendingUp, Building2, Calendar, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Badge, Spinner } from '@/components/ui'
-import { GamificationCard } from '@/components/dashboard/GamificationCard'
+import { CareerProgressCard } from '@/components/dashboard/CareerProgressCard'
+import { ConsistencyBars } from '@/components/dashboard/ConsistencyBars'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatMinutes } from '@/utils/formatMinutes'
 import { cn } from '@/utils/cn'
@@ -87,7 +88,6 @@ function PracticeConsistencyCard({
 }: PracticeConsistencyCardProps): JSX.Element {
   const labels = range === 'week' ? WEEK_LABELS : MONTH_BUCKET_LABELS
   const buckets = data.buckets
-  const maxMinutes = Math.max(...buckets, 1)
   const totalHours = (data.totalMinutes / 60).toFixed(data.totalMinutes % 60 === 0 ? 0 : 1)
 
   return (
@@ -110,19 +110,11 @@ function PracticeConsistencyCard({
               : 'Practice time recorded this month'}
         </p>
 
-        <div className={styles.barChart}>
-          {labels.map((label, i) => {
-            const heightPx = Math.max((buckets[i] / maxMinutes) * 80, 4)
-            const tooltip = buckets[i] === 0 ? 'No activity' : formatMinutes(buckets[i])
-
-            return (
-              <div key={`bucket-${i}`} className={styles.barGroup} data-tooltip={tooltip}>
-                <div className={styles.bar} style={{ height: heightPx }} />
-                <span className={styles.barLabel}>{label}</span>
-              </div>
-            )
-          })}
-        </div>
+        <ConsistencyBars
+          buckets={buckets}
+          labels={labels}
+          formatTooltip={(v) => (v === 0 ? 'No activity' : formatMinutes(v))}
+        />
       </div>
     </div>
   )
@@ -349,7 +341,7 @@ export default function DashboardPage(): JSX.Element {
     <div className={styles.page}>
       <div className={styles.grid}>
         <div className={styles.leftCol}>
-          <GamificationCard />
+          <CareerProgressCard />
           <PracticeConsistencyCard
             range={practiceRange}
             onRangeChange={setPracticeRange}
