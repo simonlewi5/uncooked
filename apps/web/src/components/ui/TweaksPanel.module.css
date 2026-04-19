@@ -46,6 +46,10 @@
   animation: fade-up var(--dur-2) var(--ease-out);
 }
 
+[data-motion="off"] .panel {
+  animation: none;
+}
+
 .group {
   display: flex;
   flex-direction: column;
