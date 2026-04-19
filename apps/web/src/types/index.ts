@@ -16,6 +16,13 @@ export interface PastJobDescription {
   jobDescription: string
 }
 
+export interface CompanyRole {
+  id: string
+  roleTitle: string
+  jobDescription: string | null
+  companyProfileId: string
+  createdAt: string
+}
 
 export type {
   ResumeAllowedExtension,
@@ -85,6 +92,13 @@ export interface CompanySummary {
   industry: string | null
 }
 
+export type DashboardRange = 'week' | 'month'
+
+export interface PracticeConsistencyData {
+  totalMinutes: number
+  buckets: number[]
+}
+
 export interface PipelineCounts {
   total: number
   interviews: number
@@ -95,6 +109,7 @@ export interface DashboardData {
   recentSessions: ResearchSessionSummary[]
   companies: CompanySummary[]
   pipeline: PipelineCounts
+  practiceConsistency: PracticeConsistencyData
 }
 
 export type ResumeNode = { text?: string }
