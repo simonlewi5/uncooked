@@ -123,35 +123,6 @@ async function mapInterviewErrorMessage(error: unknown): Promise<string> {
   return fallback
 }
 
-/** Find or create a company_profile for the given name; returns the profile id. */
-async function ensureCompanyProfile(userId: string, companyName: string): Promise<string | null> {
-  const trimmed = companyName.trim()
-  if (!trimmed) return null
-
-  // Check for existing profile (case-insensitive)
-  const { data: matches } = await supabase
-    .from('company_profiles')
-    .select('id')
-    .eq('user_id', userId)
-    .ilike('company_name', trimmed)
-    .limit(1)
-
-  if (matches && matches.length > 0) return matches[0].id as string
-
-  // Create a new profile with just the company name
-  const { data: created, error } = await supabase
-    .from('company_profiles')
-    .insert({ user_id: userId, company_name: trimmed })
-    .select('id')
-    .single()
-
-  if (error) {
-    console.error('Failed to create company profile:', error)
-    return null
-  }
-
-  return created.id as string
-}
 
 /** Persist a message array to the interview_sessions row. */
 async function persistMessages(sessionId: string, messages: Message[]): Promise<void> {
@@ -188,6 +159,7 @@ export function useInterviewChat(
   activeResume?: ResumeSummary | null,
   onXpAwarded?: (xp: number, eventType: string) => void,
   companyRoleId?: string | null,
+  selectedCompanyId?: string | null,
 ): UseInterviewChatReturn {
   const { user } = useAuth()
   // Tracks whether a practice_sessions row has been recorded for this session.
@@ -259,14 +231,12 @@ export function useInterviewChat(
             }
           })
 
-        // Ensure company profile exists and create interview session
-        const companyProfileId = await ensureCompanyProfile(user.id, jobData.companyName)
 
         const { data: session, error: sessionError } = await supabase
           .from('interview_sessions')
           .insert({
             user_id: user.id,
-            company_profile_id: companyProfileId,
+            company_profile_id: selectedCompanyId,
             company_role_id: companyRoleId || null,
             company_name: jobData.companyName.trim(),
             job_description: jobData.jobDescription,
@@ -381,7 +351,7 @@ export function useInterviewChat(
         setIsTyping(false)
       }
     },
-    [jobData, style, user, activeResume, onXpAwarded, companyRoleId]
+    [jobData, style, user, activeResume, onXpAwarded, companyRoleId, selectedCompanyId]
   )
 
   return { messages, isTyping, sendMessage, interviewSessionId, resumeSession, resetSession }

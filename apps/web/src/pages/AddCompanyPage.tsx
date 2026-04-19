@@ -6,16 +6,18 @@ import { supabase } from '@/lib/supabase'
 import styles from './AddCompanyPage.module.css'
 
 interface AddCompanyModalProps {
-  isOpen: boolean;
+  isOpen?: boolean; // Made optional so it works when conditionally rendered
   onClose: () => void;
   initialCompanyName?: string;
-  onSuccess: (newCompanyId: string, companyName: string) => void;
+  message?: string; // Added to handle our custom interview warning
+  onSuccess: (newCompanyId: string, companyName: string, companyWebsite: string | null) => void;
 }
 
 export default function AddCompanyModal({ 
-  isOpen, 
+  isOpen = true, // Defaults to true if not provided
   onClose, 
   initialCompanyName = '', 
+  message, // Extract the message prop
   onSuccess 
 }: AddCompanyModalProps): JSX.Element | null {
   const { user } = useAuth()
@@ -30,7 +32,6 @@ export default function AddCompanyModal({
     location: '',
     notes: '',
   })
-
 
   useEffect(() => {
     if (isOpen) {
@@ -84,8 +85,9 @@ export default function AddCompanyModal({
 
       if (insertError) throw insertError
 
-      // Pass the new data back to ResearchPage and reset the form
-      onSuccess(data.id, data.company_name)
+      // Pass the new data back and reset the form
+      onSuccess(data.id, data.company_name, formData.companyWebsite.trim() || null)
+      
       setFormData({
         companyName: '',
         companyWebsite: '',
@@ -95,8 +97,8 @@ export default function AddCompanyModal({
         notes: '',
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to add company'
-      setError(message)
+      const errMsg = err instanceof Error ? err.message : 'Failed to add company'
+      setError(errMsg)
       console.error('AddCompanyModal: failed to create company', err)
     } finally {
       setIsLoading(false)
@@ -109,8 +111,9 @@ export default function AddCompanyModal({
         <div className={styles.modalHeader}>
           <div>
             <h2 className={styles.title}>Add Company</h2>
+            {/* Display the custom message if provided, otherwise show the default */}
             <p className={styles.subtitle}>
-              Fill in the details to add it to your research board
+              {message || 'Fill in the details to add it to your research board'}
             </p>
           </div>
           <button className={styles.closeBtn} onClick={onClose} aria-label="Close modal">
@@ -119,6 +122,7 @@ export default function AddCompanyModal({
         </div>
 
         <form className={styles.form} onSubmit={handleSubmit}>
+          {/* ... all your existing form inputs remain exactly the same ... */}
           {error && <div className={styles.errorBanner}>{error}</div>}
 
           <div className={styles.formGroup}>
