@@ -552,7 +552,18 @@ export default function ResumePage() {
           y += 7
         }
       }
-
+      const skillTexts = resumeContent.skills.map((s) => s.text).filter(Boolean)
+      if (skillTexts.length > 0) {
+        sectionHeader('Skills')
+        const skillLine = skillTexts.map((s) => '\u2022\u00A0' + s).join(' ')
+        const wrappedSkills = doc.splitTextToSize(skillLine, CONTENT_W)
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(9.5)
+        doc.setTextColor(40, 40, 40)
+        checkPageBreak(wrappedSkills.length * 4.5)
+        doc.text(wrappedSkills, ML, y)
+        y += wrappedSkills.length * 4.5
+      }    
       doc.save('resume.pdf')
     }
 
