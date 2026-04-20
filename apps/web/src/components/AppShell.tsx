@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Bell, ChevronDown, LogOut, Moon, Search, Star, Sun } from 'lucide-react'
+import { ChevronDown, LogOut, Moon, Star, Sun } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useConsistencyMetrics } from '@/contexts/ConsistencyMetricsContext'
@@ -149,12 +149,6 @@ export default function AppShell(): JSX.Element {
         </div>
 
         <div className={styles.actions}>
-          <button className={styles.iconBtn} aria-label="Search" type="button">
-            <Search size={16} />
-          </button>
-          <button className={styles.iconBtn} aria-label="Notifications" type="button">
-            <Bell size={16} />
-          </button>
           <button
             className={styles.iconBtn}
             aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
