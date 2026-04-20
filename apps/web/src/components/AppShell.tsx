@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { ChevronDown, LogOut, Moon, Star, Sun } from 'lucide-react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { ChevronDown, LogOut, Moon, Settings, Star, Sun } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useConsistencyMetrics } from '@/contexts/ConsistencyMetricsContext'
@@ -36,6 +36,7 @@ function useMaxStreak(): number | null {
 export default function AppShell(): JSX.Element {
   const { user, signOut } = useAuth()
   const { theme, toggleTheme } = useTheme()
+  const navigate = useNavigate()
   const { data: gamification } = useGamificationData()
   const streak = useMaxStreak()
 
@@ -180,6 +181,18 @@ export default function AppShell(): JSX.Element {
                   <p className={styles.dropdownEmail}>{user?.email}</p>
                 </div>
                 <div className={styles.dropdownDivider} />
+                <button
+                  className={styles.dropdownItem}
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    navigate('/settings')
+                  }}
+                  type="button"
+                >
+                  <Settings size={14} />
+                  Settings
+                </button>
                 <button
                   className={styles.dropdownItem}
                   role="menuitem"
