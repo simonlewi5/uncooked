@@ -33,9 +33,9 @@ importers:
       '@uncooked/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      html2pdf.js:
-        specifier: ^0.14.0
-        version: 0.14.0
+      jspdf:
+        specifier: 4.2.0
+        version: 4.2.0
       lucide-react:
         specifier: ^0.576.0
         version: 0.576.0(react@18.3.1)
@@ -1630,9 +1630,6 @@ packages:
   html2canvas@1.4.1:
     resolution: {integrity: sha512-fPU6BHNpsyIhr8yyMpTLLxAbkaK8ArIBcmZIRiBLiDhjeqvXolaEmDGmELFuX9I4xDcaKKcJl+TKZLqruBbmWA==}
     engines: {node: '>=8.0.0'}
-
-  html2pdf.js@0.14.0:
-    resolution: {integrity: sha512-yvNJgE/8yru2UeGflkPdjW8YEY+nDH5X7/2WG4uiuSCwYiCp8PZ8EKNiTAa6HxJ1NjC51fZSIEq6xld5CADKBQ==}
 
   http-proxy-agent@7.0.2:
     resolution: {integrity: sha512-T1gkAiYYDWYx3V5Bmyu7HcfcvL7mUrTWiM6yOfa3PIphViJ/gFPbvidQ+veqSOHci/PxBcDabeUNCzpOODJZig==}
@@ -3495,7 +3492,8 @@ snapshots:
 
   balanced-match@4.0.4: {}
 
-  base64-arraybuffer@1.0.2: {}
+  base64-arraybuffer@1.0.2:
+    optional: true
 
   baseline-browser-mapping@2.10.0: {}
 
@@ -3611,6 +3609,7 @@ snapshots:
   css-line-break@2.1.0:
     dependencies:
       utrie: 1.0.2
+    optional: true
 
   css.escape@1.5.1: {}
 
@@ -3666,6 +3665,7 @@ snapshots:
   dompurify@3.3.2:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
+    optional: true
 
   dunder-proto@1.0.1:
     dependencies:
@@ -4032,12 +4032,7 @@ snapshots:
     dependencies:
       css-line-break: 2.1.0
       text-segmentation: 1.0.3
-
-  html2pdf.js@0.14.0:
-    dependencies:
-      dompurify: 3.3.2
-      html2canvas: 1.4.1
-      jspdf: 4.2.0
+    optional: true
 
   http-proxy-agent@7.0.2:
     dependencies:
@@ -4849,6 +4844,7 @@ snapshots:
   text-segmentation@1.0.3:
     dependencies:
       utrie: 1.0.2
+    optional: true
 
   tinybench@2.9.0: {}
 
@@ -4998,6 +4994,7 @@ snapshots:
   utrie@1.0.2:
     dependencies:
       base64-arraybuffer: 1.0.2
+    optional: true
 
   vfile-message@4.0.3:
     dependencies:
