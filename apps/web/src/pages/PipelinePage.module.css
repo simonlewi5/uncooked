@@ -127,31 +127,13 @@
 /* ── Card ────────────────────────────────────────────────────────────────── */
 
 .card {
-  position: relative;
   background: var(--surface);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
-  padding: var(--space-3) var(--space-3) var(--space-3) calc(var(--space-3) + 4px);
+  padding: var(--space-3);
   cursor: grab;
   transition: transform var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
 }
-
-.card::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--hairline-strong);
-  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-  pointer-events: none;
-}
-
-.card[data-accent="0"]::after { background: var(--iris-1); }
-.card[data-accent="1"]::after { background: var(--iris-2); }
-.card[data-accent="2"]::after { background: var(--iris-3); }
-.card[data-accent="3"]::after { background: var(--iris-4); }
 
 .card:active {
   cursor: grabbing;
@@ -207,9 +189,46 @@
 }
 
 .cardCompany {
-  font-size: var(--font-xs);
-  color: var(--ink-2);
+  display: inline-block;
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   margin-bottom: var(--space-1);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border: 1px solid var(--hairline);
+}
+
+.cardCompany[data-accent="0"] {
+  background: color-mix(in oklch, var(--iris-1) 18%, var(--surface));
+  color: color-mix(in oklch, var(--iris-1) 55%, var(--ink-1));
+  border-color: color-mix(in oklch, var(--iris-1) 30%, var(--hairline));
+}
+
+.cardCompany[data-accent="1"] {
+  background: color-mix(in oklch, var(--iris-2) 18%, var(--surface));
+  color: color-mix(in oklch, var(--iris-2) 60%, var(--ink-1));
+  border-color: color-mix(in oklch, var(--iris-2) 30%, var(--hairline));
+}
+
+.cardCompany[data-accent="2"] {
+  background: color-mix(in oklch, var(--iris-3) 18%, var(--surface));
+  color: color-mix(in oklch, var(--iris-3) 55%, var(--ink-1));
+  border-color: color-mix(in oklch, var(--iris-3) 30%, var(--hairline));
+}
+
+.cardCompany[data-accent="3"] {
+  background: color-mix(in oklch, var(--iris-4) 18%, var(--surface));
+  color: color-mix(in oklch, var(--iris-4) 55%, var(--ink-1));
+  border-color: color-mix(in oklch, var(--iris-4) 30%, var(--hairline));
 }
 
 .cardNotes {
