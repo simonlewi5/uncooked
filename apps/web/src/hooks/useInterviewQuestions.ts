@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext'
 interface UseInterviewQuestionsReturn {
   questions: InterviewQuestion[]
   isGenerating: boolean
+  isLoading: boolean
   generateQuestions: (
     jobDescription: string,
     companyName: string,
@@ -48,11 +49,18 @@ export function useInterviewQuestions(
   const { user } = useAuth()
   const [questions, setQuestions] = useState<InterviewQuestion[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const notesTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   // Fetch questions when session changes
   useEffect(() => {
-    if (!user) return
+    if (!user) {
+      setIsLoading(false)
+      return
+    }
+
+    let ignore = false
+    setIsLoading(true)
 
     let query = supabase
       .from('interview_questions')
@@ -71,12 +79,19 @@ export function useInterviewQuestions(
     }
 
     query.then(({ data, error }) => {
+      if (ignore) return
       if (error) {
         console.error('Failed to fetch questions:', error)
+        setIsLoading(false)
         return
       }
       setQuestions((data ?? []).map(mapRow))
+      setIsLoading(false)
     })
+
+    return () => {
+      ignore = true
+    }
   }, [sessionId, companyName, user])
 
   const generateQuestions = useCallback(
@@ -259,6 +274,7 @@ export function useInterviewQuestions(
   return {
     questions,
     isGenerating,
+    isLoading,
     generateQuestions,
     addExtractedQuestions,
     toggleBookmark,

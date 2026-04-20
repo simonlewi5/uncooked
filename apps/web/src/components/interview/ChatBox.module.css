@@ -5,14 +5,93 @@
   min-height: 0;
 }
 
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.bannerCounter {
+  font-family: var(--font-mono);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--ink-3);
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.bannerCounterSlash {
+  color: var(--ink-4);
+  font-weight: 400;
+}
+
+.bannerDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--hairline);
+  flex-shrink: 0;
+}
+
+.bannerText {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--ink-1);
+  line-height: 1.45;
+}
+
+.bannerBadge {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  padding: 3px var(--space-3);
+  border-radius: var(--radius-full);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border: 1px solid var(--hairline);
+}
+
+.bannerBadge[data-accent='behavioral'] {
+  background: color-mix(in oklch, var(--iris-3) 14%, var(--surface));
+  color: color-mix(in oklch, var(--iris-3) 55%, var(--ink-1));
+  border-color: color-mix(in oklch, var(--iris-3) 26%, var(--hairline));
+}
+
+.bannerBadge[data-accent='system-design'] {
+  background: color-mix(in oklch, var(--iris-2) 14%, var(--surface));
+  color: color-mix(in oklch, var(--iris-2) 60%, var(--ink-1));
+  border-color: color-mix(in oklch, var(--iris-2) 26%, var(--hairline));
+}
+
+.bannerBadge[data-accent='technical'] {
+  background: color-mix(in oklch, var(--iris-1) 14%, var(--surface));
+  color: color-mix(in oklch, var(--iris-1) 60%, var(--ink-1));
+  border-color: color-mix(in oklch, var(--iris-1) 26%, var(--hairline));
+}
+
+.bannerBadge[data-accent='culture'] {
+  background: color-mix(in oklch, var(--iris-4) 14%, var(--surface));
+  color: color-mix(in oklch, var(--iris-4) 55%, var(--ink-1));
+  border-color: color-mix(in oklch, var(--iris-4) 26%, var(--hairline));
+}
+
 .messages {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: var(--space-6) var(--space-8);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  scroll-behavior: smooth;
   max-width: 900px;
   margin: 0 auto;
   width: 100%;
@@ -235,8 +314,20 @@
 }
 
 .hint {
+  font-family: var(--font-mono);
   font-size: var(--font-xs);
   color: var(--ink-3);
   text-align: center;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   margin: 0;
+}
+
+.exitHint {
+  font-family: var(--font-mono);
+  font-size: var(--font-xs);
+  color: var(--ink-4);
+  text-align: center;
+  letter-spacing: 0.04em;
+  margin: 2px 0 0;
 }

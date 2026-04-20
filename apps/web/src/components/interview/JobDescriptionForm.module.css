@@ -5,36 +5,67 @@
   height: 100%;
 }
 
-.desc {
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.companyChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px var(--space-3) 3px var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.companyChipText {
   font-size: var(--font-xs);
-  color: var(--ink-2);
-  line-height: 1.5;
-}
-
-.textarea {
-  flex: 1;
-  min-height: 0;
-  resize: none;
-  width: 100%;
-  padding: var(--space-3);
-  border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-md);
-  background-color: var(--surface);
+  font-weight: 500;
   color: var(--ink-1);
-  font-size: var(--font-sm);
-  font-family: inherit;
-  line-height: 1.5;
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.textarea::placeholder {
+.roleChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 3px var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  font-size: var(--font-xs);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.roleChipLabel {
+  font-family: var(--font-mono);
   color: var(--ink-3);
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
-.textarea:focus {
-  border-color: var(--blue);
-  box-shadow: var(--focus-ring);
+.roleChipValue {
+  color: var(--ink-1);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.helper {
+  font-size: var(--font-xs);
+  color: var(--ink-3);
+  line-height: 1.5;
+  margin: 0;
 }
 
 .pastJobs {
@@ -47,16 +78,49 @@
   padding: var(--space-1) var(--space-3);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-full);
-  background-color: var(--surface-2);
+  background-color: var(--surface);
   color: var(--ink-2);
+  font-family: var(--font-mono);
   font-size: var(--font-xs);
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+  transition: border-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out);
   white-space: nowrap;
 }
 
 .pastJobBtn:hover {
-  border-color: var(--blue);
-  color: var(--blue);
-  background-color: var(--blue-soft);
+  border-color: var(--hairline-strong);
+  color: var(--ink-1);
+  background-color: var(--surface-2);
+}
+
+.jdBox {
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  padding: var(--space-3);
+  transition: border-color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out);
+}
+
+.jdBox:focus-within {
+  border-color: var(--ink-3);
+  box-shadow: var(--focus-ring);
+}
+
+.textarea {
+  flex: 1;
+  min-height: 96px;
+  resize: vertical;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-1);
+  font-size: var(--font-sm);
+  font-family: inherit;
+  line-height: 1.55;
+  outline: none;
+}
+
+.textarea::placeholder {
+  color: var(--ink-3);
 }

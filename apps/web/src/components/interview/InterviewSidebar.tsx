@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, ChevronDown, ChevronRight, FileText, Maximize, X, BookOpen } from 'lucide-react'
 import { CompanyLogo } from './CompanyLogo'
@@ -10,9 +10,7 @@ import styles from './InterviewSidebar.module.css'
 
 interface InterviewSidebarProps {
   companyName: string
-  onCompanyNameChange: (name: string) => void
   selectedCompanyId: string | null
-  onCompanyProfileSelect: (profile: CompanyProfile) => void
   companyProfile: CompanyProfile | null
   companyWebsite?: string | null
   style: InterviewStyle
@@ -20,6 +18,7 @@ interface InterviewSidebarProps {
   onJobDescriptionChange: (value: string) => void
   questions: InterviewQuestion[]
   isGenerating: boolean
+  isLoadingQuestions?: boolean
   onGenerateQuestions: () => void
   onToggleBookmark: (id: string) => void
   onUpdateNotes: (id: string, notes: string) => void
@@ -30,13 +29,18 @@ interface InterviewSidebarProps {
   onCooldownStart: (end: number) => void
   companyRoleId?: string | null
   roleTitle?: string | null
+  activeQuestionId?: string | null
 }
 
-function humanizeStyle(style: string): string {
-  return style
-    .replace(/_plus_/g, ' + ')
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+const STYLE_LABELS: Record<InterviewStyle, readonly string[]> = {
+  technical: ['Technical'],
+  behavioral: ['Behavioral'],
+  mixed: ['Behavioral', 'Technical'],
+  friendly: ['Friendly'],
+}
+
+function styleToTags(style: InterviewStyle): readonly string[] {
+  return STYLE_LABELS[style] ?? [style]
 }
 
 function formatResumeText(parsed: StructuredResumeData | null | undefined): string {
@@ -61,9 +65,7 @@ function formatResumeText(parsed: StructuredResumeData | null | undefined): stri
 
 export function InterviewSidebar({
   companyName,
-  onCompanyNameChange,
   selectedCompanyId,
-  onCompanyProfileSelect,
   companyProfile,
   companyWebsite,
   style,
@@ -71,6 +73,7 @@ export function InterviewSidebar({
   onJobDescriptionChange,
   questions,
   isGenerating,
+  isLoadingQuestions,
   onGenerateQuestions,
   onToggleBookmark,
   onUpdateNotes,
@@ -81,6 +84,7 @@ export function InterviewSidebar({
   onCooldownStart,
   companyRoleId,
   roleTitle,
+  activeQuestionId,
 }: InterviewSidebarProps): React.JSX.Element {
   const navigate = useNavigate()
   const [questionsOpen, setQuestionsOpen] = useState(true)
@@ -105,6 +109,8 @@ const logoProfile: CompanyProfile = {
     })
   }
 
+  const styleTags = styleToTags(style)
+
   return (
     <div className={styles.sidebar}>
       <div className={styles.contextHeader}>
@@ -112,17 +118,24 @@ const logoProfile: CompanyProfile = {
         <div className={styles.contextInfo}>
           <span className={styles.companyName}>{companyName}</span>
           {roleTitle && <span className={styles.roleTitle}>{roleTitle}</span>}
-          <div className={styles.contextMeta}>
-            <span className={styles.styleBadge}>{humanizeStyle(style)}</span>
-            {selectedCompanyId && (
-              <button className={styles.researchLink} onClick={handleViewResearch}>
-                <BookOpen size={12} />
-                Research
-              </button>
-            )}
-          </div>
         </div>
       </div>
+
+      <div className={styles.styleTags}>
+        {styleTags.map((label, i) => (
+          <Fragment key={label}>
+            {i > 0 && <span className={styles.stylePlus}>+</span>}
+            <span className={styles.styleTag}>{label}</span>
+          </Fragment>
+        ))}
+      </div>
+
+      {selectedCompanyId && !companyRoleId && (
+        <button className={styles.researchRow} onClick={handleViewResearch}>
+          <BookOpen size={12} />
+          <span>Research this company</span>
+        </button>
+      )}
 
       <div className={styles.accordions}>
         <div className={styles.accordion}>
@@ -138,12 +151,14 @@ const logoProfile: CompanyProfile = {
               <QuestionList
                 questions={questions}
                 isGenerating={isGenerating}
+                isLoading={isLoadingQuestions}
                 onGenerate={onGenerateQuestions}
                 onToggleBookmark={onToggleBookmark}
                 onUpdateNotes={onUpdateNotes}
                 canGenerate={canGenerate}
                 cooldownEnd={cooldownEnd}
                 onCooldownStart={onCooldownStart}
+                activeQuestionId={activeQuestionId ?? null}
               />
             </div>
           )}
@@ -202,9 +217,10 @@ const logoProfile: CompanyProfile = {
             <div className={styles.accordionContent}>
               <JobDescriptionForm
                 companyName={companyName}
-                onCompanyNameChange={onCompanyNameChange}
                 selectedCompanyId={selectedCompanyId}
-                onCompanyProfileSelect={onCompanyProfileSelect}
+                companyProfile={companyProfile}
+                companyWebsite={companyWebsite}
+                roleTitle={roleTitle ?? null}
                 jobDescription={jobDescription}
                 onJobDescriptionChange={onJobDescriptionChange}
               />
@@ -216,7 +232,7 @@ const logoProfile: CompanyProfile = {
       <div className={styles.footer}>
         <button className={styles.backBtn} onClick={onBack}>
           <ArrowLeft size={14} />
-          New Interview
+          Back
         </button>
       </div>
       {zoomedResume && (

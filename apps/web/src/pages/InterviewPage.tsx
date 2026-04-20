@@ -105,6 +105,7 @@ export default function InterviewPage(): JSX.Element {
   const {
     questions,
     isGenerating,
+    isLoading: isLoadingQuestions,
     generateQuestions,
     toggleBookmark,
     updateNotes,
@@ -386,6 +387,25 @@ export default function InterviewPage(): JSX.Element {
     )
   }, [generateQuestions, jobDescription, companyName, style, interviewSessionId, selectedCompanyId])
 
+  const userMessageCount = messages.filter((m) => m.role === 'user').length
+  const activeQuestionIndex =
+    questions.length > 0 ? Math.min(userMessageCount, questions.length - 1) : -1
+  const activeQuestion = activeQuestionIndex >= 0 ? questions[activeQuestionIndex] : null
+
+  useEffect(() => {
+    if (phase !== 'interview') return
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        const target = e.target as HTMLElement | null
+        const tag = target?.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return
+        setPhase('setup')
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [phase])
+
   const [sidebarWidth, setSidebarWidth] = useState(initialState.current?.sidebarWidth ?? 340)
   const isDragging = useRef(false)
 
@@ -471,16 +491,15 @@ export default function InterviewPage(): JSX.Element {
     >
       <InterviewSidebar
         companyName={companyName}
-        onCompanyNameChange={handleCompanyNameChange}
         selectedCompanyId={selectedCompanyId}
         companyProfile={companyProfile}
-        onCompanyProfileSelect={handleCompanyProfileSelect}
         companyWebsite={companyWebsite}
         style={style ?? 'mixed'}
         jobDescription={jobDescription}
         onJobDescriptionChange={setJobDescription}
         questions={questions}
         isGenerating={isGenerating}
+        isLoadingQuestions={isLoadingQuestions}
         onGenerateQuestions={handleGenerateQuestions}
         onToggleBookmark={toggleBookmark}
         onUpdateNotes={updateNotes}
@@ -491,6 +510,7 @@ export default function InterviewPage(): JSX.Element {
         onCooldownStart={handleCooldownStart}
         companyRoleId={companyRoleId}
         roleTitle={roleState?.roleTitle || null}
+        activeQuestionId={activeQuestion?.id ?? null}
       />
       <div className={styles.resizeHandle} onMouseDown={handleMouseDown} />
       <div className={styles.chatPanel}>
@@ -499,6 +519,9 @@ export default function InterviewPage(): JSX.Element {
           isTyping={isTyping}
           onSend={sendMessage}
           disabled={false}
+          activeQuestion={activeQuestion}
+          activeQuestionIndex={activeQuestionIndex >= 0 ? activeQuestionIndex : undefined}
+          totalQuestions={questions.length}
         />
         {xpToasts.map(t => (
           <XpToast

@@ -2,14 +2,35 @@ import React, { useRef, useEffect, useState, KeyboardEvent } from 'react'
 import { Send } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { cn } from '@/utils/cn'
-import type { Message } from '@/types'
+import type { InterviewQuestion, Message } from '@/types'
 import styles from './ChatBox.module.css'
+
+type CategoryAccent = 'behavioral' | 'technical' | 'system-design' | 'culture' | 'default'
+
+function resolveCategoryAccent(category: string | null): CategoryAccent {
+  if (!category) return 'default'
+  const normalized = category.toLowerCase()
+  if (normalized.includes('behav')) return 'behavioral'
+  if (normalized.includes('system') || normalized.includes('design')) return 'system-design'
+  if (normalized.includes('cultur') || normalized.includes('values')) return 'culture'
+  if (normalized.includes('tech') || normalized.includes('coding') || normalized.includes('algo')) return 'technical'
+  return 'default'
+}
+
+function humanizeCategory(category: string): string {
+  return category
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
 
 interface ChatBoxProps {
   messages: Message[]
   isTyping: boolean
   onSend: (content: string) => void
   disabled?: boolean
+  activeQuestion?: InterviewQuestion | null
+  activeQuestionIndex?: number
+  totalQuestions?: number
 }
 
 function formatTime(raw: Date | string | number | null | undefined): string {
@@ -19,14 +40,36 @@ function formatTime(raw: Date | string | number | null | undefined): string {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-export function ChatBox({ messages, isTyping, onSend, disabled }: ChatBoxProps): React.JSX.Element {
+export function ChatBox({
+  messages,
+  isTyping,
+  onSend,
+  disabled,
+  activeQuestion,
+  activeQuestionIndex,
+  totalQuestions,
+}: ChatBoxProps): React.JSX.Element {
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const messageCount = messages.length
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isTyping])
+    bottomRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' })
+  }, [messageCount])
+
+  const banner =
+    activeQuestion &&
+    totalQuestions !== undefined &&
+    totalQuestions > 0 &&
+    activeQuestionIndex !== undefined
+      ? {
+          question: activeQuestion,
+          index: activeQuestionIndex,
+          total: totalQuestions,
+          accent: resolveCategoryAccent(activeQuestion.category),
+        }
+      : null
 
   useEffect(() => {
     if (input === '' && textareaRef.current) {
@@ -57,6 +100,22 @@ export function ChatBox({ messages, isTyping, onSend, disabled }: ChatBoxProps):
 
   return (
     <div className={styles.wrapper}>
+      {banner && (
+        <div className={styles.banner}>
+          <span className={styles.bannerCounter}>
+            Q{banner.index + 1}
+            <span className={styles.bannerCounterSlash}> / </span>
+            {banner.total}
+          </span>
+          <span className={styles.bannerDivider} aria-hidden="true" />
+          <span className={styles.bannerText}>{banner.question.questionText}</span>
+          {banner.question.category && (
+            <span className={styles.bannerBadge} data-accent={banner.accent}>
+              {humanizeCategory(banner.question.category)}
+            </span>
+          )}
+        </div>
+      )}
       <div className={styles.messages}>
         {messages.map((msg) => {
           const time = formatTime(msg.timestamp)
@@ -121,6 +180,7 @@ export function ChatBox({ messages, isTyping, onSend, disabled }: ChatBoxProps):
           </button>
         </div>
         <p className={styles.hint}>Enter to send · Shift+Enter for new line</p>
+        <p className={styles.exitHint}>Press Esc to exit</p>
       </div>
     </div>
   )
