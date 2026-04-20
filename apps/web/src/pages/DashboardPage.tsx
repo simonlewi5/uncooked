@@ -17,8 +17,6 @@ import type {
 } from '@/types'
 import styles from './DashboardPage.module.css'
 
-const WEEK_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const
-const MONTH_BUCKET_LABELS = ['W1', 'W2', 'W3', 'W4', 'W5'] as const
 
 function formatTimeAgo(isoString: string): string {
   const diffMs = Date.now() - new Date(isoString).getTime()
@@ -87,7 +85,7 @@ function PracticeConsistencyCard({
   onRangeChange,
   data,
 }: PracticeConsistencyCardProps): JSX.Element {
-  const labels = range === 'week' ? WEEK_LABELS : MONTH_BUCKET_LABELS
+  const labels = data.labels
   const buckets = data.buckets
   const totalMinutes = data.totalMinutes
   const statLabel =
@@ -335,8 +333,8 @@ export default function DashboardPage(): JSX.Element {
 
   const practiceFallback =
     practiceRange === 'week'
-      ? { totalMinutes: 0, buckets: [0, 0, 0, 0, 0, 0, 0] }
-      : { totalMinutes: 0, buckets: [0, 0, 0, 0, 0] }
+      ? { totalMinutes: 0, buckets: [0, 0, 0, 0, 0, 0, 0], labels: ['M', 'T', 'W', 'T', 'F', 'S', 'S'] }
+      : { totalMinutes: 0, buckets: [], labels: [] }
 
   const shouldShowInitialLoader = isLoading && !data
   const shouldShowFullPageError = fetchError && !data

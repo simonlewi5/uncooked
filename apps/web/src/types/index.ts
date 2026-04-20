@@ -112,6 +112,7 @@ export type DashboardRange = 'week' | 'month'
 export interface PracticeConsistencyData {
   totalMinutes: number
   buckets: number[]
+  labels: string[]
 }
 
 export interface PipelineCounts {
