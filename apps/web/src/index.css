@@ -86,33 +86,6 @@
   --font-xl: 1.25rem;
   --font-2xl: 1.5rem;
   --font-3xl: 1.875rem;
-
-  /* Legacy aliases — remove in final cleanup task once every page is migrated */
-  --color-bg: var(--canvas);
-  --color-bg-subtle: var(--surface);
-  --color-bg-muted: var(--surface-2);
-  --color-border: var(--hairline);
-  --color-border-strong: var(--hairline-strong);
-  --color-text: var(--ink-1);
-  --color-text-secondary: var(--ink-2);
-  --color-text-tertiary: var(--ink-3);
-  --color-primary: var(--blue);
-  --color-primary-hover: oklch(0.52 0.18 260);
-  --color-primary-active: oklch(0.46 0.17 260);
-  --color-primary-subtle: var(--blue-soft);
-  --color-primary-text: var(--blue-ink);
-  --color-success: var(--success);
-  --color-success-subtle: oklch(0.95 0.04 155);
-  --color-success-text: oklch(0.42 0.12 155);
-  --color-warning: var(--warn);
-  --color-warning-subtle: oklch(0.96 0.04 75);
-  --color-warning-text: oklch(0.48 0.13 75);
-  --color-error: var(--danger);
-  --color-error-subtle: oklch(0.96 0.04 25);
-  --color-error-text: oklch(0.44 0.17 25);
-  --color-info: oklch(0.62 0.12 200);
-  --color-info-subtle: oklch(0.95 0.04 200);
-  --color-info-text: oklch(0.40 0.12 200);
 }
 
 /* Dark theme */
@@ -139,19 +112,6 @@
   /* Focus ring: bump mix in dark mode so the nearly-white --ink-1 reads on dark surface. */
   --focus-ring: 0 0 0 3px color-mix(in oklch, var(--ink-1) 30%, transparent);
   --focus-ring-danger: 0 0 0 3px color-mix(in oklch, var(--danger) 35%, transparent);
-
-  /* Legacy alias overrides — keep hover/active/subtle/text semantics coherent in dark mode. */
-  --color-primary-hover: oklch(0.80 0.16 260);
-  --color-primary-active: oklch(0.86 0.14 260);
-  --color-success-subtle: oklch(0.30 0.05 155);
-  --color-success-text: oklch(0.82 0.12 155);
-  --color-warning-subtle: oklch(0.32 0.05 75);
-  --color-warning-text: oklch(0.86 0.13 75);
-  --color-error-subtle: oklch(0.30 0.07 25);
-  --color-error-text: oklch(0.82 0.15 25);
-  --color-info: oklch(0.78 0.12 200);
-  --color-info-subtle: oklch(0.30 0.05 200);
-  --color-info-text: oklch(0.84 0.12 200);
 }
 
 /* Density */
