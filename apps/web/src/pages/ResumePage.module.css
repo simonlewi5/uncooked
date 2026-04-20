@@ -532,3 +532,106 @@
     position: static;
   }
 }
+/* ── My Resumes sidebar list ─────────────────────────────────────────────── */
+
+.resumeListEmpty {
+  font-size: var(--font-sm);
+  color: var(--ink-4);
+  text-align: center;
+  padding: var(--space-3) 0;
+}
+
+.resumeList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.resumeListItem {
+  position: relative;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  transition: border-color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out);
+}
+
+.resumeListItem:hover {
+  border-color: var(--hairline);
+  background: var(--surface-2);
+}
+
+.resumeListItemActive {
+  border-color: var(--hairline-strong) !important;
+  background: var(--surface-2);
+}
+
+.resumeListBtn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 7px 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.resumeListTitle {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--ink-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.resumeListMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 11px;
+  color: var(--ink-4);
+  font-family: var(--font-mono);
+}
+
+.primaryBadge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--blue-ink);
+  background: var(--blue-soft);
+  padding: 1px 5px;
+  border-radius: var(--radius-full);
+}
+
+.resumeDeleteBtn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  transition: opacity var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+
+.resumeListItem:hover .resumeDeleteBtn {
+  opacity: 1;
+}
+
+.resumeDeleteBtn:hover {
+  background: color-mix(in oklch, var(--danger) 12%, var(--surface));
+  color: var(--danger);
+}
