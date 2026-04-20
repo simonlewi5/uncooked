@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { TrendingUp, Building2, Calendar, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Badge, Spinner } from '@/components/ui'
-import { GamificationCard } from '@/components/dashboard/GamificationCard'
+import { CareerProgressCard } from '@/components/dashboard/CareerProgressCard'
+import { ConsistencyBars } from '@/components/dashboard/ConsistencyBars'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatMinutes } from '@/utils/formatMinutes'
 import { cn } from '@/utils/cn'
@@ -87,9 +88,15 @@ function PracticeConsistencyCard({
 }: PracticeConsistencyCardProps): JSX.Element {
   const labels = range === 'week' ? WEEK_LABELS : MONTH_BUCKET_LABELS
   const buckets = data.buckets
-  const maxMinutes = Math.max(...buckets, 1)
-  const m = data.totalMinutes
-  const statLabel = m === 0 ? '0m' : m < 60 ? `${m}m` : m % 60 === 0 ? `${m / 60}h` : `${Math.floor(m / 60)}h ${m % 60}m`
+  const totalMinutes = data.totalMinutes
+  const statLabel =
+    totalMinutes === 0
+      ? '0m'
+      : totalMinutes < 60
+        ? `${totalMinutes}m`
+        : totalMinutes % 60 === 0
+          ? `${totalMinutes / 60}h`
+          : `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`
 
   return (
     <div className={styles.card}>
@@ -111,20 +118,11 @@ function PracticeConsistencyCard({
               : 'Practice time recorded this month'}
         </p>
 
-        <div className={styles.barChart}>
-          {labels.map((label, i) => {
-            const minutes = buckets[i] ?? 0
-            const heightPx = Math.max((minutes / maxMinutes) * 80, 4)
-            const tooltip = minutes === 0 ? 'No activity' : formatMinutes(minutes)
-
-            return (
-              <div key={`bucket-${i}`} className={styles.barGroup} data-tooltip={tooltip}>
-                <div className={styles.bar} style={{ height: heightPx }} />
-                <span className={styles.barLabel}>{label}</span>
-              </div>
-            )
-          })}
-        </div>
+        <ConsistencyBars
+          buckets={buckets}
+          labels={labels}
+          formatTooltip={(v) => (v === 0 ? 'No activity' : formatMinutes(v))}
+        />
       </div>
     </div>
   )
@@ -362,7 +360,7 @@ export default function DashboardPage(): JSX.Element {
     <div className={styles.page}>
       <div className={styles.grid}>
         <div className={styles.leftCol}>
-          <GamificationCard />
+          <CareerProgressCard />
           <PracticeConsistencyCard
             range={practiceRange}
             onRangeChange={setPracticeRange}
@@ -370,10 +368,7 @@ export default function DashboardPage(): JSX.Element {
             // data={MOCK_PRACTICE[practiceRange]}
 
           />
-          <div className={styles.bottomRow}>
-            <TargetCompaniesCard companies={data?.companies ?? []} />
-            
-          </div>
+          <TargetCompaniesCard companies={data?.companies ?? []} />
         </div>
 
         <div className={styles.rightCol}>

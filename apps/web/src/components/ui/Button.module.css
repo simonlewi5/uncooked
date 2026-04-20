@@ -3,19 +3,39 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 13px;
   font-weight: 500;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  letter-spacing: -0.005em;
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink-1);
+  cursor: pointer;
   white-space: nowrap;
   line-height: 1;
-  font-family: inherit;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-1) var(--ease-out);
+}
+
+.button:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--hairline-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .button:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .button:disabled {
@@ -25,62 +45,69 @@
 
 /* Variants */
 .primary {
-  background-color: var(--color-primary);
-  color: #fff;
+  background: var(--ink-1);
+  color: var(--surface);
+  border-color: var(--ink-1);
 }
 
 .primary:hover:not(:disabled) {
-  background-color: var(--color-primary-hover);
+  background: var(--ink-2);
+  border-color: var(--ink-2);
 }
 
 .primary:active:not(:disabled) {
-  background-color: var(--color-primary-active);
+  background: var(--ink-1);
+  border-color: var(--ink-1);
 }
 
 .secondary {
-  background-color: var(--color-bg-muted);
-  color: var(--color-text);
-  border-color: var(--color-border);
+  background: var(--surface);
+  color: var(--ink-1);
+  border-color: var(--hairline);
 }
 
 .secondary:hover:not(:disabled) {
-  background-color: var(--color-border);
+  background: var(--surface-2);
+  border-color: var(--hairline-strong);
 }
 
 .ghost {
-  background-color: transparent;
-  color: var(--color-text-secondary);
+  background: transparent;
+  color: var(--ink-2);
+  border-color: transparent;
 }
 
 .ghost:hover:not(:disabled) {
-  background-color: var(--color-bg-muted);
-  color: var(--color-text);
+  background: var(--surface-2);
+  color: var(--ink-1);
+  border-color: var(--hairline);
 }
 
 .danger {
-  background-color: var(--color-error);
-  color: #fff;
+  background: var(--danger);
+  color: white;
+  border-color: var(--danger);
 }
 
 .danger:hover:not(:disabled) {
-  background-color: var(--color-error-text);
+  filter: brightness(1.05);
 }
 
 /* Sizes */
 .sm {
-  font-size: 0.8125rem;
+  font-size: 12px;
   padding: 0.25rem 0.625rem;
   height: 28px;
 }
 
 .md {
-  font-size: 0.875rem;
-  padding: 0.5rem 1rem;
+  font-size: 13px;
+  padding: 0.5rem 0.875rem;
   height: 36px;
 }
 
 .lg {
-  font-size: 1rem;
-  padding: 0.625rem 1.25rem;
+  font-size: 14px;
+  padding: 0.625rem 1.125rem;
   height: 44px;
 }

@@ -1,0 +1,64 @@
+.grid {
+  display: grid;
+  gap: 10px;
+  align-items: end;
+  height: 120px;
+  margin-top: 18px;
+}
+
+.col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.col::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink-1);
+  color: var(--surface);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 10;
+}
+
+.col:hover::after {
+  opacity: 1;
+}
+
+.bar {
+  width: 100%;
+  border-radius: 4px;
+  transition: height var(--dur-2) var(--ease-out);
+}
+
+.barFilled {
+  background: linear-gradient(180deg, var(--iris-2), var(--iris-3));
+}
+
+.barEmpty {
+  background: var(--surface-2);
+  border: 1px dashed var(--hairline);
+}
+
+.label {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+  color: var(--ink-4);
+}

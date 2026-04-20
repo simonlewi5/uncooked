@@ -2,11 +2,13 @@ import { HTMLAttributes } from 'react'
 import { cn } from '@/utils/cn'
 import styles from './Card.module.css'
 
-export type CardProps = HTMLAttributes<HTMLDivElement>
+export interface CardProps extends HTMLAttributes<HTMLDivElement> {
+  hoverLift?: boolean
+}
 
-export function Card({ className, children, ...props }: CardProps) {
+export function Card({ className, children, hoverLift, ...props }: CardProps) {
   return (
-    <div className={cn(styles.card, className)} {...props}>
+    <div className={cn(styles.card, hoverLift && styles.hoverLift, className)} {...props}>
       {children}
     </div>
   )

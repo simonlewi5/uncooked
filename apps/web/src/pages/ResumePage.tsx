@@ -34,6 +34,7 @@ import { useResumeUploadAndParse } from '@/hooks/useResumeUploadAndParse'
 import { useResumePersistence } from '@/hooks/useResumePersistence'
 import { useTrackActivity } from '@/hooks/useTrackActivity'
 import { useAuth } from '@/contexts/AuthContext'
+import { AutoTailorOrb } from '@/components/resume/AutoTailorOrb'
 import {
   awardGamificationEvent,
   GAMIFICATION_EVENT_TYPES,
@@ -493,7 +494,7 @@ export default function ResumePage() {
       </div>
 
       <div className={styles.layout}>
-        <aside className={styles.leftPanel}>
+        <aside className={styles.leftColumn}>
           <div className={styles.card}>
             <p className={styles.cardTitle}>Target Job Description</p>
             <p className={styles.cardSubtitle}>
@@ -537,7 +538,7 @@ export default function ResumePage() {
           </div>
         </aside>
 
-        <div className={styles.resumePanel}>
+        <div className={styles.centerColumn}>
           {pageError && (
             <div className={styles.errorBanner} role="alert">
               {pageError}
@@ -746,7 +747,13 @@ export default function ResumePage() {
                 )}
               </div>
             </div>
+          </div>
+        </div>
 
+        <aside className={`${styles.rightColumn} ${styles.suggestionsPanel} iris-glow`}>
+          {isLoading ? (
+            <AutoTailorOrb active={isLoading} />
+          ) : (
             <ResumeSuggestionsPanel
               suggestions={suggestionItems}
               panelState={suggestionPanelState}
@@ -756,8 +763,8 @@ export default function ResumePage() {
               onAcceptTarget={handleAcceptTarget}
               onDeclineTarget={handleDeclineTarget}
             />
-          </div>
-        </div>
+          )}
+        </aside>
       </div>
     </div>
   )

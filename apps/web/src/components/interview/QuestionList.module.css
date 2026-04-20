@@ -6,35 +6,40 @@
   gap: var(--space-3);
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-shrink: 0;
-}
-
 .generateBtn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-primary);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
   border-radius: var(--radius-md);
-  background-color: var(--color-primary);
-  color: white;
+  background: var(--ink-1);
+  color: var(--surface);
+  font-family: var(--font-mono);
   font-size: var(--font-xs);
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: background var(--dur-2) var(--ease-out), transform var(--dur-1) var(--ease-out);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.generateBtn:hover {
-  opacity: 0.9;
+.generateBtn:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--ink-1) 88%, var(--ink-2));
+  transform: translateY(-1px);
+}
+
+.generateBtn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .generateBtn:disabled {
-  opacity: 0.5;
+  background: var(--surface-2);
+  color: var(--ink-3);
   cursor: not-allowed;
 }
 
@@ -46,24 +51,27 @@
 
 .filterBtn {
   padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-full);
   background: none;
+  font-family: var(--font-mono);
   font-size: var(--font-xs);
-  color: var(--color-text-secondary);
+  font-weight: 500;
+  color: var(--ink-2);
   cursor: pointer;
-  transition: all 0.15s;
+  letter-spacing: 0.01em;
+  transition: background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
 }
 
-.filterBtn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-text);
+.filterBtn:hover:not(.filterBtnActive) {
+  border-color: var(--hairline-strong);
+  color: var(--ink-1);
 }
 
 .filterBtnActive {
-  border-color: var(--color-primary);
-  background-color: var(--color-primary);
-  color: white;
+  border-color: var(--ink-1);
+  background: var(--ink-1);
+  color: var(--surface);
 }
 
 .list {
@@ -80,16 +88,22 @@
 .card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  background-color: var(--color-bg);
-  transition: border-color 0.15s;
+  background-color: var(--surface);
+  transition: border-color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out);
 }
 
 .card:hover {
-  border-color: var(--color-primary-light, var(--color-border));
+  border-color: var(--hairline-strong);
+}
+
+.cardActive {
+  border-color: color-mix(in oklch, var(--iris-3) 40%, var(--hairline));
+  background: color-mix(in oklch, var(--iris-3) 8%, var(--surface));
+  box-shadow: 0 1px 0 color-mix(in oklch, var(--iris-3) 16%, transparent);
 }
 
 .cardHeader {
@@ -103,36 +117,71 @@
   background: none;
   border: none;
   cursor: pointer;
-  padding: var(--space-1);
-  color: var(--color-text-tertiary);
-  transition: color 0.15s;
+  padding: 0;
+  margin-top: 1px;
+  color: var(--ink-3);
+  transition: color var(--dur-1) var(--ease-out);
   line-height: 1;
 }
 
 .bookmarkBtn:hover {
-  color: var(--color-warning, #f59e0b);
+  color: var(--warn);
 }
 
 .bookmarked {
-  color: var(--color-warning, #f59e0b);
+  color: var(--warn);
 }
 
 .questionText {
-  font-size: var(--font-xs);
-  color: var(--color-text);
-  line-height: 1.5;
+  font-size: var(--font-sm);
+  color: var(--ink-1);
+  line-height: 1.45;
   flex: 1;
 }
 
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-left: calc(14px + var(--space-2));
+}
+
 .badge {
-  flex-shrink: 0;
-  font-size: var(--font-xs);
-  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  padding: 2px var(--space-2);
   border-radius: var(--radius-full);
-  background-color: var(--color-bg-subtle);
-  color: var(--color-text-secondary);
-  text-transform: capitalize;
+  letter-spacing: 0.01em;
   white-space: nowrap;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border: 1px solid var(--hairline);
+}
+
+.badge[data-accent='behavioral'] {
+  background: color-mix(in oklch, var(--iris-3) 14%, var(--surface));
+  color: color-mix(in oklch, var(--iris-3) 55%, var(--ink-1));
+  border-color: color-mix(in oklch, var(--iris-3) 26%, var(--hairline));
+}
+
+.badge[data-accent='system-design'] {
+  background: color-mix(in oklch, var(--iris-2) 14%, var(--surface));
+  color: color-mix(in oklch, var(--iris-2) 60%, var(--ink-1));
+  border-color: color-mix(in oklch, var(--iris-2) 26%, var(--hairline));
+}
+
+.badge[data-accent='technical'] {
+  background: color-mix(in oklch, var(--iris-1) 14%, var(--surface));
+  color: color-mix(in oklch, var(--iris-1) 60%, var(--ink-1));
+  border-color: color-mix(in oklch, var(--iris-1) 26%, var(--hairline));
+}
+
+.badge[data-accent='culture'] {
+  background: color-mix(in oklch, var(--iris-4) 14%, var(--surface));
+  color: color-mix(in oklch, var(--iris-4) 55%, var(--ink-1));
+  border-color: color-mix(in oklch, var(--iris-4) 26%, var(--hairline));
 }
 
 .notesToggle {
@@ -142,37 +191,39 @@
   background: none;
   border: none;
   cursor: pointer;
+  font-family: var(--font-mono);
   font-size: var(--font-xs);
-  color: var(--color-text-tertiary);
+  color: var(--ink-3);
   padding: 0;
-  transition: color 0.15s;
+  transition: color var(--dur-1) var(--ease-out);
 }
 
 .notesToggle:hover {
-  color: var(--color-text-secondary);
+  color: var(--ink-1);
 }
 
 .notesArea {
   width: 100%;
   min-height: 60px;
   padding: var(--space-2);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-sm);
-  background-color: var(--color-bg-subtle);
+  background-color: var(--surface-2);
   font-size: var(--font-xs);
   font-family: inherit;
-  color: var(--color-text);
+  color: var(--ink-1);
   resize: vertical;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out);
 }
 
 .notesArea:focus {
-  border-color: var(--color-primary);
+  border-color: var(--hairline-strong);
+  box-shadow: var(--focus-ring);
 }
 
 .notesArea::placeholder {
-  color: var(--color-text-tertiary);
+  color: var(--ink-3);
 }
 
 .empty {
@@ -186,20 +237,76 @@
 }
 
 .emptyIcon {
-  color: var(--color-text-tertiary);
+  color: var(--ink-3);
 }
 
 .emptyText {
   font-size: var(--font-sm);
-  color: var(--color-text-secondary);
+  color: var(--ink-2);
   text-align: center;
 }
 
-.spinner {
+.skeletonWrap {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-6);
-  font-size: var(--font-sm);
-  color: var(--color-text-secondary);
+  flex-direction: column;
+  gap: var(--space-3);
+  flex: 1;
+  min-height: 0;
+}
+
+.skeletonLabel {
+  font-family: var(--font-mono);
+  font-size: var(--font-xs);
+  letter-spacing: 0.01em;
+  color: var(--ink-3);
+}
+
+.skeletonList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.skeletonCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background-color: var(--surface);
+}
+
+.skeletonBar {
+  height: 10px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--ink-3) 22%, var(--surface-2));
+  animation: questionSkeletonPulse 1400ms ease-in-out infinite;
+}
+
+.skeletonBarLine {
+  width: 88%;
+}
+
+.skeletonBarLineShort {
+  width: 64%;
+}
+
+.skeletonBarBadge {
+  width: 32%;
+  height: 14px;
+  border-radius: var(--radius-full);
+  margin-top: var(--space-1);
+}
+
+@keyframes questionSkeletonPulse {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 0.8; }
+}
+
+[data-motion="off"] .skeletonBar {
+  animation: none;
 }
