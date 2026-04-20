@@ -9,6 +9,7 @@ import { StandardToast } from '@/components/interview/Toast'
 import AddCompanyModal from './AddCompanyPage'
 import { cn } from '@/utils/cn'
 import { readResearchChatAttachment } from '@/utils/readResearchChatAttachment'
+import { resolveCompanyDomain } from '@/utils/companyDomain'
 import { ConfirmModal } from '@/utils/ConfirmModal'
 import type { CompanyRole } from '@/types'
 import styles from './ResearchPage.module.css'
@@ -39,17 +40,9 @@ const CATEGORY_STYLE: Record<string, string> = {
   SaaS: styles.categorySaas,
 }
 
-function inferDomainFromName(name: string): string {
-  const slug = name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '')
-    .slice(0, 32)
-  return slug ? `${slug}.com` : ''
-}
-
 function CompanyLogo({ company, styles }: { company: CompanyProfile; styles: Record<string, string> }) {
   const [hasError, setHasError] = useState(false)
-  const domain = company.company_website || inferDomainFromName(company.name)
+  const domain = resolveCompanyDomain(company.name, company.company_website ?? null)
   if (!domain || hasError) {
     return <div className={styles.logoFallback}>{company.name.charAt(0).toUpperCase()}</div>
   }
