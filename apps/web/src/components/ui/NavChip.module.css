@@ -1,4 +1,5 @@
 .chip {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -12,6 +13,34 @@
   border: 1px solid var(--hairline);
   border-radius: 999px;
   white-space: nowrap;
+}
+
+.chip[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-2px);
+  background: var(--ink-1);
+  color: var(--surface);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  padding: 4px 9px;
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.16s var(--ease-out), transform 0.16s var(--ease-out);
+  z-index: 20;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.08);
+}
+
+.chip[data-tooltip]:hover::after,
+.chip[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 .icon {

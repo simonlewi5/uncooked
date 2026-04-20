@@ -139,11 +139,15 @@ export default function AppShell(): JSX.Element {
             <NavChip
               icon={<Star size={11} strokeWidth={1.4} />}
               label={`LVL ${gamification.level}`}
-              title={`Career level: ${gamification.tierLabel}`}
+              tooltip={`${gamification.tierLabel} · ${gamification.totalXp} XP`}
             />
           )}
           {streak !== null && streak > 0 && (
-            <NavChip label={`${streak}D`} pulse title="Daily streak" />
+            <NavChip
+              label={`${streak}D`}
+              pulse
+              tooltip={`${streak}-day streak · longest current across practice, research, resume`}
+            />
           )}
         </div>
 

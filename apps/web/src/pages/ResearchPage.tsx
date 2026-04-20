@@ -353,8 +353,11 @@ export default function ResearchPage() {
                         styles.categoryBadge,
                         CATEGORY_STYLE[company.category] ?? styles.categoryDefault,
                       )}
+                      data-tooltip={company.category}
                     >
-                      {company.category}
+                      <span className={styles.categoryBadgeText}>
+                        {company.category}
+                      </span>
                     </span>
                   </div>
                   <button
