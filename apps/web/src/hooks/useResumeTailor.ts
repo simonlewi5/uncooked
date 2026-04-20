@@ -79,7 +79,7 @@ async function mapErrorMessage(error: unknown): Promise<string> {
   }
 
   if (response.status === 429) {
-    return details || 'AI service is rate limited. Please wait a bit and try again.'
+    return "You've hit the AI usage limit. Please wait a minute and try again."
   }
 
   if (response.status === 401) {
@@ -87,19 +87,15 @@ async function mapErrorMessage(error: unknown): Promise<string> {
   }
 
   if (response.status === 413) {
-    return details || 'Payload is too large. Shorten resume or job description.'
+    return 'Your resume or job description is too long. Please shorten it and try again.'
   }
 
   if (response.status === 405) {
-    return details || 'Resume tailor endpoint requires POST. Please retry from the Auto-Tailor button.'
+    return 'Something went wrong. Please try clicking Auto-Tailor again.'
   }
 
-  if (response.status === 502) {
-    return details || 'AI service is currently unavailable. Please retry.'
-  }
-
-  if (response.status >= 500) {
-    return details || 'Server error while tailoring your resume.'
+  if (response.status === 502 || response.status >= 500) {
+    return 'The AI service is temporarily unavailable. Please try again in a moment.'
   }
 
   return details || maybeError.message || fallback
