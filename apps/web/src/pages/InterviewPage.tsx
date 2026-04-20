@@ -25,6 +25,7 @@ interface PersistedSession {
   sidebarWidth?: number
   questionCooldownEnd?: number
   companyWebsite?: string | null
+  resumeId?: string | null
 }
 
 function saveSession(data: PersistedSession): void {
@@ -84,7 +85,7 @@ export default function InterviewPage(): JSX.Element {
   const [style, setStyle] = useState<InterviewStyle | null>(
     hasRoleLink ? 'mixed' : (initialState.current?.style ?? 'mixed'),
   )
-  const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null)
+  const [selectedResumeId, setSelectedResumeId] = useState<string | null>(initialState.current?.resumeId ?? null)
   const [activeResume, setActiveResume] = useState<ResumeSummary | null>(null)
 
   const [activeSessionId, setActiveSessionId] = useState<string | null>(
@@ -143,6 +144,7 @@ export default function InterviewPage(): JSX.Element {
         jobDescription,
         style: style ?? 'mixed',
         companyWebsite,
+        resumeId: selectedResumeId,
       })
     }
   }
@@ -176,7 +178,24 @@ export default function InterviewPage(): JSX.Element {
     if (roleState?.roleId) return
 
     const saved = initialState.current
-    if (!saved?.sessionId) return
+    if (!saved) return
+
+    if (saved.resumeId) {
+      setSelectedResumeId(saved.resumeId)
+
+      void supabase
+        .from('resumes')
+        .select('id, title, is_primary, updated_at, structured_content, source_file_path')
+        .eq('id', saved.resumeId)
+        .single()
+        .then(({ data: resumeData, error: resumeError }) => {
+          if (!resumeError && resumeData) {
+            setActiveResume(resumeData)
+          }
+        })
+    }
+
+    if (!saved.sessionId) return
 
     Promise.resolve(
       supabase
@@ -210,9 +229,10 @@ export default function InterviewPage(): JSX.Element {
       companyName,
       jobDescription,
       style: style ?? 'mixed',
+      resumeId: selectedResumeId,
     })
     setPhase('interview')
-  }, [companyName, jobDescription, style])
+  }, [companyName, jobDescription, style, selectedResumeId])
 
   const {
     showCompanyModal,
@@ -319,6 +339,7 @@ export default function InterviewPage(): JSX.Element {
       jobDescription: (data.job_description as string) ?? '',
       style: (data.interview_style as InterviewStyle) ?? 'mixed',
       companyWebsite: fetchedWebsite,
+      resumeId: (data.resume_id as string | null) ?? null,
     })
     window.scrollTo({ top: 0, behavior: 'auto' })
     setPhase('interview')
