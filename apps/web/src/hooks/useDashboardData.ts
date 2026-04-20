@@ -251,7 +251,7 @@ export function useDashboardData({
             .abortSignal(controller.signal),
           supabase
             .from('company_profiles')
-            .select('id, company_name, industry')
+            .select('id, company_name, industry, company_website')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
             .limit(4)
@@ -277,6 +277,7 @@ export function useDashboardData({
           id: row.id,
           companyName: row.company_name,
           industry: row.industry,
+          companyWebsite: row.company_website ?? null,
         })))
       } catch (err) {
         if (!controller.signal.aborted) {
