@@ -188,6 +188,10 @@ RULES:
 - Focus only on summary, skills, and selected experience bullets.
 - Return 2-5 edits total.
 - Keep replacement text concise and directly usable.
+- Write experience bullets in Action-Result format: lead with a strong past-tense action verb, then state the measurable outcome. Omit Situation/Task context unless essential for clarity.
+- Quantify results using facts already present in the resume (%, $, time saved, scale). Never invent numbers.
+- Mirror exact keyword phrasing from the job description where it fits naturally (ATS optimization).
+- Start every bullet replacement with a strong action verb (e.g. Led, Built, Reduced, Shipped, Designed, Automated).
 
 EDIT TARGETS:
 - section: one of summary|experience|skills
