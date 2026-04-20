@@ -299,6 +299,7 @@ export function useDashboardData({
         const { data, error } = await supabase.rpc('get_daily_duration', {
           p_start_date: toLocalDateString(bounds.start),
           p_end_date:   toLocalDateString(bounds.end),
+          p_timezone:   Intl.DateTimeFormat().resolvedOptions().timeZone,
         }).abortSignal(controller.signal)
 
         if (error) throw error

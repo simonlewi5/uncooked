@@ -2,6 +2,7 @@ import type { ResumeDocument, ResumeParseResponse } from '@/types'
 import { extractEducation } from './extractEducation'
 import { extractProfile } from './extractProfile'
 import { extractSkills } from './extractSkills'
+import { extractSummary } from './extractSummary'
 import { extractWorkExperience } from './extractWorkExperience'
 import { groupLinesIntoSections } from './groupLinesIntoSections'
 import { groupTextItemsIntoLines } from './groupTextItemsIntoLines'
@@ -28,6 +29,7 @@ export async function parsePdfToTailorContent(file: File): Promise<ResumeParseRe
   const experiences = extractWorkExperience(sections)
   const educations = extractEducation(sections)
   const skills = extractSkills(sections)
+  const summaryText = extractSummary(sections) || profile.summary
 
   const warnings: ResumeParseResponse['warnings'] = []
 
@@ -63,7 +65,7 @@ export async function parsePdfToTailorContent(file: File): Promise<ResumeParseRe
     },
     summary: {
       id: 'profile/summary',
-      text: sanitizeText(profile.summary),
+      text: sanitizeText(summaryText),
     },
     experience: experiences.map((entry, index) => {
       const id = `e${index + 1}`
