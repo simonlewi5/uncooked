@@ -201,6 +201,10 @@
   letter-spacing: 0.02em;
   border-radius: var(--radius-full);
   width: fit-content;
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .categoryDefault {
