@@ -219,15 +219,19 @@ export default function ResumePage() {
 
     const load = async () => {
       if (!user?.id) return
+      if (activeJobApplicationId) return
       clearPersistenceError()
 
       try {
         const existing = await loadPrimaryResume(user.id)
         if (cancelled || !existing?.structuredContent) return
-        setResumeContent(normalizeResumeDocument(existing.structuredContent))
+        try {
+          setResumeContent(normalizeResumeDocument(existing.structuredContent))
+        } catch {
+          setResumeContent(toInitialResumeContent())
+        }
         setActiveResumeId(existing.id)
       } catch {
-        // error through persistenceError
       }
     }
 
@@ -236,7 +240,7 @@ export default function ResumePage() {
     return () => {
       cancelled = true
     }
-  }, [user?.id, loadPrimaryResume, clearPersistenceError])
+  }, [user?.id, loadPrimaryResume, clearPersistenceError, activeJobApplicationId])
 
   const handleSelectJobApplication = useCallback(async (
     resumeId: string,
@@ -244,6 +248,7 @@ export default function ResumePage() {
   ) => {
     clearPersistenceError()
     setActiveJobApplicationId(jobApplicationId)
+    setActiveResumeId(resumeId)
     setPendingEdits([])
     setTailorRunState('idle')
 
@@ -256,10 +261,13 @@ export default function ResumePage() {
     setJobDescription(jobApp?.job_description ?? '')
 
     const resume = await loadResumeById(resumeId)
-    if (resume?.structuredContent) {
-      setResumeContent(normalizeResumeDocument(resume.structuredContent))
-      setActiveResumeId(resume.id)
-    }
+    if (resume?.structuredContent && Object.keys(resume.structuredContent).length > 0) {
+      try {
+        setResumeContent(normalizeResumeDocument(resume.structuredContent))
+      } catch (err) {
+      setResumeContent(toInitialResumeContent())
+  }
+}
   }, [clearPersistenceError, loadResumeById])
 
   async function handlePdfImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -284,8 +292,13 @@ export default function ResumePage() {
     })
 
     if (saved?.structuredContent) {
-      setResumeContent(normalizeResumeDocument(saved.structuredContent))
+      try {
+        setResumeContent(normalizeResumeDocument(saved.structuredContent))
+      } catch {
+        setResumeContent(toInitialResumeContent())
+      }
       setActiveResumeId(saved.id)
+      setActiveJobApplicationId(null)
       setPendingEdits([])
       queueResumeGamification(GAMIFICATION_EVENT_TYPES.RESUME_SESSION_UPLOAD, saved.id)
       setSubmitError(
@@ -401,14 +414,13 @@ export default function ResumePage() {
     setSubmitError(null)
 
     if (!activeResumeId) {
-      setSubmitError('Upload and parse a resume first before saving changes.')
+      setSubmitError('Select a job application or upload a resume before saving.')
       return
     }
 
     try {
       await saveResume(activeResumeId, resumeContent, 'edited')
     } catch {
-      // error through persistenceError
     }
   }
 
