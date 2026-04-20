@@ -8,6 +8,8 @@ export const GAMIFICATION_EVENT_TYPES = {
   RESUME_AUTO_TAILOR: 'resume_auto_tailor',
   RESUME_APPLY_TAILOR_EDIT: 'resume_apply_tailor_edit',
   RESUME_DECLINE_TAILOR_EDIT: 'resume_decline_tailor_edit',
+  RESEARCH_COMPANY_ADDED: 'research_company_added',
+  RESEARCH_CHAT_MESSAGE: 'research_chat_message',
 } as const
 
 export type ResumeGamificationEventType =
@@ -15,6 +17,10 @@ export type ResumeGamificationEventType =
   | typeof GAMIFICATION_EVENT_TYPES.RESUME_AUTO_TAILOR
   | typeof GAMIFICATION_EVENT_TYPES.RESUME_APPLY_TAILOR_EDIT
   | typeof GAMIFICATION_EVENT_TYPES.RESUME_DECLINE_TAILOR_EDIT
+
+export type ResearchGamificationEventType =
+  | typeof GAMIFICATION_EVENT_TYPES.RESEARCH_COMPANY_ADDED
+  | typeof GAMIFICATION_EVENT_TYPES.RESEARCH_CHAT_MESSAGE
 
 /** Must match `xp_awarded` written at insert time (see `useInterviewChat`, `recordXpEvent`). */
 export const XP_BY_EVENT_TYPE: Record<string, number> = {
@@ -26,6 +32,8 @@ export const XP_BY_EVENT_TYPE: Record<string, number> = {
   [GAMIFICATION_EVENT_TYPES.RESUME_AUTO_TAILOR]: 40,
   [GAMIFICATION_EVENT_TYPES.RESUME_APPLY_TAILOR_EDIT]: 15,
   [GAMIFICATION_EVENT_TYPES.RESUME_DECLINE_TAILOR_EDIT]: 10,
+  [GAMIFICATION_EVENT_TYPES.RESEARCH_COMPANY_ADDED]: 20,
+  [GAMIFICATION_EVENT_TYPES.RESEARCH_CHAT_MESSAGE]: 10,
 }
 
 const RESUME_TOAST_TITLE: Partial<Record<ResumeGamificationEventType, string>> = {
@@ -35,10 +43,19 @@ const RESUME_TOAST_TITLE: Partial<Record<ResumeGamificationEventType, string>> =
   [GAMIFICATION_EVENT_TYPES.RESUME_DECLINE_TAILOR_EDIT]: 'Suggestion declined',
 }
 
+const RESEARCH_TOAST_TITLE: Partial<Record<ResearchGamificationEventType, string>> = {
+  [GAMIFICATION_EVENT_TYPES.RESEARCH_COMPANY_ADDED]: 'Company added to board',
+  [GAMIFICATION_EVENT_TYPES.RESEARCH_CHAT_MESSAGE]: 'Research question asked',
+}
+
 export function getXpForEventType(eventType: string): number {
   return XP_BY_EVENT_TYPE[eventType] ?? 0
 }
 
 export function getResumeToastTitle(eventType: ResumeGamificationEventType): string {
   return RESUME_TOAST_TITLE[eventType] ?? 'Progress saved'
+}
+
+export function getResearchToastTitle(eventType: ResearchGamificationEventType): string {
+  return RESEARCH_TOAST_TITLE[eventType] ?? 'Research progress'
 }

@@ -88,7 +88,15 @@ function PracticeConsistencyCard({
 }: PracticeConsistencyCardProps): JSX.Element {
   const labels = range === 'week' ? WEEK_LABELS : MONTH_BUCKET_LABELS
   const buckets = data.buckets
-  const totalHours = (data.totalMinutes / 60).toFixed(data.totalMinutes % 60 === 0 ? 0 : 1)
+  const totalMinutes = data.totalMinutes
+  const statLabel =
+    totalMinutes === 0
+      ? '0m'
+      : totalMinutes < 60
+        ? `${totalMinutes}m`
+        : totalMinutes % 60 === 0
+          ? `${totalMinutes / 60}h`
+          : `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`
 
   return (
     <div className={styles.card}>
@@ -101,12 +109,12 @@ function PracticeConsistencyCard({
           <RangePills value={range} onChange={onRangeChange} />
         </div>
 
-        <div className={styles.statValue}>{totalHours}h</div>
+        <div className={styles.statValue}>{statLabel}</div>
         <p className={styles.statEmpty}>
           {data.totalMinutes === 0
             ? 'Start your first session to track consistency'
             : range === 'week'
-              ? 'Practice time recorded this ISO week'
+              ? 'Practice time recorded this week'
               : 'Practice time recorded this month'}
         </p>
 
@@ -253,7 +261,7 @@ function ApplicationPipelineCard({
           <RangePills value={range} onChange={onRangeChange} />
         </div>
 
-        {pipeline.total === 0 ? (
+        {pipeline.applied === 0 && pipeline.interviews === 0 && pipeline.offers === 0 ? (
           <div className={styles.emptyState}>
             <p className={styles.emptyText}>
               {range === 'week'
@@ -269,7 +277,7 @@ function ApplicationPipelineCard({
             <div className={styles.pipelineStats}>
               <div className={styles.pipelineStat}>
                 <span className={styles.pipelineLabel}>Applied</span>
-                <span className={cn(styles.pipelineValue, styles.pipelineValueApplied)}>{pipeline.total}</span>
+                <span className={cn(styles.pipelineValue, styles.pipelineValueApplied)}>{pipeline.applied}</span>
               </div>
               <div className={styles.pipelineStat}>
                 <span className={styles.pipelineLabel}>Interviews</span>
@@ -283,12 +291,16 @@ function ApplicationPipelineCard({
 
             <div className={styles.progressTrack}>
               <div
-                className={cn(styles.progressLayer, styles.progressLayerMid)}
-                style={{ width: `${(pipeline.interviews / pipeline.total) * 100}%` }}
+                className={cn(styles.progressSegment, styles.progressSegmentApplied)}
+                style={{ flex: pipeline.applied }}
               />
               <div
-                className={cn(styles.progressLayer, styles.progressLayerTop)}
-                style={{ width: `${(pipeline.offers / pipeline.total) * 100}%` }}
+                className={cn(styles.progressSegment, styles.progressSegmentInterviews)}
+                style={{ flex: pipeline.interviews }}
+              />
+              <div
+                className={cn(styles.progressSegment, styles.progressSegmentOffers)}
+                style={{ flex: pipeline.offers }}
               />
             </div>
 
@@ -312,6 +324,13 @@ export default function DashboardPage(): JSX.Element {
     practiceRange,
     pipelineRange,
   })
+
+  // Demo-day mock — swap this in place of `data?.practiceConsistency ?? practiceFallback`
+  // to show realistic week/month activity without needing real DB data.
+  // const MOCK_PRACTICE: Record<DashboardRange, { totalMinutes: number; buckets: number[] }> = {
+  //   week:  { totalMinutes: 285, buckets: [45, 0, 90, 30, 60, 0, 60] },  // M–Su
+  //   month: { totalMinutes: 720, buckets: [180, 210, 150, 120, 60] },      // W1–W5
+  // }
 
   const practiceFallback =
     practiceRange === 'week'
@@ -346,6 +365,8 @@ export default function DashboardPage(): JSX.Element {
             range={practiceRange}
             onRangeChange={setPracticeRange}
             data={data?.practiceConsistency ?? practiceFallback}
+            // data={MOCK_PRACTICE[practiceRange]}
+
           />
           <TargetCompaniesCard companies={data?.companies ?? []} />
         </div>
@@ -355,7 +376,7 @@ export default function DashboardPage(): JSX.Element {
           <ApplicationPipelineCard
             range={pipelineRange}
             onRangeChange={setPipelineRange}
-            pipeline={data?.pipeline ?? { total: 0, interviews: 0, offers: 0 }}
+            pipeline={data?.pipeline ?? { applied: 0, interviews: 0, offers: 0 }}
           />
         </div>
       </div>

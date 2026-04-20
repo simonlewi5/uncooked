@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Plus, Search, Send, X, Paperclip, Star, Trash2, ChevronRight, ChevronDown, Play, Briefcase } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
@@ -6,12 +6,19 @@ import { useResearchChat } from '@/hooks/useResearchChat'
 import { useResearchCompanies } from '@/hooks/useResearchCompanies'
 import { useCompanyRoles } from '@/hooks/useCompanyRoles'
 import { StandardToast } from '@/components/interview/Toast'
+import { XpToast } from '@/components/interview/XpToast'
 import AddCompanyModal from './AddCompanyPage'
 import { cn } from '@/utils/cn'
 import { readResearchChatAttachment } from '@/utils/readResearchChatAttachment'
 import { resolveCompanyDomain } from '@/utils/companyDomain'
 import { ConfirmModal } from '@/utils/ConfirmModal'
-import type { CompanyRole } from '@/types'
+import {
+  awardGamificationEvent,
+  GAMIFICATION_EVENT_TYPES,
+  getResearchToastTitle,
+  type ResearchGamificationEventType,
+} from '@/lib/gamification'
+import type { Badge, CompanyRole } from '@/types'
 import styles from './ResearchPage.module.css'
 
 interface CompanyProfile {
@@ -75,6 +82,42 @@ export default function ResearchPage() {
     variant: 'success' | 'error'
   } | null>(null)
   const [companyToDelete, setCompanyToDelete] = useState<{ id: string; name: string } | null>(null)
+
+  type GamificationToastItem =
+    | { id: number; variant: 'xp'; xp: number; label: string }
+    | { id: number; variant: 'achievement'; label: string }
+  const [gamificationToasts, setGamificationToasts] = useState<GamificationToastItem[]>([])
+  const pushGamificationToast = useCallback((item: GamificationToastItem) => {
+    setGamificationToasts((prev) => [...prev, item])
+  }, [])
+
+  const queueResearchGamification = useCallback(
+    (eventType: ResearchGamificationEventType) => {
+      if (!user?.id) return
+      void awardGamificationEvent(user.id, eventType).then((result) => {
+        if (!result.success) return
+        pushGamificationToast({ id: Date.now() + Math.random(), variant: 'xp', xp: result.xpAwarded, label: getResearchToastTitle(eventType) })
+        result.newBadges.forEach((badge: Badge, i: number) => {
+          window.setTimeout(() => {
+            pushGamificationToast({ id: Date.now() + Math.random(), variant: 'achievement', label: `${badge.icon} ${badge.label}` })
+          }, 320 * (i + 1))
+        })
+      })
+    },
+    [user?.id, pushGamificationToast],
+  )
+
+  const handleChatXpAwarded = useCallback(
+    ({ xpAwarded, newBadges }: { xpAwarded: number; newBadges: Badge[] }) => {
+      pushGamificationToast({ id: Date.now() + Math.random(), variant: 'xp', xp: xpAwarded, label: getResearchToastTitle(GAMIFICATION_EVENT_TYPES.RESEARCH_CHAT_MESSAGE as ResearchGamificationEventType) })
+      newBadges.forEach((badge: Badge, i: number) => {
+        window.setTimeout(() => {
+          pushGamificationToast({ id: Date.now() + Math.random(), variant: 'achievement', label: `${badge.icon} ${badge.label}` })
+        }, 320 * (i + 1))
+      })
+    },
+    [pushGamificationToast],
+  )
 
   // Expandable roles state
   const [expandedCompanyId, setExpandedCompanyId] = useState<string | null>(
@@ -163,6 +206,7 @@ export default function ResearchPage() {
     jobDescription: activeRole?.jobDescription || undefined,
     companyProfileId: activeCompanyProfileId || null,
     roleId: activeRole?.id || null,
+    onXpAwarded: handleChatXpAwarded,
   })
 
   const filteredCompanies = dbCompanies
@@ -294,6 +338,16 @@ export default function ResearchPage() {
 
   return (
     <div className={styles.page}>
+      {gamificationToasts.map((t, i) => (
+        <XpToast
+          key={t.id}
+          variant={t.variant}
+          xp={t.variant === 'xp' ? t.xp : undefined}
+          label={t.label}
+          style={{ bottom: `calc(1.5rem + ${i * 3.5}rem)` }}
+          onDone={() => setGamificationToasts((prev) => prev.filter((x) => x.id !== t.id))}
+        />
+      ))}
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Research Board</h1>
@@ -652,6 +706,7 @@ export default function ResearchPage() {
           setSearchQuery(newName)
           await refreshCompanies()
           setToastConfig({ message: `Added ${newName} to your board!`, variant: 'success' })
+          queueResearchGamification(GAMIFICATION_EVENT_TYPES.RESEARCH_COMPANY_ADDED as ResearchGamificationEventType)
         }}
       />
       <ConfirmModal

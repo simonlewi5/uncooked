@@ -32,6 +32,7 @@ import {
 import { useResumeTailor } from '@/hooks/useResumeTailor'
 import { useResumeUploadAndParse } from '@/hooks/useResumeUploadAndParse'
 import { useResumePersistence } from '@/hooks/useResumePersistence'
+import { useTrackActivity } from '@/hooks/useTrackActivity'
 import { useAuth } from '@/contexts/AuthContext'
 import { AutoTailorOrb } from '@/components/resume/AutoTailorOrb'
 import {
@@ -136,6 +137,17 @@ export default function ResumePage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
   const [activeResumeId, setActiveResumeId] = useState<string | null>(null)
+  const { trackEvent: trackResume } = useTrackActivity('resume')
+  const editsReceivedAtRef = useRef<number | null>(null)
+  const initialEditCountRef = useRef<number>(0)
+
+  useEffect(() => {
+    if (pendingEdits.length > 0 || editsReceivedAtRef.current === null) return
+    const reviewSeconds = Math.round((Date.now() - editsReceivedAtRef.current) / 1000)
+    trackResume('edits_resolved', { initialEditCount: initialEditCountRef.current }, reviewSeconds)
+    editsReceivedAtRef.current = null
+  }, [pendingEdits.length, trackResume])
+
   const { runTailor, isLoading, error: tailorError, clearError } = useResumeTailor()
   const {
     loadPrimaryResume,
@@ -348,6 +360,10 @@ export default function ResumePage() {
     if (result.status === 'error') return
 
     setPendingEdits(result.edits)
+    if (result.edits.length > 0) {
+      editsReceivedAtRef.current = Date.now()
+      initialEditCountRef.current = result.edits.length
+    }
     setTailorRunState('complete')
     queueResumeGamification(GAMIFICATION_EVENT_TYPES.RESUME_AUTO_TAILOR)
   }

@@ -114,7 +114,7 @@ export interface PracticeConsistencyData {
 }
 
 export interface PipelineCounts {
-  total: number
+  applied: number
   interviews: number
   offers: number
 }
