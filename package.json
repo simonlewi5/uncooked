@@ -14,5 +14,9 @@
   "devDependencies": {
     "prettier": "^3.4.2",
     "turbo": "^2.3.3"
+  },
+  "dependencies": {
+    "react-markdown": "^10.1.0",
+    "swr": "^2.4.1"
   }
 }
