@@ -104,11 +104,12 @@
 }
 
 .pastSessionsTitle {
+  font-family: var(--font-mono);
   font-size: var(--font-xs);
   font-weight: 600;
-  color: var(--ink-2);
+  color: var(--ink-3);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
 }
 
 .sessionList {
@@ -177,18 +178,14 @@
 
 .sessionCompany {
   font-size: var(--font-sm);
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink-1);
 }
 
 .sessionMeta {
+  font-family: var(--font-mono);
   font-size: var(--font-xs);
-  color: var(--ink-2);
-}
-
-.sessionIcon {
   color: var(--ink-3);
-  flex-shrink: 0;
 }
 
 .pastJobs {

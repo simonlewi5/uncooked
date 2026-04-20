@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ArrowRight, MessageSquare, FileText, Maximize, X, Trash2 } from 'lucide-react'
+import { ArrowRight, FileText, Maximize, X, Trash2 } from 'lucide-react'
 import { CompanyAutocomplete } from './CompanyAutocomplete'
+import { CompanyLogo } from './CompanyLogo'
 import { InterviewStyleSelector } from './InterviewStyleSelector'
 import { usePastJobDescriptions } from '@/hooks/usePastJobDescriptions'
 import { supabase } from '@/lib/supabase'
@@ -290,7 +291,10 @@ export function SetupForm({
                       className={styles.sessionLoadBtn}
                       onClick={() => onLoadSession(session)}
                     >
-                      <MessageSquare size={16} className={styles.sessionIcon} />
+                      <CompanyLogo
+                        company={{ companyName: session.companyName, companyWebsite: null }}
+                        size="sm"
+                      />
                       <div className={styles.sessionInfo}>
                         <span className={styles.sessionCompany}>{session.companyName}</span>
                         <span className={styles.sessionMeta}>

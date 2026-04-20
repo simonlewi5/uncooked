@@ -37,23 +37,25 @@
 
 .bubble {
   padding: 0.625rem 0.875rem;
-  border-radius: var(--radius-lg);
+  font-family: var(--font-sans);
   font-size: var(--font-sm);
-  line-height: 1.5;
+  line-height: 1.55;
   word-break: break-word;
+  animation: fade-up var(--dur-2) var(--ease-out);
 }
 
 .bubbleUser {
-  background-color: var(--blue);
+  background: var(--ink-1);
   color: var(--surface);
-  border-bottom-right-radius: var(--radius-sm);
+  border-radius: 14px 14px 4px 14px;
   white-space: pre-wrap;
 }
 
 .bubbleAssistant {
-  background-color: var(--surface-2);
+  background: var(--surface-2);
   color: var(--ink-1);
-  border-bottom-left-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+  border-radius: 14px 14px 14px 4px;
 }
 
 /* Markdown content inside assistant bubbles */

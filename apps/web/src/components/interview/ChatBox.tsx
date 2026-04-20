@@ -12,7 +12,10 @@ interface ChatBoxProps {
   disabled?: boolean
 }
 
-function formatTime(date: Date): string {
+function formatTime(raw: Date | string | number | null | undefined): string {
+  if (raw === null || raw === undefined) return ''
+  const date = raw instanceof Date ? raw : new Date(raw)
+  if (isNaN(date.getTime())) return ''
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
@@ -55,31 +58,34 @@ export function ChatBox({ messages, isTyping, onSend, disabled }: ChatBoxProps):
   return (
     <div className={styles.wrapper}>
       <div className={styles.messages}>
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={cn(
-              styles.message,
-              msg.role === 'user' ? styles.messageUser : styles.messageAssistant,
-            )}
-          >
+        {messages.map((msg) => {
+          const time = formatTime(msg.timestamp)
+          return (
             <div
+              key={msg.id}
               className={cn(
-                styles.bubble,
-                msg.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant,
+                styles.message,
+                msg.role === 'user' ? styles.messageUser : styles.messageAssistant,
               )}
             >
-              {msg.role === 'assistant' ? (
-                <div className={styles.markdown}>
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
-                </div>
-              ) : (
-                msg.content
-              )}
+              <div
+                className={cn(
+                  styles.bubble,
+                  msg.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant,
+                )}
+              >
+                {msg.role === 'assistant' ? (
+                  <div className={styles.markdown}>
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  </div>
+                ) : (
+                  msg.content
+                )}
+              </div>
+              {time && <span className={styles.timestamp}>{time}</span>}
             </div>
-            <span className={styles.timestamp}>{formatTime(msg.timestamp)}</span>
-          </div>
-        ))}
+          )
+        })}
 
         {isTyping && (
           <div className={styles.typing} aria-label="Assistant is typing">
