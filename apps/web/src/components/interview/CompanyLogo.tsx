@@ -4,7 +4,7 @@ import { cn } from '@/utils/cn'
 import styles from './CompanyLogo.module.css'
 
 interface CompanyLogoProps {
-  company: CompanyProfile
+  company: Pick<CompanyProfile, 'companyName' | 'companyWebsite'>
   size: 'sm' | 'md'
 }
 
@@ -20,9 +20,17 @@ function getLogoDomain(website: string | null): string | null {
   }
 }
 
+function inferDomainFromName(name: string): string | null {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+    .slice(0, 32)
+  return slug ? `${slug}.com` : null
+}
+
 export function CompanyLogo({ company, size }: CompanyLogoProps): React.JSX.Element {
   const [imgFailed, setImgFailed] = useState(false)
-  const domain = getLogoDomain(company.companyWebsite)
+  const domain = getLogoDomain(company.companyWebsite) || inferDomainFromName(company.companyName)
   const initials = company.companyName.slice(0, 2).toUpperCase()
 
   if (domain && !imgFailed) {

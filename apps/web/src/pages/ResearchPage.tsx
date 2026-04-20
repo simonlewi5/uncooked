@@ -39,14 +39,23 @@ const CATEGORY_STYLE: Record<string, string> = {
   SaaS: styles.categorySaas,
 }
 
+function inferDomainFromName(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+    .slice(0, 32)
+  return slug ? `${slug}.com` : ''
+}
+
 function CompanyLogo({ company, styles }: { company: CompanyProfile; styles: Record<string, string> }) {
   const [hasError, setHasError] = useState(false)
-  if (!company.company_website || hasError) {
+  const domain = company.company_website || inferDomainFromName(company.name)
+  if (!domain || hasError) {
     return <div className={styles.logoFallback}>{company.name.charAt(0).toUpperCase()}</div>
   }
   return (
     <img
-      src={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/company-logo?domain=${encodeURIComponent(company.company_website)}`}
+      src={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/company-logo?domain=${encodeURIComponent(domain)}`}
       alt={`${company.name} logo`}
       className={styles.logoImage}
       onError={() => setHasError(true)}
