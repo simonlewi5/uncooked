@@ -1,21 +1,17 @@
 @keyframes spin {
   from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  to   { transform: rotate(360deg); }
 }
 
 .spinner {
-  animation: spin 0.75s linear infinite;
+  animation: spin calc(750ms * var(--motion-scale, 1)) linear infinite;
   display: inline-block;
   flex-shrink: 0;
+  color: var(--ink-3);
 }
 
-.track {
-  opacity: 0.25;
-}
-
-.arc {
-  opacity: 0.75;
-}
+.track { opacity: 0.25; }
+.arc   { opacity: 0.75; }
 
 .sm { width: 14px; height: 14px; }
 .md { width: 20px; height: 20px; }

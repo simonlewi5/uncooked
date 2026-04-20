@@ -10,6 +10,7 @@ import { XpToast } from '@/components/interview/XpToast'
 import AddCompanyModal from './AddCompanyPage'
 import { cn } from '@/utils/cn'
 import { readResearchChatAttachment } from '@/utils/readResearchChatAttachment'
+import { resolveCompanyDomain } from '@/utils/companyDomain'
 import { ConfirmModal } from '@/utils/ConfirmModal'
 import {
   awardGamificationEvent,
@@ -48,12 +49,13 @@ const CATEGORY_STYLE: Record<string, string> = {
 
 function CompanyLogo({ company, styles }: { company: CompanyProfile; styles: Record<string, string> }) {
   const [hasError, setHasError] = useState(false)
-  if (!company.company_website || hasError) {
+  const domain = resolveCompanyDomain(company.name, company.company_website ?? null)
+  if (!domain || hasError) {
     return <div className={styles.logoFallback}>{company.name.charAt(0).toUpperCase()}</div>
   }
   return (
     <img
-      src={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/company-logo?domain=${encodeURIComponent(company.company_website)}`}
+      src={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/company-logo?domain=${encodeURIComponent(domain)}`}
       alt={`${company.name} logo`}
       className={styles.logoImage}
       onError={() => setHasError(true)}
@@ -405,8 +407,11 @@ export default function ResearchPage() {
                         styles.categoryBadge,
                         CATEGORY_STYLE[company.category] ?? styles.categoryDefault,
                       )}
+                      data-tooltip={company.category}
                     >
-                      {company.category}
+                      <span className={styles.categoryBadgeText}>
+                        {company.category}
+                      </span>
                     </span>
                   </div>
                   <button

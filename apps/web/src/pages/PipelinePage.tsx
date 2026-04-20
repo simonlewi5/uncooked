@@ -64,6 +64,16 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+const ACCENT_COUNT = 4
+
+function accentIndex(companyName: string): number {
+  let hash = 0
+  for (let i = 0; i < companyName.length; i++) {
+    hash = (hash * 31 + companyName.charCodeAt(i)) >>> 0
+  }
+  return hash % ACCENT_COUNT
+}
+
 export default function PipelinePage() {
   const { user } = useAuth()
   const [applications, setApplications] = useState<JobApplication[]>([])
@@ -264,7 +274,7 @@ export default function PipelinePage() {
                   {cards.map((app) => (
                     <div
                       key={app.id}
-                      className={styles.card}
+                      className={cn(styles.card, col.key === 'offer' && 'iris-glow')}
                       draggable
                       onClick={() => openEdit(app)}
                       onDragStart={() => handleDragStart(app.id)}
@@ -280,7 +290,12 @@ export default function PipelinePage() {
                           <X size={12} />
                         </button>
                       </div>
-                      <p className={styles.cardCompany}>{app.companyName}</p>
+                      <p
+                        className={styles.cardCompany}
+                        data-accent={accentIndex(app.companyName)}
+                      >
+                        {app.companyName}
+                      </p>
                       {app.notes && <p className={styles.cardNotes}>{app.notes}</p>}
                       <div className={styles.cardFooter}>
                         <span className={styles.cardDate}>

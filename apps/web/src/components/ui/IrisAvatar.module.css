@@ -1,0 +1,11 @@
+.avatar {
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--iris-2), var(--iris-3));
+  color: white;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
