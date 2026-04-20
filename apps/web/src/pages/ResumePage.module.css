@@ -505,7 +505,7 @@
   transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
 }
 
-.modeBtn:hover {
+.modeBtn:not(.modeBtnActive):hover {
   color: var(--ink-1);
 }
 
