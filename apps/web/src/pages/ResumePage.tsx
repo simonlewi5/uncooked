@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, KeyboardEvent, useCallback } from 'react'
-import html2pdf from 'html2pdf.js'
+import { jsPDF } from 'jspdf'
 import { Download, Sparkles, Search, X, Plus, FileUp } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { XpToast } from '@/components/interview/XpToast'
@@ -369,18 +369,128 @@ export default function ResumePage() {
   }
 
   async function handleExportPDF() {
-    if (!resumeRef.current) return
-    await html2pdf()
-      .set({
-        margin: [10, 10, 10, 10],
-        filename: 'resume_export.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      })
-      .from(resumeRef.current)
-      .save()
-  }
+      // Generate PDF directly from resumeContent state using jsPDF.
+      // No DOM, no html2canvas, no oklch() hang, no print dialog.
+      // doc.save() triggers a direct browser download.
+      const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
+
+      const PAGE_W = 210
+      const PAGE_H = 297
+      const ML = 18
+      const MR = 18
+      const MT = 18
+      const MB = 18
+      const CONTENT_W = PAGE_W - ML - MR
+      const MAX_Y = PAGE_H - MB
+
+      let y = MT
+
+      const checkPageBreak = (needed: number) => {
+        if (y + needed > MAX_Y) {
+          doc.addPage()
+          y = MT
+        }
+      }
+
+      const sectionHeader = (label: string) => {
+        checkPageBreak(10)
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(9)
+        doc.setTextColor(80, 80, 80)
+        doc.text(label.toUpperCase(), ML, y)
+        doc.setDrawColor(180, 180, 180)
+        doc.line(ML, y + 1.5, PAGE_W - MR, y + 1.5)
+        y += 7
+        doc.setTextColor(0, 0, 0)
+      }
+
+      // ── Name ──────────────────────────────────────────────────────────────────
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(22)
+      doc.setTextColor(20, 20, 20)
+      doc.text(resumeContent.name.text || '', PAGE_W / 2, y, { align: 'center' })
+      y += 8
+
+      // ── Contact ───────────────────────────────────────────────────────────────
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(9.5)
+      doc.setTextColor(80, 80, 80)
+      doc.text(resumeContent.contact.text || '', PAGE_W / 2, y, { align: 'center' })
+      y += 10
+
+      // ── Summary ───────────────────────────────────────────────────────────────
+      if (resumeContent.summary.text?.trim()) {
+        sectionHeader('Summary')
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(9.5)
+        doc.setTextColor(40, 40, 40)
+        const lines = doc.splitTextToSize(resumeContent.summary.text, CONTENT_W)
+        checkPageBreak(lines.length * 5)
+        doc.text(lines, ML, y)
+        y += lines.length * 5 + 7
+      }
+
+      // ── Experience ────────────────────────────────────────────────────────────
+      if (resumeContent.experience.length > 0) {
+        sectionHeader('Experience')
+        for (const job of resumeContent.experience) {
+          checkPageBreak(14)
+          doc.setFont('helvetica', 'bold')
+          doc.setFontSize(10)
+          doc.setTextColor(20, 20, 20)
+          doc.text(job.title.text || '', ML, y)
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(9)
+          doc.setTextColor(80, 80, 80)
+          doc.text(job.period.text || '', PAGE_W - MR, y, { align: 'right' })
+          y += 5
+
+          doc.setFont('helvetica', 'italic')
+          doc.setFontSize(9.5)
+          doc.setTextColor(60, 60, 60)
+          doc.text(job.company.text || '', ML, y)
+          y += 5
+
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(9.5)
+          doc.setTextColor(40, 40, 40)
+          for (const bullet of job.bullets) {
+            if (!bullet.text?.trim()) continue
+            const wrapped = doc.splitTextToSize(bullet.text, CONTENT_W - 5)
+            checkPageBreak(wrapped.length * 4.8 + 1)
+            doc.text('•', ML, y)
+            doc.text(wrapped, ML + 4, y)
+            y += wrapped.length * 4.8 + 1
+          }
+          y += 5
+        }
+      }
+
+      // ── Education ─────────────────────────────────────────────────────────────
+      if (resumeContent.education.length > 0) {
+        sectionHeader('Education')
+        for (const edu of resumeContent.education) {
+          checkPageBreak(12)
+          doc.setFont('helvetica', 'bold')
+          doc.setFontSize(10)
+          doc.setTextColor(20, 20, 20)
+          doc.text(edu.degree.text || '', ML, y)
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(9)
+          doc.setTextColor(80, 80, 80)
+          doc.text(edu.period.text || '', PAGE_W - MR, y, { align: 'right' })
+          y += 5
+
+          doc.setFont('helvetica', 'italic')
+          doc.setFontSize(9.5)
+          doc.setTextColor(60, 60, 60)
+          doc.text(edu.school.text || '', ML, y)
+          y += 7
+        }
+      }
+
+      doc.save('resume.pdf')
+    }
 
   async function handleSaveResume() {
     clearPersistenceError()

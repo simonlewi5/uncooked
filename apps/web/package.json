@@ -16,7 +16,7 @@
     "@google/generative-ai": "^0.21.0",
     "@supabase/supabase-js": "^2.47.2",
     "@uncooked/shared": "workspace:*",
-    "html2pdf.js": "^0.14.0",
+    "jspdf": "4.2.0",
     "lucide-react": "^0.576.0",
     "pdfjs-dist": "^3.7.107",
     "react": "^18.3.1",
