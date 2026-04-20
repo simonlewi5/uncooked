@@ -7,7 +7,6 @@ import { useConsistencyMetrics } from '@/contexts/ConsistencyMetricsContext'
 import { useGamificationData } from '@/hooks/useGamificationData'
 import { IrisAvatar } from '@/components/ui/IrisAvatar'
 import { NavChip } from '@/components/ui/NavChip'
-import { TweaksPanel } from '@/components/ui/TweaksPanel'
 import styles from './AppShell.module.css'
 
 const NAV_LINKS = [
@@ -198,8 +197,6 @@ export default function AppShell(): JSX.Element {
       <main className={styles.main}>
         <Outlet />
       </main>
-
-      <TweaksPanel />
     </div>
   )
 }
