@@ -1,0 +1,41 @@
+.track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  overflow: hidden;
+  position: relative;
+}
+
+.fill {
+  height: 100%;
+  position: relative;
+  background: linear-gradient(
+    90deg,
+    var(--iris-4) 0%,
+    var(--iris-3) 35%,
+    var(--iris-2) 70%,
+    var(--iris-1) 100%
+  );
+  border-radius: 999px;
+  box-shadow: 0 0 10px color-mix(in oklch, var(--iris-3) 40%, transparent);
+  transition: width var(--dur-3) var(--ease-spring);
+  overflow: hidden;
+}
+
+.sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 100%
+  );
+  animation: xp-sheen calc(8000ms * var(--motion-scale)) ease-in-out infinite;
+  pointer-events: none;
+}
+
+[data-motion="off"] .sheen {
+  animation: none;
+}

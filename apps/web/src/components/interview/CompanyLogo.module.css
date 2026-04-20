@@ -6,8 +6,8 @@
 
 .logoFallback {
   border-radius: var(--radius-sm);
-  background-color: var(--color-primary-subtle);
-  color: var(--color-primary);
+  background-color: var(--blue-soft);
+  color: var(--blue);
   font-weight: 600;
   display: flex;
   align-items: center;

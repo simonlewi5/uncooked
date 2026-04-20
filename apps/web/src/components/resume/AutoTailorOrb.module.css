@@ -1,0 +1,132 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 24px;
+  text-align: center;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.orb {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    var(--iris-1) 0%,
+    var(--iris-3) 55%,
+    var(--iris-4) 100%
+  );
+  box-shadow: 0 0 60px color-mix(in oklch, var(--iris-3) 50%, transparent);
+  animation: iris-breathe calc(2200ms * var(--motion-scale)) ease-in-out infinite;
+}
+
+:global([data-motion="off"]) .orb {
+  animation: none;
+}
+
+.title {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink-1);
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--ink-3);
+  font-size: 13px;
+  margin: 0;
+}
+
+.steps {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 13px;
+  opacity: 0.6;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+.step:last-child {
+  border-bottom: 0;
+}
+
+.stepActive,
+.stepDone {
+  opacity: 1;
+}
+
+.stepPending .stepMarker {
+  border: 1px dashed var(--hairline-strong);
+  background: transparent;
+}
+
+.stepActive .stepLabel {
+  font-weight: 600;
+}
+
+.stepMarker {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  color: var(--ink-4);
+  flex-shrink: 0;
+}
+
+.stepDone .stepMarker {
+  background: linear-gradient(135deg, var(--iris-1), var(--iris-3));
+  color: white;
+}
+
+.stepActive .stepMarker {
+  background: var(--ink-1);
+}
+
+.pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--surface);
+  animation: pulse-dot calc(1200ms * var(--motion-scale)) ease-in-out infinite;
+}
+
+:global([data-motion="off"]) .pulse {
+  animation: none;
+}
+
+.stepLabel {
+  flex: 1;
+  text-align: left;
+  color: var(--ink-1);
+  font-family: var(--font-sans);
+}
+
+.stepStatus {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.stepDone .stepStatus {
+  color: var(--success);
+}

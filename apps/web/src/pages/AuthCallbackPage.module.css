@@ -5,20 +5,30 @@
   justify-content: center;
   flex-direction: column;
   gap: var(--space-4);
-  background: var(--color-bg-subtle);
+  background: var(--canvas);
 }
 
 .message {
-  font-size: var(--font-sm);
-  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--ink-2);
+  margin: 0;
 }
 
 .error {
-  font-size: var(--font-sm);
-  color: var(--color-error-text);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: color-mix(in oklch, var(--danger) 80%, var(--ink-1));
+  margin: 0;
 }
 
 .link {
-  font-size: var(--font-sm);
-  color: var(--color-primary-text);
+  font-size: 13px;
+  color: var(--blue-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.link:hover {
+  color: var(--blue);
 }

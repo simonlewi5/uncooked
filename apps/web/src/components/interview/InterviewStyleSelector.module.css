@@ -7,7 +7,7 @@
 .label {
   font-size: var(--font-xs);
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--ink-2);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -15,10 +15,10 @@
 .select {
   width: 100%;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--hairline-strong);
   border-radius: var(--radius-md);
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  background-color: var(--surface);
+  color: var(--ink-1);
   font-size: var(--font-sm);
   font-family: inherit;
   cursor: pointer;

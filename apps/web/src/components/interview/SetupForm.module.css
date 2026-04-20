@@ -22,9 +22,9 @@
   gap: var(--space-4);
   width: 100%;
   padding: var(--space-6);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-xl);
-  background-color: var(--color-bg);
+  background-color: var(--surface);
   box-shadow: var(--shadow-sm);
 }
 
@@ -37,7 +37,7 @@
 .label {
   font-size: var(--font-xs);
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--ink-2);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -47,10 +47,10 @@
   resize: vertical;
   width: 100%;
   padding: var(--space-3);
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--hairline-strong);
   border-radius: var(--radius-md);
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  background-color: var(--surface);
+  color: var(--ink-1);
   font-size: var(--font-sm);
   font-family: inherit;
   line-height: 1.5;
@@ -59,12 +59,12 @@
 }
 
 .textarea::placeholder {
-  color: var(--color-text-tertiary);
+  color: var(--ink-3);
 }
 
 .textarea:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-subtle);
+  border-color: var(--blue);
+  box-shadow: var(--focus-ring);
 }
 
 .startBtn {
@@ -73,23 +73,26 @@
   justify-content: center;
   gap: var(--space-2);
   width: 100%;
-  padding: var(--space-3) var(--space-6);
-  border: none;
+  padding: var(--space-3) var(--space-5);
+  border: 0;
   border-radius: var(--radius-md);
-  background-color: var(--color-primary);
-  color: white;
+  background: var(--ink-1);
+  color: var(--surface);
+  font-family: var(--font-mono);
   font-size: var(--font-sm);
   font-weight: 600;
+  letter-spacing: -0.005em;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: all var(--dur-2) var(--ease-out);
 }
 
-.startBtn:hover {
-  opacity: 0.9;
+.startBtn:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--ink-1) 92%, var(--ink-2));
 }
 
 .startBtn:disabled {
-  opacity: 0.4;
+  background: var(--surface-2);
+  color: var(--ink-3);
   cursor: not-allowed;
 }
 
@@ -101,11 +104,12 @@
 }
 
 .pastSessionsTitle {
+  font-family: var(--font-mono);
   font-size: var(--font-xs);
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--ink-3);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
 }
 
 .sessionList {
@@ -121,15 +125,15 @@
   display: flex;
   align-items: center;
   width: 100%;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  background-color: var(--color-bg);
+  background-color: var(--surface);
   transition: border-color 0.15s, background-color 0.15s;
 }
 
 .sessionCard:hover {
-  border-color: var(--color-primary);
-  background-color: var(--color-bg-subtle);
+  border-color: var(--blue);
+  background-color: var(--surface-2);
 }
 
 .sessionLoadBtn {
@@ -152,16 +156,16 @@
   padding: var(--space-2) var(--space-3);
   background: none;
   border: none;
-  border-left: 1px solid var(--color-border);
-  color: var(--color-text-tertiary);
+  border-left: 1px solid var(--hairline);
+  color: var(--ink-3);
   cursor: pointer;
   transition: color 0.15s, background-color 0.15s;
   align-self: stretch;
 }
 
 .sessionDeleteBtn:hover {
-  color: var(--color-danger, #dc2626);
-  background-color: var(--color-bg-subtle);
+  color: var(--danger);
+  background-color: var(--surface-2);
 }
 
 .sessionInfo {
@@ -174,18 +178,14 @@
 
 .sessionCompany {
   font-size: var(--font-sm);
-  font-weight: 500;
-  color: var(--color-text);
+  font-weight: 600;
+  color: var(--ink-1);
 }
 
 .sessionMeta {
+  font-family: var(--font-mono);
   font-size: var(--font-xs);
-  color: var(--color-text-secondary);
-}
-
-.sessionIcon {
-  color: var(--color-text-tertiary);
-  flex-shrink: 0;
+  color: var(--ink-3);
 }
 
 .pastJobs {
@@ -196,10 +196,10 @@
 
 .pastJobBtn {
   padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-full);
-  background-color: var(--color-bg-subtle);
-  color: var(--color-text-secondary);
+  background-color: var(--surface-2);
+  color: var(--ink-2);
   font-size: var(--font-xs);
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s, background-color 0.15s;
@@ -207,9 +207,9 @@
 }
 
 .pastJobBtn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background-color: var(--color-primary-subtle);
+  border-color: var(--blue);
+  color: var(--blue);
+  background-color: var(--blue-soft);
 }
 
 /* ── Resume Selector & Cards ──────────────────────────────────────────────────────────── */
@@ -222,10 +222,10 @@
 
 .emptyState {
   font-size: var(--font-sm);
-  color: var(--color-text-secondary);
+  color: var(--ink-2);
   padding: var(--space-4);
   text-align: center;
-  border: 1px dashed var(--color-border-strong);
+  border: 1px dashed var(--hairline-strong);
   border-radius: var(--radius-md);
 }
 
@@ -241,7 +241,7 @@
   background-size: 400% 150%;
   animation: glowBg 20s linear infinite;
   filter: blur(15px);
-  z-index: 0; 
+  z-index: 0;
   border-radius: calc(var(--radius-md) + 3px);
   transform: translate3d(0, 0, 0);
 }
@@ -252,7 +252,7 @@
   background: linear-gradient(45deg, #ff595e, #ffca3a, #8ac926, #1982c4, #6a4c93, #ff6700);
   background-size: 800% 800%;
   animation: glowBg 20s linear infinite;
-  z-index: 1; 
+  z-index: 1;
   border-radius: calc(var(--radius-md) + 5px);
 }
 
@@ -269,16 +269,16 @@
   display: flex;
   flex-direction: column;
   height: 120px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   overflow: hidden;
-  background-color: var(--color-bg); 
+  background-color: var(--surface);
 }
 
 .resumeCardWrapper:hover .resumeCard:not(.resumeCardActive) {
-  border-color: var(--color-primary);
+  border-color: var(--blue);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
@@ -294,9 +294,9 @@
   padding: var(--space-2);
   font-size: 6px;
   line-height: 1.4;
-  color: var(--color-text-secondary);
-  opacity: 0.4;             
-  filter: blur(2px);        
+  color: var(--ink-2);
+  opacity: 0.4;
+  filter: blur(2px);
   user-select: none;
   pointer-events: none;
   white-space: pre-wrap;
@@ -311,7 +311,7 @@
   justify-content: space-between;
   height: 100%;
   padding: var(--space-3);
-  background: linear-gradient(to bottom, var(--color-bg) 0%, transparent 40%, var(--color-bg) 100%);
+  background: linear-gradient(to bottom, var(--surface) 0%, transparent 40%, var(--surface) 100%);
 }
 
 .resumeCardHeader {
@@ -322,16 +322,16 @@
 }
 
 .resumeIcon {
-  color: var(--color-text-tertiary);
+  color: var(--ink-3);
 }
 
 .resumeCardActive .resumeIcon {
-  color: var(--color-primary);
+  color: var(--blue);
 }
 
 .resumeTitle {
   font-weight: 500;
-  color: var(--color-text);
+  color: var(--ink-1);
   font-size: var(--font-sm);
   white-space: nowrap;
   overflow: hidden;
@@ -341,8 +341,8 @@
 .primaryBadge {
   font-size: 0.7rem;
   text-transform: uppercase;
-  background-color: var(--color-primary);
-  color: white;
+  background-color: var(--blue);
+  color: var(--surface);
   padding: 2px 6px;
   border-radius: var(--radius-md);
   font-weight: 600;
@@ -357,7 +357,7 @@
 
 .resumeDate {
   font-size: var(--font-xs);
-  color: var(--color-text-secondary);
+  color: var(--ink-2);
 }
 
 .cardActions {
@@ -372,18 +372,18 @@
   align-items: center;
   justify-content: center;
   padding: var(--space-1);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-sm);
-  color: var(--color-text-secondary);
+  color: var(--ink-2);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .zoomBtn:hover {
-  background: var(--color-bg-subtle);
-  color: var(--color-primary);
-  border-color: var(--color-primary);
+  background: var(--surface-2);
+  color: var(--blue);
+  border-color: var(--blue);
 }
 
 /* ── ZOOM MODAL ──────────────────────────────────────────────────────────── */
@@ -404,7 +404,7 @@
   width: 100%;
   max-width: 800px;
   height: 90vh;
-  background-color: var(--color-bg);
+  background-color: var(--surface);
   border-radius: var(--radius-lg);
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   display: flex;
@@ -423,19 +423,19 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--space-4) var(--space-6);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--hairline);
 }
 
 .modalHeader h3 {
   margin: 0;
   font-size: var(--font-lg);
-  color: var(--color-text);
+  color: var(--ink-1);
 }
 
 .closeBtn {
   background: transparent;
   border: none;
-  color: var(--color-text-secondary);
+  color: var(--ink-2);
   cursor: pointer;
   padding: var(--space-1);
   border-radius: var(--radius-sm);
@@ -443,13 +443,13 @@
 }
 
 .closeBtn:hover {
-  background-color: var(--color-bg-subtle);
-  color: var(--color-text);
+  background-color: var(--surface-2);
+  color: var(--ink-1);
 }
 
 .modalBody {
   flex: 1;
-  background-color: var(--color-bg-subtle);
+  background-color: var(--surface-2);
   padding: var(--space-6);
   overflow-y: auto;
 }
@@ -467,11 +467,10 @@
   font-family: inherit;
   font-size: var(--font-sm);
   line-height: 1.6;
-  color: var(--color-text);
+  color: var(--ink-1);
 }
 
 /* ── Sketch-style annotations ──────────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap');
 
 /* Fixed the syntax error here! */
 .sketchLeft,

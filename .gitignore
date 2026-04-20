@@ -41,6 +41,10 @@ coverage
 # Supabase
 supabase/.branches
 supabase/.temp
+supabase/.temp/seed-dev.ts
+supabase/seed-dev.ts
+seed-dev.ts
+seed-dev.local.ts
 
 # Vercel
 .vercel

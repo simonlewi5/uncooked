@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Star, FileText, ChevronDown, ChevronRight, Sparkles, Loader2, Clock } from 'lucide-react'
+import { Star, FileText, ChevronDown, ChevronRight, Sparkles, Clock } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import type { InterviewQuestion } from '@/types'
 import styles from './QuestionList.module.css'
@@ -9,20 +9,44 @@ type Filter = 'all' | 'bookmarked'
 interface QuestionListProps {
   questions: InterviewQuestion[]
   isGenerating: boolean
+  isLoading?: boolean
   onGenerate: () => void
   onToggleBookmark: (id: string) => void
   onUpdateNotes: (id: string, notes: string) => void
   canGenerate: boolean
   cooldownEnd: number | null
   onCooldownStart: (end: number) => void
+  activeQuestionId?: string | null
+}
+
+const SKELETON_CARD_COUNT = 3
+
+type CategoryAccent = 'behavioral' | 'technical' | 'system-design' | 'culture' | 'default'
+
+function resolveCategoryAccent(category: string | null): CategoryAccent {
+  if (!category) return 'default'
+  const normalized = category.toLowerCase()
+  if (normalized.includes('behav')) return 'behavioral'
+  if (normalized.includes('system') || normalized.includes('design')) return 'system-design'
+  if (normalized.includes('cultur') || normalized.includes('values')) return 'culture'
+  if (normalized.includes('tech') || normalized.includes('coding') || normalized.includes('algo')) return 'technical'
+  return 'default'
+}
+
+function humanizeCategory(category: string): string {
+  return category
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 function QuestionCard({
   question,
+  isActive,
   onToggleBookmark,
   onUpdateNotes,
 }: {
   question: InterviewQuestion
+  isActive: boolean
   onToggleBookmark: () => void
   onUpdateNotes: (notes: string) => void
 }): React.JSX.Element {
@@ -30,8 +54,10 @@ function QuestionCard({
     () => !!question.answerNotes,
   )
 
+  const accent = resolveCategoryAccent(question.category)
+
   return (
-    <li className={styles.card}>
+    <li className={cn(styles.card, isActive && styles.cardActive)} data-accent={accent}>
       <div className={styles.cardHeader}>
         <button
           className={cn(styles.bookmarkBtn, question.isBookmarked && styles.bookmarked)}
@@ -41,18 +67,22 @@ function QuestionCard({
           <Star size={14} fill={question.isBookmarked ? 'currentColor' : 'none'} />
         </button>
         <span className={styles.questionText}>{question.questionText}</span>
-        {question.category && (
-          <span className={styles.badge}>{question.category}</span>
-        )}
       </div>
 
-      <button
-        className={styles.notesToggle}
-        onClick={() => setShowNotes((v) => !v)}
-      >
-        {showNotes ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        {showNotes ? 'Hide notes' : 'Add notes'}
-      </button>
+      <div className={styles.cardFooter}>
+        {question.category && (
+          <span className={styles.badge} data-accent={accent}>
+            {humanizeCategory(question.category)}
+          </span>
+        )}
+        <button
+          className={styles.notesToggle}
+          onClick={() => setShowNotes((v) => !v)}
+        >
+          {showNotes ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          {showNotes ? 'Hide notes' : 'Add notes'}
+        </button>
+      </div>
 
       {showNotes && (
         <textarea
@@ -78,12 +108,14 @@ function formatRemaining(ms: number): string {
 export function QuestionList({
   questions,
   isGenerating,
+  isLoading,
   onGenerate,
   onToggleBookmark,
   onUpdateNotes,
   canGenerate,
   cooldownEnd,
   onCooldownStart,
+  activeQuestionId,
 }: QuestionListProps): React.JSX.Element {
   const [filter, setFilter] = useState<Filter>('all')
   const [remaining, setRemaining] = useState(0)
@@ -117,16 +149,12 @@ export function QuestionList({
       ? questions.filter((q) => q.isBookmarked)
       : questions
 
-  if (isGenerating) {
-    return (
-      <div className={styles.spinner}>
-        <Loader2 size={16} className="animate-spin" style={{ marginRight: 8 }} />
-        Generating questions...
-      </div>
-    )
-  }
+  const isSkeletonActive = isGenerating || isLoading === true
+  const skeletonLabel = isGenerating
+    ? 'The questions are loading\u2026'
+    : 'Loading saved questions\u2026'
 
-  if (questions.length === 0 && !canGenerate) {
+  if (questions.length === 0 && !canGenerate && !isSkeletonActive) {
     return (
       <div className={styles.empty}>
         <FileText size={24} className={styles.emptyIcon} />
@@ -137,31 +165,34 @@ export function QuestionList({
     )
   }
 
+  const generateTitle = onCooldown
+    ? `Rate limit reached \u2014 you can generate a new batch in about ${formatRemaining(remaining)}. Your existing questions are still usable.`
+    : 'Generate a fresh batch of tailored questions'
+
   return (
     <div className={styles.wrapper}>
-      <div className={styles.header}>
-        {canGenerate && (
-          <button
-            className={styles.generateBtn}
-            onClick={handleGenerate}
-            disabled={isGenerating || onCooldown}
-          >
-            {onCooldown ? (
-              <>
-                <Clock size={14} />
-                {formatRemaining(remaining)}
-              </>
-            ) : (
-              <>
-                <Sparkles size={14} />
-                Generate Questions
-              </>
-            )}
-          </button>
-        )}
-      </div>
+      {canGenerate && (
+        <button
+          className={styles.generateBtn}
+          onClick={handleGenerate}
+          disabled={isGenerating || onCooldown}
+          title={generateTitle}
+        >
+          {onCooldown ? (
+            <>
+              <Clock size={14} />
+              {formatRemaining(remaining)}
+            </>
+          ) : (
+            <>
+              <Sparkles size={14} />
+              Generate Questions
+            </>
+          )}
+        </button>
+      )}
 
-      {questions.length > 0 && (
+      {questions.length > 0 && !isSkeletonActive && (
         <div className={styles.filterBar}>
           <button
             className={cn(styles.filterBtn, filter === 'all' && styles.filterBtnActive)}
@@ -178,7 +209,20 @@ export function QuestionList({
         </div>
       )}
 
-      {filtered.length === 0 && filter === 'bookmarked' ? (
+      {isSkeletonActive ? (
+        <div className={styles.skeletonWrap} aria-busy="true" aria-live="polite">
+          <div className={styles.skeletonLabel}>{skeletonLabel}</div>
+          <ul className={styles.skeletonList}>
+            {Array.from({ length: SKELETON_CARD_COUNT }).map((_, idx) => (
+              <li key={idx} className={styles.skeletonCard}>
+                <div className={cn(styles.skeletonBar, styles.skeletonBarLine)} />
+                <div className={cn(styles.skeletonBar, styles.skeletonBarLineShort)} />
+                <div className={cn(styles.skeletonBar, styles.skeletonBarBadge)} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : filtered.length === 0 && filter === 'bookmarked' ? (
         <div className={styles.empty}>
           <Star size={24} className={styles.emptyIcon} />
           <p className={styles.emptyText}>
@@ -198,6 +242,7 @@ export function QuestionList({
             <QuestionCard
               key={q.id}
               question={q}
+              isActive={q.id === activeQuestionId}
               onToggleBookmark={() => onToggleBookmark(q.id)}
               onUpdateNotes={(notes) => onUpdateNotes(q.id, notes)}
             />

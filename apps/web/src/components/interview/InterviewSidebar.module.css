@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--color-bg);
+  background-color: var(--surface);
   overflow: hidden;
 }
 
@@ -10,77 +10,108 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-4);
-  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-4) var(--space-4) var(--space-3);
   flex-shrink: 0;
 }
 
 .contextInfo {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 2px;
   min-width: 0;
   flex: 1;
 }
 
 .companyName {
-  font-size: var(--font-sm);
+  font-size: var(--font-lg);
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--ink-1);
+  letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.contextMeta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 .roleTitle {
+  font-family: var(--font-mono);
   font-size: var(--font-xs);
-  color: var(--color-text-secondary);
+  font-weight: 500;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.styleBadge {
-  font-size: var(--font-xs);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-full);
-  background-color: var(--color-bg-subtle);
-  color: var(--color-text-secondary);
-  text-transform: capitalize;
-}
-
-.researchLink {
-  display: inline-flex;
+.styleTags {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem;
-  font-size: var(--font-xs);
-  color: var(--color-primary);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-full);
-  transition: background-color 0.15s;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-3);
+  flex-shrink: 0;
 }
 
-.researchLink:hover {
-  background: var(--color-primary-subtle);
+.styleTag {
+  font-family: var(--font-mono);
+  font-size: var(--font-xs);
+  font-weight: 500;
+  padding: 3px var(--space-3);
+  border-radius: var(--radius-full);
+  background: color-mix(in oklch, var(--iris-3) 16%, var(--surface));
+  color: color-mix(in oklch, var(--iris-3) 55%, var(--ink-1));
+  border: 1px solid color-mix(in oklch, var(--iris-3) 28%, var(--hairline));
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.stylePlus {
+  font-family: var(--font-mono);
+  font-size: var(--font-xs);
+  color: var(--ink-3);
+  line-height: 1;
+}
+
+.researchRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: 0 var(--space-4) var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--font-xs);
+  font-weight: 500;
+  color: var(--blue);
+  background: none;
+  border: 1px dashed color-mix(in oklch, var(--blue) 32%, var(--hairline));
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  transition: background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+
+.researchRow:hover {
+  background: color-mix(in oklch, var(--blue) 6%, var(--surface));
+  border-color: var(--blue);
+  color: var(--blue-ink);
+}
+
+.researchRow:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .accordions {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  border-top: 1px solid var(--hairline);
 }
 
 .accordion {
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--hairline);
 }
 
 .accordionToggle {
@@ -92,16 +123,17 @@
   background: none;
   border: none;
   cursor: pointer;
+  font-family: var(--font-mono);
   font-size: var(--font-xs);
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--ink-3);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   transition: color 0.15s;
 }
 
 .accordionToggle:hover {
-  color: var(--color-text);
+  color: var(--ink-1);
 }
 
 .questionsContent {
@@ -120,12 +152,12 @@
   width: 100%;
   min-height: 120px;
   padding: var(--space-2);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-sm);
-  background-color: var(--color-bg-subtle);
+  background-color: var(--surface-2);
   font-size: var(--font-xs);
   font-family: inherit;
-  color: var(--color-text-secondary);
+  color: var(--ink-2);
   line-height: 1.6;
   resize: vertical;
   outline: none;
@@ -133,16 +165,16 @@
 }
 
 .jdTextarea:focus {
-  border-color: var(--color-primary);
-  color: var(--color-text);
+  border-color: var(--blue);
+  color: var(--ink-1);
 }
 
 .jdTextarea::placeholder {
-  color: var(--color-text-tertiary);
+  color: var(--ink-3);
 }
 
 .footer {
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--hairline);
   padding: var(--space-3) var(--space-4);
   flex-shrink: 0;
 }
@@ -153,18 +185,18 @@
   gap: var(--space-2);
   width: 100%;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
   background: none;
   font-size: var(--font-xs);
-  color: var(--color-text-secondary);
+  color: var(--ink-2);
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
 
 .backBtn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-text);
+  border-color: var(--blue);
+  color: var(--ink-1);
 }
 
 
@@ -175,9 +207,9 @@
   display: flex;
   flex-direction: column;
   height: 120px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
-  background-color: var(--color-bg);
+  background-color: var(--surface);
   overflow: hidden;
   margin-bottom: var(--space-2);
   cursor: pointer;
@@ -185,8 +217,8 @@
 }
 
 .resumeCard:hover {
-  border-color: var(--color-primary);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); 
+  border-color: var(--blue);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .resumePreviewBg {
@@ -196,7 +228,7 @@
   padding: var(--space-2);
   font-size: 6px;
   line-height: 1.4;
-  color: var(--color-text-secondary);
+  color: var(--ink-2);
   opacity: 0.4;
   filter: blur(2px);
   user-select: none;
@@ -213,7 +245,7 @@
   justify-content: space-between;
   height: 100%;
   padding: var(--space-3);
-  background: linear-gradient(to bottom, var(--color-bg) 0%, transparent 40%, var(--color-bg) 100%);
+  background: linear-gradient(to bottom, var(--surface) 0%, transparent 40%, var(--surface) 100%);
 }
 
 .resumeCardHeader {
@@ -224,12 +256,12 @@
 }
 
 .resumeIcon {
-  color: var(--color-text-tertiary);
+  color: var(--ink-3);
 }
 
 .resumeTitle {
   font-weight: 500;
-  color: var(--color-text);
+  color: var(--ink-1);
   font-size: var(--font-sm);
   white-space: nowrap;
   overflow: hidden;
@@ -245,7 +277,7 @@
 
 .resumeDate {
   font-size: var(--font-xs);
-  color: var(--color-text-secondary);
+  color: var(--ink-2);
 }
 
 .cardActions {
@@ -260,18 +292,18 @@
   align-items: center;
   justify-content: center;
   padding: var(--space-1);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-sm);
-  color: var(--color-text-secondary);
+  color: var(--ink-2);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .zoomBtn:hover {
-  background: var(--color-bg-subtle);
-  color: var(--color-primary);
-  border-color: var(--color-primary);
+  background: var(--surface-2);
+  color: var(--blue);
+  border-color: var(--blue);
 }
 
 /* FULL-SCREEN ZOOM MODAL */
@@ -292,7 +324,7 @@
   width: 100%;
   max-width: 800px;
   height: 90vh;
-  background-color: var(--color-bg);
+  background-color: var(--surface);
   border-radius: var(--radius-lg);
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   display: flex;
@@ -311,19 +343,19 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--space-4) var(--space-6);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--hairline);
 }
 
 .modalHeader h3 {
   margin: 0;
   font-size: var(--font-lg);
-  color: var(--color-text);
+  color: var(--ink-1);
 }
 
 .closeBtn {
   background: transparent;
   border: none;
-  color: var(--color-text-secondary);
+  color: var(--ink-2);
   cursor: pointer;
   padding: var(--space-1);
   border-radius: var(--radius-sm);
@@ -332,13 +364,13 @@
 }
 
 .closeBtn:hover {
-  background-color: var(--color-bg-subtle);
-  color: var(--color-text);
+  background-color: var(--surface-2);
+  color: var(--ink-1);
 }
 
 .modalBody {
   flex: 1;
-  background-color: var(--color-bg-subtle);
+  background-color: var(--surface-2);
   padding: var(--space-6);
   overflow-y: auto;
 }
@@ -365,5 +397,5 @@
   font-family: inherit;
   font-size: var(--font-sm);
   line-height: 1.6;
-  color: var(--color-text);
+  color: var(--ink-1);
 }

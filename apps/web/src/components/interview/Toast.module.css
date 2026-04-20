@@ -16,15 +16,15 @@
 }
 
 .success {
-  background: var(--color-success-subtle, #f0fdf4);
-  color: var(--color-success-text, #166534);
-  border: 1px solid var(--color-success, #22c55e);
+  background: color-mix(in oklch, var(--success) 12%, var(--surface));
+  color: color-mix(in oklch, var(--success) 80%, var(--ink-1));
+  border: 1px solid var(--success);
 }
 
 .error {
-  background: var(--color-error-subtle, #fef2f2);
-  color: var(--color-error-text, #991b1b);
-  border: 1px solid var(--color-error, #ef4444);
+  background: color-mix(in oklch, var(--danger) 12%, var(--surface));
+  color: color-mix(in oklch, var(--danger) 80%, var(--ink-1));
+  border: 1px solid var(--danger);
 }
 
 @keyframes slideUpFade {
