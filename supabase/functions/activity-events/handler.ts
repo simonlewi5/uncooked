@@ -37,7 +37,7 @@ export type HandlerDeps = {
 }
 
 const ALLOWED_EVENTS: Record<ActivityType, readonly string[]> = {
-  resume: ['edit_committed', 'resume_saved', 'ai_tailor_triggered', 'version_created'],
+  resume: ['edit_committed', 'resume_saved', 'ai_tailor_triggered', 'version_created', 'edits_resolved'],
   interview: ['session_started', 'question_answered', 'session_completed', 'feedback_received', 'session_partial'],
   research: ['company_added', 'note_saved', 'link_bookmarked', 'board_write'],
 }

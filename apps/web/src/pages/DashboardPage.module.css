@@ -391,7 +391,6 @@
 .pipelineStats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-4);
   margin-bottom: var(--space-4);
 }
 
@@ -399,6 +398,12 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  padding: var(--space-2) var(--space-4) var(--space-2) 0;
+}
+
+.pipelineStat:not(:first-child) {
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--color-border);
 }
 
 .pipelineLabel {
@@ -409,32 +414,43 @@
 .pipelineValue {
   font-size: var(--font-2xl);
   font-weight: 700;
-  color: var(--color-text);
+  line-height: 1.1;
+}
+
+.pipelineValueApplied {
+  color: #3b82f6;
+}
+
+.pipelineValueInterviews {
+  color: #f59e0b;
+}
+
+.pipelineValueOffers {
+  color: #10b981;
 }
 
 .progressTrack {
   height: 8px;
   border-radius: var(--radius-full);
-  background-color: var(--color-bg-muted);
-  position: relative;
   overflow: hidden;
+  display: flex;
 }
 
-.progressLayer {
-  position: absolute;
-  left: 0;
-  top: 0;
+.progressSegment {
   height: 100%;
-  border-radius: var(--radius-full);
-  transition: width 0.4s ease;
+  transition: flex 0.4s ease;
 }
 
-.progressLayerMid {
-  background-color: var(--color-border-strong);
+.progressSegmentApplied {
+  background-color: #3b82f6;
 }
 
-.progressLayerTop {
-  background-color: var(--color-text);
+.progressSegmentInterviews {
+  background-color: #f59e0b;
+}
+
+.progressSegmentOffers {
+  background-color: #10b981;
 }
 
 .pipelineFooter {

@@ -2,7 +2,8 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTrackActivity } from '@/hooks/useTrackActivity'
 import { supabase } from '@/lib/supabase'
-import type { Message } from '@/types'
+import { awardGamificationEvent, GAMIFICATION_EVENT_TYPES } from '@/lib/gamification'
+import type { Badge, Message } from '@/types'
 import { stripResearchChatMarkdown } from '@/utils/stripResearchChatMarkdown'
 
 const RATE_LIMIT_FRIENDLY_MESSAGE =
@@ -70,11 +71,13 @@ export function useResearchChat({
   jobDescription,
   companyProfileId,
   roleId,
+  onXpAwarded,
 }: {
   companies: string[]
   jobDescription?: string
   companyProfileId?: string | null
   roleId?: string | null
+  onXpAwarded?: (result: { xpAwarded: number; newBadges: Badge[] }) => void
 }) {
   const { session, user } = useAuth()
   const { trackEvent } = useTrackActivity('research')
@@ -85,6 +88,8 @@ export function useResearchChat({
   const sessionAttachmentRef = useRef<AttachmentPayload | null>(null)
   const loadedRoleRef = useRef<string | null>(null)
   const loadedCompanyRef = useRef<string | null>(null)
+  const onXpAwardedRef = useRef(onXpAwarded)
+  onXpAwardedRef.current = onXpAwarded
 
   // Load existing research session for this role
   useEffect(() => {
@@ -240,6 +245,8 @@ export function useResearchChat({
         return
       }
 
+      const isNewSession = !sessionIdRef.current
+
       const userMsg = msg('user', displayContent.trim())
       const placeholder = msg('assistant', '')
       setMessages((prev) => [...prev, userMsg, placeholder])
@@ -330,6 +337,15 @@ export function useResearchChat({
           persistMessages(prev)
           return prev
         })
+
+        // Award XP for the first message in a new session
+        if (isNewSession && user?.id) {
+          void awardGamificationEvent(user.id, GAMIFICATION_EVENT_TYPES.RESEARCH_CHAT_MESSAGE).then(
+            (result) => {
+              if (result.success) onXpAwardedRef.current?.({ xpAwarded: result.xpAwarded, newBadges: result.newBadges })
+            },
+          )
+        }
       } catch {
         setPlaceholderContent(
           "Couldn't reach the research service right now. Please check your connection and try again.",
@@ -338,7 +354,7 @@ export function useResearchChat({
         setIsStreaming(false)
       }
     },
-    [session?.access_token, companies, jobDescription, messages, persistMessages, trackEvent],
+    [session?.access_token, companies, jobDescription, messages, persistMessages, trackEvent, user],
   )
 
   return { messages, isStreaming, sendMessage, resetMessages, clearSession, sessionId }
