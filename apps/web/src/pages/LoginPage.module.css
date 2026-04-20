@@ -32,7 +32,7 @@
 
 .subtitle {
   font-size: 13px;
-  color: var(--ink-3);
+  color: var(--ink-2);
   text-align: center;
   margin: 0 0 var(--space-2);
 }
@@ -65,7 +65,7 @@
 }
 
 .input::placeholder {
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 .input:focus {
@@ -75,7 +75,7 @@
 
 .error {
   font-size: 13px;
-  color: color-mix(in oklch, var(--danger) 80%, var(--ink-1));
+  color: color-mix(in oklch, var(--danger) 90%, var(--ink-1));
   margin: 0;
 }
 
@@ -87,15 +87,15 @@
   padding: 12px 16px;
   border: 0;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--iris-2), var(--iris-3));
-  color: #fff;
+  background: var(--ink-1);
+  color: var(--surface);
   cursor: pointer;
   margin-top: var(--space-1);
-  transition: filter var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
+  transition: background var(--dur-2) var(--ease-out), transform var(--dur-1) var(--ease-out);
 }
 
 .submit:hover:not(:disabled) {
-  filter: brightness(1.06);
+  background: color-mix(in oklch, var(--ink-1) 92%, var(--ink-2));
 }
 
 .submit:active:not(:disabled) {
@@ -103,7 +103,8 @@
 }
 
 .submit:disabled {
-  opacity: 0.5;
+  background: var(--surface-2);
+  color: var(--ink-3);
   cursor: not-allowed;
 }
 
@@ -111,7 +112,7 @@
   margin: var(--space-2) 0 0;
   text-align: center;
   font-size: 13px;
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 .toggleBtn {
@@ -129,7 +130,7 @@
 .forgotLink {
   background: none;
   border: 0;
-  color: var(--ink-3);
+  color: var(--ink-2);
   font-size: 13px;
   cursor: pointer;
   padding: 0;
@@ -156,12 +157,12 @@
   color: var(--ink-1);
   text-align: center;
   margin: 0 0 var(--space-2);
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .confirmHint {
   font-size: 13px;
-  color: var(--ink-3);
+  color: var(--ink-2);
   text-align: center;
   line-height: 1.5;
   margin: 0 0 var(--space-4);
