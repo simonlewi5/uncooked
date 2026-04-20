@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, KeyboardEvent, useCallback } from 'react'
 import { jsPDF } from 'jspdf'
-import { Download, Sparkles, Search, X, Plus, FileUp } from 'lucide-react'
+import { Download, Sparkles, Search, X, Plus, FileUp, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { XpToast } from '@/components/interview/XpToast'
 import { ResumeSuggestionsPanel } from '@/components/resume/ResumeSuggestionsPanel'
@@ -42,6 +42,8 @@ import {
   type ResumeGamificationEventType,
 } from '@/lib/gamification'
 import type { ResumeDocument, ResumeTailorEdit } from '@/types'
+import { supabase } from '@/lib/supabase'
+import { ConfirmModal } from '@/utils/ConfirmModal'
 import { cn } from '@/utils/cn'
 import styles from './ResumePage.module.css'
 
@@ -137,6 +139,9 @@ export default function ResumePage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
   const [activeResumeId, setActiveResumeId] = useState<string | null>(null)
+  const [resumeList, setResumeList] = useState<Array<{ id: string; title: string; updatedAt: string; isPrimary: boolean }>>([])
+  const [resumeListLoading, setResumeListLoading] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null)
   const { trackEvent: trackResume } = useTrackActivity('resume')
   const editsReceivedAtRef = useRef<number | null>(null)
   const initialEditCountRef = useRef<number>(0)
@@ -247,6 +252,61 @@ export default function ResumePage() {
       cancelled = true
     }
   }, [user?.id, loadPrimaryResume, clearPersistenceError])
+  useEffect(() => {
+    if (!user?.id) return
+    let cancelled = false
+    setResumeListLoading(true)
+
+    supabase
+      .from('resumes')
+      .select('id, title, updated_at, is_primary')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .then(({ data }) => {
+        if (cancelled) return
+        setResumeList(
+          (data ?? []).map((r) => ({
+            id: r.id as string,
+            title: r.title as string,
+            updatedAt: r.updated_at as string,
+            isPrimary: r.is_primary as boolean,
+          }))
+        )
+        setResumeListLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [user?.id])
+
+  async function handleLoadResume(resumeId: string) {
+    if (!user?.id) return
+    const { data, error } = await supabase
+      .from('resumes')
+      .select('id, title, structured_content, is_primary, updated_at')
+      .eq('id', resumeId)
+      .eq('user_id', user.id)
+      .single()
+
+    if (error || !data?.structured_content) return
+
+    setResumeContent(normalizeResumeDocument(data.structured_content as Parameters<typeof normalizeResumeDocument>[0]))
+    setActiveResumeId(data.id as string)
+    setPendingEdits([])
+    setSubmitError(null)
+    clearError()
+  }
+
+  async function handleDeleteResume() {
+    if (!deleteTarget) return
+    await supabase.from('resumes').delete().eq('id', deleteTarget.id)
+    setResumeList((prev) => prev.filter((r) => r.id !== deleteTarget.id))
+    if (activeResumeId === deleteTarget.id) {
+      setActiveResumeId(null)
+      setResumeContent(toInitialResumeContent())
+      setPendingEdits([])
+    }
+    setDeleteTarget(null)
+  }
 
   async function handlePdfImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -273,6 +333,10 @@ export default function ResumePage() {
       setResumeContent(normalizeResumeDocument(saved.structuredContent))
       setActiveResumeId(saved.id)
       setPendingEdits([])
+      setResumeList((prev) => {
+        const withoutOldPrimary = prev.map((r) => ({ ...r, isPrimary: false }))
+        return [{ id: saved.id, title: saved.title, updatedAt: saved.updatedAt, isPrimary: true }, ...withoutOldPrimary]
+      })
       queueResumeGamification(GAMIFICATION_EVENT_TYPES.RESUME_SESSION_UPLOAD, saved.id)
       setSubmitError(
         saved.status === 'partial'
@@ -514,11 +578,20 @@ export default function ResumePage() {
 
     try {
       await saveResume(activeResumeId, resumeContent, 'edited')
+      setResumeList((prev) => {
+        const now = new Date().toISOString()
+        const updated = prev.map((r) =>
+          r.id === activeResumeId ? { ...r, updatedAt: now } : r
+        )
+        return [
+          ...updated.filter((r) => r.id === activeResumeId),
+          ...updated.filter((r) => r.id !== activeResumeId),
+        ]
+      })
     } catch {
       // error surfaced through persistenceError
     }
   }
-
   const editable = !isPreviewMode
   const suggestionItems: ResumeSuggestionViewModel[] = buildResumeSuggestionViewModels(resumeContent, pendingEdits)
   const suggestionPanelState = tailorRunState === 'idle' ? 'idle' : tailorRunState
@@ -657,6 +730,44 @@ export default function ResumePage() {
               ))}
             </div>
           </div>
+          <div className={styles.card}>
+            <p className={styles.cardTitle}>My Resumes</p>
+            <p className={styles.cardSubtitle}>Your uploaded and tailored resumes.</p>
+            {resumeListLoading ? (
+              <p className={styles.resumeListEmpty}>Loading...</p>
+            ) : resumeList.length === 0 ? (
+              <p className={styles.resumeListEmpty}>No resumes yet. Upload one above.</p>
+            ) : (
+              <ul className={styles.resumeList}>
+                {resumeList.map((r) => (
+                  <li
+                    key={r.id}
+                    className={cn(styles.resumeListItem, r.id === activeResumeId && styles.resumeListItemActive)}
+                  >
+                    <button
+                      className={styles.resumeListBtn}
+                      onClick={() => handleLoadResume(r.id)}
+                      title={r.title}
+                    >
+                      <span className={styles.resumeListTitle}>{r.title}</span>
+                      <span className={styles.resumeListMeta}>
+                      
+                        {new Date(r.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    </button>
+                    <button
+                      className={styles.resumeDeleteBtn}
+                      onClick={() => setDeleteTarget({ id: r.id, title: r.title })}
+                      aria-label={`Delete ${r.title}`}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
         </aside>
 
         <div className={styles.centerColumn}>
@@ -887,6 +998,14 @@ export default function ResumePage() {
           )}
         </aside>
       </div>
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete Resume"
+        message={`Are you sure you want to delete "${deleteTarget?.title}"? This cannot be undone.`}
+        confirmText="Delete"
+        onConfirm={handleDeleteResume}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   )
 }
