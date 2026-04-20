@@ -4,6 +4,9 @@ import { Download, Sparkles, Search, X, Plus, FileUp } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { XpToast } from '@/components/interview/XpToast'
 import { ResumeSuggestionsPanel } from '@/components/resume/ResumeSuggestionsPanel'
+import { JobApplicationSidebar } from '@/components/resume/JobApplicationSidebar'
+import { saveJobDescription } from '@/lib/jobApplications'
+import { supabase } from '@/lib/supabase'
 import {
   applySuggestion,
   buildResumeSuggestionViewModels,
@@ -43,7 +46,6 @@ import type { ResumeDocument, ResumeTailorEdit } from '@/types'
 import { cn } from '@/utils/cn'
 import styles from './ResumePage.module.css'
 
-// Helper: Extract and trim text from contentEditable element
 const readEditableText = (element: HTMLElement): string => {
   return (element?.textContent?.trim() || '')
 }
@@ -135,9 +137,11 @@ export default function ResumePage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
   const [activeResumeId, setActiveResumeId] = useState<string | null>(null)
+  const [activeJobApplicationId, setActiveJobApplicationId] = useState<string | null>(null)
   const { runTailor, isLoading, error: tailorError, clearError } = useResumeTailor()
   const {
     loadPrimaryResume,
+    loadResumeById,
     saveResume,
     isLoading: isPersistenceLoading,
     error: persistenceError,
@@ -190,7 +194,6 @@ export default function ResumePage() {
     [user?.id, pushGamificationToast],
   )
 
-  // ── Local helpers for contentEditable field updates ──
   const handleUpdateProfileField = (field: 'name' | 'contact', text: string) => {
     setResumeContent((prev) => updateProfileField(prev, field, text))
   }
@@ -224,7 +227,7 @@ export default function ResumePage() {
         setResumeContent(normalizeResumeDocument(existing.structuredContent))
         setActiveResumeId(existing.id)
       } catch {
-        // error surfaced through persistenceError
+        // error through persistenceError
       }
     }
 
@@ -234,6 +237,30 @@ export default function ResumePage() {
       cancelled = true
     }
   }, [user?.id, loadPrimaryResume, clearPersistenceError])
+
+  const handleSelectJobApplication = useCallback(async (
+    resumeId: string,
+    jobApplicationId: string,
+  ) => {
+    clearPersistenceError()
+    setActiveJobApplicationId(jobApplicationId)
+    setPendingEdits([])
+    setTailorRunState('idle')
+
+    const { data: jobApp } = await supabase
+      .from('job_applications')
+      .select('job_description')
+      .eq('id', jobApplicationId)
+      .single()
+
+    setJobDescription(jobApp?.job_description ?? '')
+
+    const resume = await loadResumeById(resumeId)
+    if (resume?.structuredContent) {
+      setResumeContent(normalizeResumeDocument(resume.structuredContent))
+      setActiveResumeId(resume.id)
+    }
+  }, [clearPersistenceError, loadResumeById])
 
   async function handlePdfImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -349,6 +376,10 @@ export default function ResumePage() {
     setPendingEdits(result.edits)
     setTailorRunState('complete')
     queueResumeGamification(GAMIFICATION_EVENT_TYPES.RESUME_AUTO_TAILOR)
+
+    if (activeJobApplicationId && jobDescription) {
+      await saveJobDescription(activeJobApplicationId, jobDescription)
+    }
   }
 
   async function handleExportPDF() {
@@ -377,7 +408,7 @@ export default function ResumePage() {
     try {
       await saveResume(activeResumeId, resumeContent, 'edited')
     } catch {
-      // error surfaced through persistenceError
+      // error through persistenceError
     }
   }
 
@@ -478,6 +509,12 @@ export default function ResumePage() {
 
       <div className={styles.layout}>
         <aside className={styles.leftPanel}>
+          <JobApplicationSidebar
+            userId={user?.id ?? ''}
+            activeResumeId={activeResumeId}
+            onSelect={handleSelectJobApplication}
+          />
+
           <div className={styles.card}>
             <p className={styles.cardTitle}>Target Job Description</p>
             <p className={styles.cardSubtitle}>

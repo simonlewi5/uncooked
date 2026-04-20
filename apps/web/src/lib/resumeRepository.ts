@@ -125,6 +125,17 @@ export async function createParsedResume(input: CreateParsedResumeInput): Promis
   return mapRowToDto(data)
 }
 
+export async function getResumeById(resumeId: string): Promise<ResumeRecordDto | null> {
+  const { data, error } = await supabase
+    .from('resumes')
+    .select('*')
+    .eq('id', resumeId)
+    .maybeSingle<ResumeRow>()
+
+  if (error) throw error
+  return data ? mapRowToDto(data) : null
+}
+
 export async function saveResumeStructuredContent(
   resumeId: string,
   structuredContent: ResumeDocument,
