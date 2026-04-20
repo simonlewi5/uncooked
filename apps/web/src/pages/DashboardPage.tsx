@@ -6,6 +6,7 @@ import { CareerProgressCard } from '@/components/dashboard/CareerProgressCard'
 import { ConsistencyBars } from '@/components/dashboard/ConsistencyBars'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatMinutes } from '@/utils/formatMinutes'
+import { CompanyLogo } from '@/components/interview/CompanyLogo'
 import { cn } from '@/utils/cn'
 import type {
   ResearchSessionSummary,
@@ -219,7 +220,7 @@ function TargetCompaniesCard({ companies }: TargetCompaniesCardProps): JSX.Eleme
           <ul className={styles.itemList}>
             {companies.map((company) => (
               <li key={company.id} className={styles.itemRow}>
-                <div className={styles.iconBox}>{company.companyName.charAt(0).toUpperCase()}</div>
+                <CompanyLogo company={company} size="sm" />
                 <div className={styles.itemInfo}>
                   <p className={styles.itemTitle}>{company.companyName}</p>
                   {company.industry && <p className={styles.itemSub}>{company.industry}</p>}

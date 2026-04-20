@@ -104,6 +104,7 @@ export interface CompanySummary {
   id: string
   companyName: string
   industry: string | null
+    companyWebsite: string | null
 }
 
 export type DashboardRange = 'week' | 'month'
