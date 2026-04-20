@@ -47,12 +47,16 @@
 }
 
 .styleBadge {
+  font-family: var(--font-mono);
   font-size: var(--font-xs);
-  padding: var(--space-1) var(--space-2);
+  font-weight: 500;
+  padding: 2px var(--space-2);
   border-radius: var(--radius-full);
-  background-color: var(--surface-2);
-  color: var(--ink-2);
-  text-transform: capitalize;
+  background: color-mix(in oklch, var(--iris-2) 14%, var(--surface));
+  color: color-mix(in oklch, var(--iris-3) 55%, var(--ink-1));
+  border: 1px solid color-mix(in oklch, var(--iris-2) 22%, var(--hairline));
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
 .researchLink {
@@ -92,11 +96,12 @@
   background: none;
   border: none;
   cursor: pointer;
+  font-family: var(--font-mono);
   font-size: var(--font-xs);
   font-weight: 600;
-  color: var(--ink-2);
+  color: var(--ink-3);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   transition: color 0.15s;
 }
 

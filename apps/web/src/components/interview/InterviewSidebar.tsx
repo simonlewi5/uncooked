@@ -32,6 +32,13 @@ interface InterviewSidebarProps {
   roleTitle?: string | null
 }
 
+function humanizeStyle(style: string): string {
+  return style
+    .replace(/_plus_/g, ' + ')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
 function formatResumeText(parsed: StructuredResumeData | null | undefined): string {
   if (!parsed || typeof parsed !== 'object' || !parsed.name) return ''
   let text = ''
@@ -106,7 +113,7 @@ const logoProfile: CompanyProfile = {
           <span className={styles.companyName}>{companyName}</span>
           {roleTitle && <span className={styles.roleTitle}>{roleTitle}</span>}
           <div className={styles.contextMeta}>
-            <span className={styles.styleBadge}>{style}</span>
+            <span className={styles.styleBadge}>{humanizeStyle(style)}</span>
             {selectedCompanyId && (
               <button className={styles.researchLink} onClick={handleViewResearch}>
                 <BookOpen size={12} />
