@@ -101,6 +101,21 @@ function getRangeBounds(range: DashboardRange): { start: Date; end: Date } {
   }
 }
 
+const WEEK_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const
+
+function getIsoWeekStarts(year: number, month: number): Date[] {
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const weekStarts: Date[] = []
+  let cursor = getStartOfIsoWeek(firstDay)
+  while (cursor <= lastDay) {
+    weekStarts.push(new Date(cursor))
+    cursor = new Date(cursor)
+    cursor.setDate(cursor.getDate() + 7)
+  }
+  return weekStarts
+}
+
 function buildPracticeBuckets(
   rows: RawDailyMinutes[],
   range: DashboardRange,
@@ -110,21 +125,29 @@ function buildPracticeBuckets(
   if (range === 'week') {
     const buckets = Array.from({ length: 7 }, () => 0)
     for (const row of rows) {
-      // Append T00:00:00 (no Z) so the date is parsed in local time.
       const localDay = new Date(row.practice_date + 'T00:00:00').getDay()
       const isoDay = localDay === 0 ? 6 : localDay - 1 // Mon=0 … Sun=6
       buckets[isoDay] += row.duration_minutes
     }
-    return { totalMinutes, buckets }
+    return { totalMinutes, buckets, labels: [...WEEK_LABELS] }
   }
 
-  const buckets = Array.from({ length: 5 }, () => 0)
+  const now = new Date()
+  const weekStarts = getIsoWeekStarts(now.getFullYear(), now.getMonth())
+  const buckets = Array.from({ length: weekStarts.length }, () => 0)
+  const labels = weekStarts.map((d) => {
+    const month = d.toLocaleString('default', { month: 'short' })
+    return `${month} ${d.getDate()}`
+  })
+
   for (const row of rows) {
-    const dayOfMonth = new Date(row.practice_date + 'T00:00:00').getDate()
-    const weekIndex = Math.min(Math.floor((dayOfMonth - 1) / 7), 4)
-    buckets[weekIndex] += row.duration_minutes
+    const date = new Date(row.practice_date + 'T00:00:00')
+    const weekStart = getStartOfIsoWeek(date)
+    const idx = weekStarts.findIndex((ws) => ws.getTime() === weekStart.getTime())
+    if (idx !== -1) buckets[idx] += row.duration_minutes
   }
-  return { totalMinutes, buckets }
+
+  return { totalMinutes, buckets, labels }
 }
 
 export function useDashboardData({
