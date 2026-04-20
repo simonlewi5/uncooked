@@ -256,6 +256,10 @@ export default function InterviewPage(): JSX.Element {
 
     if (error || !data) {
       console.error('Failed to load interview session:', error)
+      setToastConfig({
+        message: 'Could not load that session. Please try again.',
+        variant: 'error',
+      })
       return
     }
 
@@ -305,6 +309,7 @@ export default function InterviewPage(): JSX.Element {
       style: (data.interview_style as InterviewStyle) ?? 'mixed',
       companyWebsite: fetchedWebsite,
     })
+    window.scrollTo({ top: 0, behavior: 'auto' })
     setPhase('interview')
   }, [resumeSession])
 

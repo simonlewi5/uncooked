@@ -288,6 +288,7 @@ export function SetupForm({
                 <li key={session.id}>
                   <div className={styles.sessionCard}>
                     <button
+                      type="button"
                       className={styles.sessionLoadBtn}
                       onClick={() => onLoadSession(session)}
                     >
@@ -304,6 +305,7 @@ export function SetupForm({
                       </div>
                     </button>
                     <button
+                      type="button"
                       className={styles.sessionDeleteBtn}
                       onClick={() => handleDeleteSession(session.id)}
                       title="Delete session"
