@@ -16,14 +16,14 @@
 }
 
 .success {
-  background: color-mix(in oklch, var(--success) 12%, var(--surface));
-  color: color-mix(in oklch, var(--success) 80%, var(--ink-1));
+  background: color-mix(in srgb, var(--success) 12%, var(--surface));
+  color: color-mix(in srgb, var(--success) 80%, var(--ink-1));
   border: 1px solid var(--success);
 }
 
 .error {
-  background: color-mix(in oklch, var(--danger) 12%, var(--surface));
-  color: color-mix(in oklch, var(--danger) 80%, var(--ink-1));
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  color: color-mix(in srgb, var(--danger) 80%, var(--ink-1));
   border: 1px solid var(--danger);
 }
 
