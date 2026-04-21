@@ -77,13 +77,13 @@
 }
 
 .noticeSuccess {
-  border-color: color-mix(in oklch, var(--success) 28%, var(--hairline));
-  background: color-mix(in oklch, var(--success) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--success) 28%, var(--hairline));
+  background: color-mix(in srgb, var(--success) 10%, var(--surface));
 }
 
 .noticeWarning {
-  border-color: color-mix(in oklch, var(--warn) 28%, var(--hairline));
-  background: color-mix(in oklch, var(--warn) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--warn) 28%, var(--hairline));
+  background: color-mix(in srgb, var(--warn) 10%, var(--surface));
 }
 
 .noticeIcon {
