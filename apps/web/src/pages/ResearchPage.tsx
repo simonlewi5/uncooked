@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { Plus, Search, Send, X, Paperclip, Star, Trash2, ChevronRight, ChevronDown, Play, Briefcase } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
@@ -613,7 +614,13 @@ export default function ResearchPage() {
                       m.role === 'user' ? styles.messageUser : styles.messageAssistant,
                     )}
                   >
-                    {m.content}
+                    {m.role === 'assistant' ? (
+                      <div className={styles.markdown}>
+                        <ReactMarkdown>{m.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      m.content
+                    )}
                   </div>
                   {m.role === 'user' && <span className={styles.avatar}>{userInitial}</span>}
                 </div>

@@ -846,6 +846,69 @@
   border-radius: 14px 14px 4px 14px;
 }
 
+.markdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.markdown p {
+  margin: 0;
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.markdown li {
+  margin: 0;
+}
+
+.markdown strong {
+  font-weight: 600;
+}
+
+.markdown em {
+  font-style: italic;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3 {
+  font-weight: 600;
+  margin: 0;
+}
+
+.markdown h1 { font-size: var(--font-lg); }
+.markdown h2 { font-size: var(--font-base); }
+.markdown h3 { font-size: var(--font-sm); }
+
+.markdown code {
+  font-family: monospace;
+  background-color: var(--hairline);
+  padding: 0.1em 0.3em;
+  border-radius: var(--radius-sm);
+  font-size: 0.85em;
+}
+
+.markdown pre {
+  background-color: var(--hairline);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  margin: 0;
+}
+
+.markdown pre code {
+  background: none;
+  padding: 0;
+}
+
 .avatar {
   width: 28px;
   height: 28px;

@@ -4,7 +4,6 @@ import { useTrackActivity } from '@/hooks/useTrackActivity'
 import { supabase } from '@/lib/supabase'
 import { awardGamificationEvent, GAMIFICATION_EVENT_TYPES } from '@/lib/gamification'
 import type { Badge, Message } from '@/types'
-import { stripResearchChatMarkdown } from '@/utils/stripResearchChatMarkdown'
 
 const RATE_LIMIT_FRIENDLY_MESSAGE =
   'You are sending requests too quickly right now. Please wait a minute and try again.'
@@ -269,7 +268,7 @@ export function useResearchChat({
         setMessages((prev) =>
           prev.map((m) =>
             m.id === placeholder.id
-              ? { ...m, content: stripResearchChatMarkdown(m.content + chunk) }
+              ? { ...m, content: m.content + chunk }
               : m,
           ),
         )
